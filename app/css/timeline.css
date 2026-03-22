@@ -11,7 +11,7 @@ body.zoom-year  .station-label--month {
 /* ── Spine ────────────────────────────────────────────────────────────────── */
 
 .spine-path {
-  stroke: hsl(0, 0%, 80%);
+  stroke: var(--color-spine);
   stroke-width: 3;
   stroke-linecap: round;
 }
@@ -19,14 +19,14 @@ body.zoom-year  .station-label--month {
 /* ── Year markers ─────────────────────────────────────────────────────────── */
 
 .year-tick {
-  stroke: rgba(255, 255, 255, 0.08);
+  stroke: var(--color-border);
   stroke-width: 1;
   pointer-events: none;
 }
 
 .year-label {
   font-size: 11px;
-  fill: rgba(255, 255, 255, 0.35);
+  fill: var(--color-year-label);
   font-variant-numeric: tabular-nums;
   pointer-events: none;
   user-select: none;
@@ -36,13 +36,13 @@ body.zoom-year  .station-label--month {
 
 /* Today + birth markers are visually distinct. */
 .year-marker--today .year-tick {
-  stroke: rgba(255, 255, 255, 0.25);
+  stroke: var(--color-today-tick);
   stroke-width: 1;
   stroke-dasharray: 4 4;
 }
 
 .year-label--today {
-  fill: rgba(255, 255, 255, 0.65);
+  fill: var(--color-today-label);
   font-size: 11px;
 }
 
@@ -61,8 +61,8 @@ body.zoom-year  .station-label--month {
 /* ── Station dots ─────────────────────────────────────────────────────────── */
 
 .station-dot {
-  fill: hsl(0, 0%, 80%);   /* spine color by default */
-  stroke: hsl(0, 0%, 20%); /* dark ring so dots show against the spine line */
+  fill: var(--color-spine);        /* spine color by default */
+  stroke: var(--color-station-ring); /* ring so dots show against the spine line */
   stroke-width: 1.5;
   cursor: pointer;
   transition: r 0.12s ease, fill 0.12s ease;
@@ -70,7 +70,7 @@ body.zoom-year  .station-label--month {
 
 /* Major milestones (non-birthday spine events) get a brighter fill. */
 .station--spine .station-dot {
-  fill: hsl(0, 0%, 92%);
+  fill: var(--color-station-major);
 }
 
 .station-hit {
@@ -82,7 +82,7 @@ body.zoom-year  .station-label--month {
 /* SVG r transitions work in modern browsers. */
 .station:hover .station-dot,
 .station:focus-within .station-dot {
-  fill: white;
+  fill: var(--color-station-hover);
 }
 
 /* ── Mobile: concurrent sibling collapse ──────────────────────────────────── */
@@ -111,13 +111,13 @@ body.zoom-year  .station-label--month {
 
 .station-label {
   font-size: 11px;
-  fill: #ccc;
+  fill: var(--color-label-secondary);
   pointer-events: none;
   user-select: none;
 }
 
 .station-label--major {
   font-size: 13px;
-  fill: #eee;
+  fill: var(--color-label);
   font-weight: 600;
 }

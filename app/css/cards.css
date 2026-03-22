@@ -17,13 +17,13 @@
 
 .card-dates {
   font-size: 0.8rem;
-  color: #999;
+  color: var(--color-label-tertiary);
 }
 
 .card-description {
   font-size: 0.875rem;
   line-height: 1.5;
-  color: #ccc;
+  color: var(--color-label-secondary);
 }
 
 .card-location {
@@ -31,7 +31,7 @@
   align-items: center;
   gap: 6px;
   font-size: 0.8rem;
-  color: #aaa;
+  color: var(--color-label-tertiary);
 }
 
 .card-location::before {
@@ -53,7 +53,7 @@
   align-items: center;
   gap: 4px;
   font-size: 0.875rem;
-  color: hsl(50, 85%, 65%);
+  color: var(--color-link-trip);
   text-decoration: none;
 }
 
@@ -77,15 +77,15 @@
 /* ── Book card ─────────────────────────────────────────────────────────────── */
 
 .card--book .card-rating {
-  color: hsl(50, 100%, 60%);
+  color: var(--color-rating);
   letter-spacing: 2px;
 }
 
 .card--book .card-review {
   font-size: 0.85rem;
   font-style: italic;
-  color: #bbb;
-  border-left: 3px solid rgba(255, 255, 255, 0.15);
+  color: var(--color-label-secondary);
+  border-left: 3px solid var(--color-review-border);
   padding-left: 10px;
 }
 
