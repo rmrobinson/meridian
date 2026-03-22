@@ -2,7 +2,8 @@
  * timeline.js — Root SVG canvas, scroll container, virtualized render window.
  *
  * Public API:
- *   initTimeline({ svg, scrollContainer, layout, renderObjects })
+ *   const controller = initTimeline({ svg, scrollContainer, layout, renderObjects })
+ *   controller.setRenderObjects(layout, renderObjects)  // swap content on zoom change
  *
  * All layout math is pre-computed by main.js. This module only manages
  * DOM visibility — create elements entering the render window, remove those
@@ -25,11 +26,16 @@ const BUFFER_RATIO = 1.5;
 /**
  * Initialize the timeline.
  *
+ * Creates SVG layers and the spine once. Attaches the scroll listener once.
+ * Returns a controller whose `setRenderObjects` method swaps content without
+ * tearing down the layer structure or re-binding listeners.
+ *
  * @param {object}         opts
  * @param {SVGSVGElement}  opts.svg
  * @param {HTMLElement}    opts.scrollContainer
  * @param {object}         opts.layout
  * @param {object[]}       opts.renderObjects
+ * @returns {{ setRenderObjects(layout: object, renderObjects: object[]): void }}
  */
 export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
   const { totalHeight } = layout;
@@ -43,7 +49,7 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
   const svgWidth = svg.getBoundingClientRect().width || window.innerWidth;
   const spineX   = svgWidth / 2;
 
-  // ── Layer groups ─────────────────────────────────────────────────────────
+  // ── Layer groups — created once, never torn down ──────────────────────────
   const markersLayer  = appendGroup(svg, 'year-markers-layer');
   const linesLayer    = appendGroup(svg, 'lines-layer');
   const spineLayer    = appendGroup(svg, 'spine-layer');
@@ -59,21 +65,13 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
   spineLine.setAttribute('y2', totalHeight);
   spineLayer.appendChild(spineLine);
 
-  // ── Year markers (small count, always in DOM) ─────────────────────────────
-  for (const marker of renderObjects.filter((o) => o.type === 'year-marker')) {
-    markersLayer.appendChild(buildYearMarker(marker));
-  }
-
-  // ── Span lines + stations (both virtualized) ─────────────────────────────
-
-  const spanObjects    = renderObjects.filter((o) => o.type === 'span-line');
-  const stationObjects = renderObjects.filter((o) => o.type === 'station');
-
-  // Pre-sort stations ascending by Y for predictable iteration order.
-  stationObjects.sort((a, b) => a.y - b.y);
-
+  // ── Mutable render state (swapped by loadContent) ─────────────────────────
+  let spanObjects    = [];
+  let stationObjects = [];
   const liveSpans    = new Map(); // id → SVGElement
   const liveStations = new Map(); // id → SVGElement
+
+  // ── Virtualized sync loop ─────────────────────────────────────────────────
 
   function sync() {
     const scrollTop = scrollContainer.scrollTop;
@@ -108,8 +106,51 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
     }
   }
 
-  sync(); // render the initial viewport
+  // ── Content loader — called on first render and on every zoom change ───────
+
+  function loadContent(newLayout, newRenderObjects) {
+    const { totalHeight: newHeight } = newLayout;
+
+    // Resize canvas and spine to match the new scale.
+    svg.setAttribute('height', newHeight);
+    spineLine.setAttribute('y2', newHeight);
+
+    // Rebuild year markers (always non-virtualized).
+    while (markersLayer.firstChild) markersLayer.removeChild(markersLayer.firstChild);
+    for (const marker of newRenderObjects.filter((o) => o.type === 'year-marker')) {
+      markersLayer.appendChild(buildYearMarker(marker));
+    }
+
+    // Evict all currently live virtualized elements.
+    for (const el of liveSpans.values()) el.remove();
+    liveSpans.clear();
+    for (const el of liveStations.values()) el.remove();
+    liveStations.clear();
+
+    // Swap the render-object arrays and re-sync the viewport.
+    spanObjects    = newRenderObjects.filter((o) => o.type === 'span-line');
+    stationObjects = newRenderObjects.filter((o) => o.type === 'station');
+    stationObjects.sort((a, b) => a.y - b.y);
+
+    sync();
+  }
+
+  // Initial render.
+  loadContent(layout, renderObjects);
+
+  // Single scroll listener — attached once, survives zoom changes.
   scrollContainer.addEventListener('scroll', () => requestAnimationFrame(sync));
+
+  // ── Public controller ─────────────────────────────────────────────────────
+  return {
+    /**
+     * Swap render objects after a zoom-level change.
+     * No API re-fetch; no layer teardown; no new scroll listener.
+     */
+    setRenderObjects(newLayout, newRenderObjects) {
+      loadContent(newLayout, newRenderObjects);
+    },
+  };
 }
 
 // ── Builder functions ─────────────────────────────────────────────────────────

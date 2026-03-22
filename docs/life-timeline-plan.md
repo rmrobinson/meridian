@@ -715,6 +715,25 @@ npx playwright test --update-snapshots
 - Point event stations on single-line families (fitness)
 - Unit tests: full lane assignment suite, sibling grouping, mobile collapse logic
 
+### Phase 2.5 — Zoom Infrastructure
+
+This phase exists to wire zoom into the coordinate system before interactivity is built on top of it in Phase 3. The UI toggle does not exist yet — zoom level is set by a hardcoded constant that Claude Code can flip manually to verify each mode renders correctly. Phase 3 then only needs to build the UI controls and transition animations, with no coordinate system changes required.
+
+- Create `zoom.js` with the three zoom level definitions and their pixels-per-day values:
+  ```
+  ZOOM_DAY:   2px per day   (~51,100px total for a 35-year life)
+  ZOOM_MONTH: 0.25px per day (~6,400px total)
+  ZOOM_YEAR:  0.07px per day (~1,800px total)
+  ```
+- Refactor `timeToY(date)` in `lines.js` to accept zoom level as a parameter rather than using a hardcoded scale. All existing callers updated to pass the current zoom state.
+- Refactor the virtualized renderer in `timeline.js` to re-compute the render window and total canvas height when zoom level changes. A `setZoom(level)` function triggers a full re-layout from the pre-computed render objects — no API re-fetch needed.
+- Implement aggregation logic in `zoom.js`:
+  - At `ZOOM_MONTH`: group point events by `(family_id, year-month)` bucket, replace with a single aggregate station labeled "8 runs" or "3 books finished". Span events always render as continuous lines regardless of zoom.
+  - At `ZOOM_YEAR`: suppress all point events entirely. Render only span line segments and a single midpoint station per span.
+- Default zoom level is `ZOOM_YEAR` — least stress on the renderer, good overview during development.
+- Unit tests: `timeToY()` returns correct values at all three zoom levels for known dates; aggregation groups point events correctly by bucket; aggregation never includes span events; year zoom suppresses all point events.
+- Manual verification: flip the hardcoded zoom constant between all three levels and confirm the canvas rescales correctly, year markers reposition, and aggregation behaves as expected on the mock dataset.
+
 ### Phase 3 — Interactivity
 - Hover state on stations (desktop) and tap state (mobile)
 - Click/tap to open detail cards — floating on desktop, bottom sheet on mobile
@@ -761,4 +780,4 @@ These are not blockers for Phase 1 but should be decided before Phase 2:
 
 ---
 
-*Last updated: planning phase, pre-build. Revised to include framework rationale, mobile design, spine events, concurrent span rendering, birthday auto-generation, S3 photo hosting, performance strategy, testing strategy, and nested branching.*
+*Last updated: planning phase, pre-build. Revised to include framework rationale, mobile design, spine events, concurrent span rendering, birthday auto-generation, S3 photo hosting, performance strategy, testing strategy, nested branching, and zoom infrastructure phase.*

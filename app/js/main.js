@@ -2,53 +2,96 @@
  * main.js — Bootstrap, pre-computation pipeline, wires modules together.
  *
  * Load order:
- *   1. fetchTimeline()  — fetch + normalize API/mock response  (api.js)
- *   2. assignLanes()    — compute lane offsets for all span events (lanes.js)
- *   3. Build render objects — year markers, span-lines, stations (here)
- *   4. initTimeline()   — hand off to the virtualized renderer  (timeline.js)
+ *   1. fetchTimeline()        — fetch + normalize API/mock response  (api.js)
+ *   2. buildRenderObjects()   — lane assignment + render object array (here)
+ *   3. initTimeline()         — hand off to the virtualized renderer  (timeline.js)
+ *
+ * Zoom changes do not re-fetch data. buildRenderObjects() is called again with
+ * the new pxPerDay value, and the controller returned by initTimeline() swaps
+ * the content in place.
+ *
+ * Devtools hook:
+ *   window.__timeline_setZoom(pxPerDay)
+ *   e.g. window.__timeline_setZoom(0.07)  // ZOOM_YEAR
  */
 
 import { fetchTimeline } from './api.js';
 import { timeToY } from './lines.js';
-import { assignLanes, LANE_WIDTH } from './lanes.js';
+import { assignLanes } from './lanes.js';
 import { initTimeline } from './timeline.js';
+import {
+  ZOOM_DAY, ZOOM_MONTH, ZOOM_YEAR,
+  aggregateByMonth, filterForYearZoom,
+} from './zoom.js';
 
-const PX_PER_DAY = 2;
 const MS_PER_DAY = 86_400_000;
 
 /**
  * Pixel height of the branch / merge bezier curve.
- * Must match the value used by timeline.js when drawing paths.
- * Stored on each span-line render object so the two modules stay in sync.
+ * Stored on each span-line render object so timeline.js stays in sync.
  */
 const CURVE_HEIGHT = 40;
 
 /** In Phase 1 serve the mock fixture. Phase 4 replaces with the real endpoint. */
 const DATA_URL = '/tests/fixtures/mock-timeline.json';
 
-async function init() {
-  const data = await fetchTimeline(DATA_URL);
+/** Cached API response — populated once, reused on zoom changes. */
+let _data       = null;
 
+/** Controller returned by initTimeline — exposes setRenderObjects. */
+let _controller = null;
+
+async function init() {
+  _data = await fetchTimeline(DATA_URL);
+
+  const svg             = document.getElementById('timeline-svg');
+  const scrollContainer = document.getElementById('timeline-container');
+
+  const { layout, renderObjects } = buildRenderObjects(_data, ZOOM_DAY);
+  _controller = initTimeline({ svg, scrollContainer, layout, renderObjects });
+}
+
+/**
+ * Build the full render-object array for a given zoom level.
+ *
+ * Pure function of (data, pxPerDay) — safe to call multiple times.
+ *
+ * @param {object} data      - Normalized API response from fetchTimeline().
+ * @param {number} pxPerDay  - One of ZOOM_DAY, ZOOM_MONTH, or ZOOM_YEAR.
+ * @returns {{ layout: object, renderObjects: object[] }}
+ */
+function buildRenderObjects(data, pxPerDay) {
   // Clamp to midnight so year-marker positions are stable.
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   const birthDate   = new Date(data.person.birth_date);
   const totalDays   = (today - birthDate) / MS_PER_DAY;
-  const totalHeight = Math.ceil(totalDays) * PX_PER_DAY;
+  const totalHeight = Math.ceil(totalDays) * pxPerDay;
 
-  const layout = { totalHeight, today, birthDate, pxPerDay: PX_PER_DAY };
+  const layout = { totalHeight, today, birthDate, pxPerDay };
 
   function yFor(date) {
     return timeToY(date, birthDate, today, totalHeight);
   }
 
-  // Build a lookup so we can get family properties by id.
   const familyById = new Map(data.line_families.map((f) => [f.id, f]));
+
+  // ── Apply zoom-level event transformation ─────────────────────────────────
+  // ZOOM_DAY: all events as-is.
+  // ZOOM_MONTH: point events aggregated per (family_id, year-month).
+  // ZOOM_YEAR: point events dropped; one synthetic midpoint per span.
+
+  let events = data.events;
+  if (pxPerDay === ZOOM_MONTH) {
+    events = aggregateByMonth(events, data.line_families);
+  } else if (pxPerDay === ZOOM_YEAR) {
+    events = filterForYearZoom(events);
+  }
 
   // ── Lane assignment ────────────────────────────────────────────────────────
 
-  const laneMap = assignLanes(data.events, data.line_families);
+  const laneMap = assignLanes(events, data.line_families);
 
   const renderObjects = [];
 
@@ -70,7 +113,7 @@ async function init() {
 
   const spanRenderObjects = [];
 
-  for (const evt of data.events) {
+  for (const evt of events) {
     if (evt.type !== 'span') continue;
 
     const family = familyById.get(evt.family_id);
@@ -167,14 +210,15 @@ async function init() {
 
   renderObjects.push(...spanRenderObjects);
 
-  // ── Pass 2 — point event stations ────────────────────────────────────────
+  // ── Pass 2 — point / aggregate event stations ─────────────────────────────
   //
   // Spine point events go on the spine (laneOffset: 0).
   // Non-spine point events inherit their line's lane if one is assigned
   // (relevant for single_line families like fitness).
+  // Aggregate events from ZOOM_MONTH are also rendered here as spine stations.
 
-  for (const evt of data.events) {
-    if (evt.type !== 'point') continue;
+  for (const evt of events) {
+    if (evt.type !== 'point' && evt.type !== 'aggregate') continue;
     const date = evt.date;
     if (!date) continue;
 
@@ -198,12 +242,7 @@ async function init() {
     });
   }
 
-  // ── Hand off ──────────────────────────────────────────────────────────────
-
-  const svg             = document.getElementById('timeline-svg');
-  const scrollContainer = document.getElementById('timeline-container');
-
-  initTimeline({ svg, scrollContainer, layout, renderObjects });
+  return { layout, renderObjects };
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -224,6 +263,24 @@ function variantColor([h, s, l], colorIndex) {
 function formatDate(date) {
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
+
+// ── Devtools hook ─────────────────────────────────────────────────────────────
+//
+// Flip zoom level manually from the browser console:
+//   window.__timeline_setZoom(0.25)  // ZOOM_MONTH
+//   window.__timeline_setZoom(0.07)  // ZOOM_YEAR
+//   window.__timeline_setZoom(2)     // ZOOM_DAY (default)
+
+window.__timeline_setZoom = function (pxPerDay) {
+  if (!_data || !_controller) {
+    console.warn('__timeline_setZoom: timeline not yet initialized');
+    return;
+  }
+  const { layout, renderObjects } = buildRenderObjects(_data, pxPerDay);
+  _controller.setRenderObjects(layout, renderObjects);
+};
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
 
 init().catch((err) => {
   console.error('Timeline failed to initialize:', err);
