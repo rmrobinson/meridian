@@ -192,6 +192,47 @@
       "metadata": {
         "activity": "concert"
       }
+    },
+    {
+      "id": "evt_005",
+      "family_id": "education",
+      "line_key": "university-2010",
+      "parent_line_key": null,
+      "type": "span",
+      "title": "University of Edinburgh",
+      "start_date": "2010-09-01",
+      "end_date": "2014-05-30",
+      "location": {
+        "label": "Edinburgh, UK",
+        "lat": 55.9533,
+        "lng": -3.1883
+      },
+      "description": "BSc Computer Science.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": {
+        "degree": "BSc Computer Science"
+      }
+    },
+    {
+      "id": "evt_006",
+      "family_id": "books",
+      "line_key": "midnight-library-2022",
+      "parent_line_key": null,
+      "type": "span",
+      "title": "The Midnight Library",
+      "start_date": "2022-07-25",
+      "end_date": "2022-09-10",
+      "location": null,
+      "description": "Matt Haig's novel about infinite possibility.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": {
+        "author": "Matt Haig",
+        "rating": 4
+      }
     }
   ]
 }

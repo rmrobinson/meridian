@@ -49,8 +49,41 @@ test.describe('Mobile — layout and interaction', () => {
     }
   });
 
+  // ── Phase 2 — mobile sibling collapse ────────────────────────────────────
+
+  test('two concurrent book spans collapse into a single bolder line', async ({ page }) => {
+    // Scroll to the middle of the Dune / Midnight Library overlap (Aug 2022).
+    await page.evaluate((targetDate) => {
+      const birth  = new Date('1990-04-12');
+      const today  = new Date();
+      today.setHours(0, 0, 0, 0);
+      const totalH = Number(document.getElementById('timeline-svg').getAttribute('height'));
+      const ratio  = (today - new Date(targetDate)) / (today - birth);
+      const y      = ratio * totalH;
+      const c      = document.getElementById('timeline-container');
+      c.scrollTop  = Math.max(0, y - c.clientHeight / 2);
+      return new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve)),
+      );
+    }, '2022-08-01');
+
+    // Primary sibling: Dune (innermost lane, siblingIndex=0)
+    await expect(page.locator('[data-testid="span-line-span-evt_003"]')).toBeAttached({ timeout: 3000 });
+    const sibCount = await page.locator('[data-testid="span-line-span-evt_003"]').getAttribute('data-sibling-count');
+    const sibIndex = await page.locator('[data-testid="span-line-span-evt_003"]').getAttribute('data-sibling-index');
+    expect(sibCount).toBe('2');
+    expect(sibIndex).toBe('0');
+
+    // Secondary sibling: Midnight Library (siblingIndex=1) — in DOM but hidden on mobile
+    await expect(page.locator('[data-testid="span-line-span-evt_006"]')).toBeAttached();
+    const isHidden = await page.evaluate(() => {
+      const el = document.querySelector('[data-testid="span-line-span-evt_006"]');
+      return el ? window.getComputedStyle(el).display === 'none' : false;
+    });
+    expect(isHidden).toBe(true);
+  });
+
   // ── Phase 2+ stubs ────────────────────────────────────────────────────────
-  test.fixme('two concurrent book spans collapse into a single bolder line', async () => {});
   test.fixme('when one book ends, its termination station renders and the line continues at reduced weight', async () => {});
   test.fixme('tapping a station opens a bottom sheet card', async () => {});
   test.fixme('bottom sheet dismisses on swipe down or close tap', async () => {});

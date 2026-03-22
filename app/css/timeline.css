@@ -85,6 +85,28 @@ body.zoom-year  .station-label--month {
   fill: white;
 }
 
+/* ── Mobile: concurrent sibling collapse ──────────────────────────────────── */
+
+@media (max-width: 480px) {
+  /* Hide all but the innermost sibling (index 0) — it represents the group. */
+  [data-sibling-index]:not([data-sibling-index="0"]) {
+    display: none;
+  }
+
+  /* Bold the primary sibling's stroke to signal multiplicity. */
+  [data-sibling-count="2"] .span-branch,
+  [data-sibling-count="2"] .span-segment,
+  [data-sibling-count="2"] .span-merge {
+    stroke-width: 5;
+  }
+
+  [data-sibling-count="3"] .span-branch,
+  [data-sibling-count="3"] .span-segment,
+  [data-sibling-count="3"] .span-merge {
+    stroke-width: 7;
+  }
+}
+
 /* ── Station labels (Phase 3) ─────────────────────────────────────────────── */
 
 .station-label {
