@@ -46,8 +46,9 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
   // Resolve absolute spine center X.
   // getBoundingClientRect is reliable here because the SVG is already in the
   // DOM with width="100%" before initTimeline is called.
-  const svgWidth = svg.getBoundingClientRect().width || window.innerWidth;
-  const spineX   = svgWidth / 2;
+  // Declared as `let` so the ResizeObserver can update it when the window
+  // is resized — span lines and stations use absolute pixel coordinates.
+  let spineX = (svg.getBoundingClientRect().width || window.innerWidth) / 2;
 
   // ── Layer groups — created once, never torn down ──────────────────────────
   const markersLayer  = appendGroup(svg, 'year-markers-layer');
@@ -140,6 +141,25 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
 
   // Single scroll listener — attached once, survives zoom changes.
   scrollContainer.addEventListener('scroll', () => requestAnimationFrame(sync));
+
+  // ── Resize handling ───────────────────────────────────────────────────────
+  // The spine uses x1/x2="50%" and repositions automatically. Span lines and
+  // station dots use absolute spineX coordinates and must be rebuilt when the
+  // SVG width changes. ResizeObserver fires exactly when the element resizes
+  // (including window resize) and is already rate-limited by the browser.
+  new ResizeObserver((entries) => {
+    const newWidth = entries[0]?.contentRect.width;
+    if (!newWidth) return;
+    const newSpineX = newWidth / 2;
+    if (newSpineX === spineX) return;
+    spineX = newSpineX;
+    // Evict all live elements — sync() will rebuild them with the updated spineX.
+    for (const el of liveSpans.values()) el.remove();
+    liveSpans.clear();
+    for (const el of liveStations.values()) el.remove();
+    liveStations.clear();
+    sync();
+  }).observe(svg);
 
   // ── Public controller ─────────────────────────────────────────────────────
   return {
