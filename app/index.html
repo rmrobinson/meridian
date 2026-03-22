@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Life Timeline</title>
+    <link rel="stylesheet" href="css/main.css" />
+    <link rel="stylesheet" href="css/timeline.css" />
+    <link rel="stylesheet" href="css/cards.css" />
+  </head>
+  <body>
+    <!-- Zoom control — segmented on mobile, toggle group on desktop -->
+    <header class="zoom-bar" role="toolbar" aria-label="Zoom level">
+      <div class="zoom-controls">
+        <button class="zoom-btn zoom-btn--active" data-zoom="day">Day</button>
+        <button class="zoom-btn" data-zoom="month">Month</button>
+        <button class="zoom-btn" data-zoom="year">Year</button>
+      </div>
+    </header>
+
+    <!-- Timeline scroll container -->
+    <main class="timeline-container" id="timeline-container">
+      <svg
+        class="timeline-svg"
+        id="timeline-svg"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-label="Life timeline"
+        role="img"
+      >
+        <!-- Rendered by timeline.js -->
+      </svg>
+    </main>
+
+    <!-- Detail card overlay (desktop: floating, mobile: bottom sheet) -->
+    <aside class="card-overlay" id="card-overlay" hidden aria-live="polite">
+      <div class="card-sheet" id="card-sheet">
+        <button class="card-close" id="card-close" aria-label="Close">✕</button>
+        <div class="card-content" id="card-content"></div>
+      </div>
+    </aside>
+
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>

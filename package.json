@@ -1,0 +1,16 @@
+{
+  "name": "life-timeline",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:update": "playwright test --update-snapshots",
+    "serve": "npx serve app -p 3000"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0",
+    "@playwright/test": "^1.48.0"
+  }
+}

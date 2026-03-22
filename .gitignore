@@ -24,3 +24,10 @@ android/app/build/
 
 # OS
 .DS_Store
+
+# Test output
+test-results/
+playwright-report/
+
+# Claude local config
+.claude/

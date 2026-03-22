@@ -1,0 +1,97 @@
+/* cards.css — detail card styles (standard, trip, gallery, book) */
+
+.card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Shared card elements ─────────────────────────────────────────────────── */
+
+.card-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-right: 24px; /* room for close button */
+}
+
+.card-dates {
+  font-size: 0.8rem;
+  color: #999;
+}
+
+.card-description {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #ccc;
+}
+
+.card-location {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: #aaa;
+}
+
+.card-location::before {
+  content: '📍';
+  font-size: 0.75rem;
+}
+
+/* ── Trip card ─────────────────────────────────────────────────────────────── */
+
+.card--trip .card-hero {
+  width: 100%;
+  aspect-ratio: 16/9;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.card--trip .card-read-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.875rem;
+  color: hsl(50, 85%, 65%);
+  text-decoration: none;
+}
+
+/* ── Gallery card ─────────────────────────────────────────────────────────── */
+
+.card--gallery .card-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 6px;
+}
+
+.card--gallery .card-gallery img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 4px;
+  cursor: zoom-in;
+  loading: lazy;
+}
+
+/* ── Book card ─────────────────────────────────────────────────────────────── */
+
+.card--book .card-rating {
+  color: hsl(50, 100%, 60%);
+  letter-spacing: 2px;
+}
+
+.card--book .card-review {
+  font-size: 0.85rem;
+  font-style: italic;
+  color: #bbb;
+  border-left: 3px solid rgba(255, 255, 255, 0.15);
+  padding-left: 10px;
+}
+
+/* ── Standard / milestone card ─────────────────────────────────────────────── */
+
+.card--milestone .card-icon {
+  font-size: 2rem;
+  text-align: center;
+}

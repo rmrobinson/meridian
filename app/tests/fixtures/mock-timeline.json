@@ -1,0 +1,197 @@
+{
+  "person": {
+    "name": "Your Name",
+    "birth_date": "1990-04-12"
+  },
+  "line_families": [
+    {
+      "id": "books",
+      "label": "Books",
+      "base_color_hsl": [30, 70, 50],
+      "side": "right",
+      "on_end": "terminate",
+      "spawn_behavior": "per_event"
+    },
+    {
+      "id": "tv",
+      "label": "TV Shows",
+      "base_color_hsl": [300, 60, 55],
+      "side": "right",
+      "on_end": "terminate",
+      "spawn_behavior": "per_event"
+    },
+    {
+      "id": "employment",
+      "label": "Employment",
+      "base_color_hsl": [210, 70, 50],
+      "side": "left",
+      "on_end": "merge",
+      "spawn_behavior": "per_event"
+    },
+    {
+      "id": "travel",
+      "label": "Travel",
+      "base_color_hsl": [50, 85, 50],
+      "side": "right",
+      "on_end": "merge",
+      "spawn_behavior": "per_event"
+    },
+    {
+      "id": "fitness",
+      "label": "Fitness & Health",
+      "base_color_hsl": [140, 65, 45],
+      "side": "right",
+      "on_end": "terminate",
+      "spawn_behavior": "single_line"
+    },
+    {
+      "id": "education",
+      "label": "Education",
+      "base_color_hsl": [270, 60, 55],
+      "side": "left",
+      "on_end": "merge",
+      "spawn_behavior": "per_event"
+    },
+    {
+      "id": "hobbies",
+      "label": "Hobbies",
+      "base_color_hsl": [180, 55, 45],
+      "side": "left",
+      "on_end": "terminate",
+      "spawn_behavior": "per_event"
+    }
+  ],
+  "events": [
+    {
+      "id": "evt_000",
+      "family_id": "spine",
+      "line_key": "spine",
+      "type": "point",
+      "title": "Moved to London",
+      "date": "2019-09-01",
+      "location": {
+        "label": "London, UK",
+        "lat": 51.5074,
+        "lng": -0.1278
+      },
+      "description": "Relocated from Edinburgh.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": {
+        "milestone_type": "relocation"
+      }
+    },
+    {
+      "id": "evt_001",
+      "family_id": "employment",
+      "line_key": "acme-corp",
+      "parent_line_key": null,
+      "type": "span",
+      "title": "Acme Corp",
+      "start_date": "2015-06-01",
+      "end_date": "2018-11-30",
+      "location": {
+        "label": "San Francisco, CA",
+        "lat": 37.7749,
+        "lng": -122.4194
+      },
+      "description": "Software engineer, worked on payments infra.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": {
+        "role": "Senior Engineer"
+      }
+    },
+    {
+      "id": "evt_001b",
+      "family_id": "employment",
+      "line_key": "uni-placement-2012",
+      "parent_line_key": "university-2010",
+      "type": "span",
+      "title": "Summer Placement — CERN",
+      "start_date": "2012-06-01",
+      "end_date": "2012-08-31",
+      "location": {
+        "label": "Geneva, Switzerland",
+        "lat": 46.2044,
+        "lng": 6.1432
+      },
+      "description": "Summer research placement during second year.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": {
+        "role": "Research Intern"
+      }
+    },
+    {
+      "id": "evt_002",
+      "family_id": "travel",
+      "line_key": "japan-2023",
+      "parent_line_key": null,
+      "type": "span",
+      "title": "Japan Trip",
+      "start_date": "2023-03-10",
+      "end_date": "2023-03-24",
+      "location": {
+        "label": "Japan",
+        "lat": 36.2048,
+        "lng": 138.2529
+      },
+      "description": "Two weeks in Tokyo and Kyoto.",
+      "external_url": "https://yourblog.netlify.app/japan-2023",
+      "hero_image_url": "https://yourblog.netlify.app/images/japan-hero.jpg",
+      "photos": [],
+      "metadata": {
+        "countries": ["Japan"],
+        "cities": ["Tokyo", "Kyoto"]
+      }
+    },
+    {
+      "id": "evt_003",
+      "family_id": "books",
+      "line_key": "dune-2022",
+      "parent_line_key": null,
+      "type": "span",
+      "title": "Dune",
+      "start_date": "2022-07-20",
+      "end_date": "2022-08-14",
+      "location": null,
+      "description": "Frank Herbert's masterpiece.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": {
+        "author": "Frank Herbert",
+        "rating": 5,
+        "review": "Incredible world-building and political depth."
+      }
+    },
+    {
+      "id": "evt_004",
+      "family_id": "hobbies",
+      "line_key": "glastonbury-2023",
+      "parent_line_key": null,
+      "type": "point",
+      "title": "Glastonbury Festival",
+      "date": "2023-06-23",
+      "location": {
+        "label": "Glastonbury, UK",
+        "lat": 51.1444,
+        "lng": -2.7150
+      },
+      "description": "Weekend at Glastonbury.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [
+        "https://your-cdn.com/glastonbury-1.jpg",
+        "https://your-cdn.com/glastonbury-2.jpg"
+      ],
+      "metadata": {
+        "activity": "concert"
+      }
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+/* timeline.css — station labels, year markers, zoom state classes */
+
+/* ── Zoom state ───────────────────────────────────────────────────────────── */
+
+body.zoom-month .station-label--detail,
+body.zoom-year  .station-label--detail,
+body.zoom-year  .station-label--month {
+  display: none;
+}
+
+/* ── Spine ────────────────────────────────────────────────────────────────── */
+
+.spine-path {
+  stroke: hsl(0, 0%, 80%);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+/* ── Year markers ─────────────────────────────────────────────────────────── */
+
+.year-tick {
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 1;
+  pointer-events: none;
+}
+
+.year-label {
+  font-size: 11px;
+  fill: rgba(255, 255, 255, 0.35);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  user-select: none;
+  /* Nudge the baseline so the label sits just above the tick line. */
+  dominant-baseline: auto;
+}
+
+/* Today + birth markers are visually distinct. */
+.year-marker--today .year-tick {
+  stroke: rgba(255, 255, 255, 0.25);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
+.year-label--today {
+  fill: rgba(255, 255, 255, 0.65);
+  font-size: 11px;
+}
+
+/* ── Span lines ───────────────────────────────────────────────────────────── */
+
+/* Color is set via the stroke attribute in JS (from base_color_hsl). */
+.span-branch,
+.span-segment,
+.span-merge {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ── Station dots ─────────────────────────────────────────────────────────── */
+
+.station-dot {
+  fill: hsl(0, 0%, 80%);   /* spine color by default */
+  stroke: hsl(0, 0%, 20%); /* dark ring so dots show against the spine line */
+  stroke-width: 1.5;
+  cursor: pointer;
+  transition: r 0.12s ease, fill 0.12s ease;
+}
+
+/* Major milestones (non-birthday spine events) get a brighter fill. */
+.station--spine .station-dot {
+  fill: hsl(0, 0%, 92%);
+}
+
+.station-hit {
+  fill: transparent;
+  cursor: pointer;
+}
+
+/* Hover / focus — expand the dot slightly. */
+/* SVG r transitions work in modern browsers. */
+.station:hover .station-dot,
+.station:focus-within .station-dot {
+  fill: white;
+}
+
+/* ── Station labels (Phase 3) ─────────────────────────────────────────────── */
+
+.station-label {
+  font-size: 11px;
+  fill: #ccc;
+  pointer-events: none;
+  user-select: none;
+}
+
+.station-label--major {
+  font-size: 13px;
+  fill: #eee;
+  font-weight: 600;
+}
