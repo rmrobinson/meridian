@@ -52,9 +52,12 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
   let spineX = (svg.getBoundingClientRect().width || window.innerWidth) / 2;
 
   // ── Layer groups — created once, never torn down ──────────────────────────
+  // Paint order (bottom → top): markers, spine, branch lines, stations.
+  // spine-layer must be below lines-layer so child branches render over the
+  // parent spine rather than behind it.
   const markersLayer  = appendGroup(svg, 'year-markers-layer');
-  const linesLayer    = appendGroup(svg, 'lines-layer');
   const spineLayer    = appendGroup(svg, 'spine-layer');
+  const linesLayer    = appendGroup(svg, 'lines-layer');
   const stationsLayer = appendGroup(svg, 'stations-layer');
 
   // ── Spine (border + main line, always in DOM) ─────────────────────────────
