@@ -48,6 +48,7 @@ async function init() {
   const scrollContainer = document.getElementById('timeline-container');
 
   const { layout, renderObjects } = buildRenderObjects(_data, ZOOM_DAY);
+  setBodyZoom(ZOOM_DAY);
   _controller = initTimeline({ svg, scrollContainer, layout, renderObjects });
 }
 
@@ -154,20 +155,42 @@ function buildRenderObjects(data, pxPerDay) {
     };
     spanRenderObjects.push(spanObj);
 
-    // Start station: at yStart (branch bezier arrives here on the lane).
-    if (yStart >= 0 && yStart <= totalHeight) {
+    // Start station: departure dot on the PARENT line at the exact point where
+    // the branch bezier departs — (parentX, yStart + curveHeight).
+    // branchBezier departs from (parentX, branchY + curveHeight), so the station
+    // sits curveHeight pixels below (older than) the event start date.
+    const startStationY = yStart + CURVE_HEIGHT;
+    if (startStationY >= 0 && startStationY <= totalHeight) {
       renderObjects.push({
         type: 'station', id: evt.id,
-        y: yStart, laneOffset, color, event: evt, isMajor: false,
+        y: startStationY, laneOffset: parentOffset, color, event: evt, isMajor: false,
+        label: evt.label ?? truncate(evt.title),
+        icon:  evt.icon ?? null,
       });
     }
 
-    // End station: at yEnd (merge bezier departs from here).
-    if (yEnd >= 0 && yEnd <= totalHeight) {
-      renderObjects.push({
-        type: 'station', id: `${evt.id}-end`,
-        y: yEnd, laneOffset, color, event: evt, isMajor: false,
-      });
+    // End station: termination dot only — no label or icon.
+    // merge:     arrival dot on PARENT line where the merge bezier ends (yEnd − curveHeight).
+    // terminate: dot on the branch lane at yEnd.
+    if (family.on_end === 'merge') {
+      const endY = yEnd - CURVE_HEIGHT;
+      if (endY >= 0 && endY <= totalHeight) {
+        renderObjects.push({
+          type: 'station', id: `${evt.id}-end`,
+          y: endY, laneOffset: parentOffset, color, event: evt, isMajor: false,
+          label: null,
+          icon:  null,
+        });
+      }
+    } else {
+      if (yEnd >= 0 && yEnd <= totalHeight) {
+        renderObjects.push({
+          type: 'station', id: `${evt.id}-end`,
+          y: yEnd, laneOffset, color, event: evt, isMajor: false,
+          label: null,
+          icon:  null,
+        });
+      }
     }
   }
 
@@ -239,6 +262,8 @@ function buildRenderObjects(data, pxPerDay) {
     renderObjects.push({
       type: 'station', id: evt.id,
       y, laneOffset, color, event: evt, isMajor,
+      label: evt.label ?? truncate(evt.title),
+      icon:  evt.icon ?? null,
     });
   }
 
@@ -264,6 +289,27 @@ function formatDate(date) {
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+/**
+ * Truncate a string to at most `max` characters, breaking at the last space
+ * before the limit and appending an ellipsis.
+ */
+function truncate(str, max = 22) {
+  if (!str || str.length <= max) return str ?? '';
+  const cut = str.slice(0, max - 1).trimEnd();
+  return cut + '…';
+}
+
+/**
+ * Reflect the active zoom level on <body> as a CSS class so timeline.css
+ * zoom-state rules (label visibility, icon placement) can use simple selectors.
+ */
+function setBodyZoom(pxPerDay) {
+  document.body.classList.remove('zoom-day', 'zoom-month', 'zoom-year');
+  if (pxPerDay === ZOOM_MONTH)     document.body.classList.add('zoom-month');
+  else if (pxPerDay === ZOOM_YEAR) document.body.classList.add('zoom-year');
+  else                             document.body.classList.add('zoom-day');
+}
+
 // ── Devtools hook ─────────────────────────────────────────────────────────────
 //
 // Flip zoom level manually from the browser console:
@@ -277,6 +323,7 @@ window.__timeline_setZoom = function (pxPerDay) {
     return;
   }
   const { layout, renderObjects } = buildRenderObjects(_data, pxPerDay);
+  setBodyZoom(pxPerDay);
   _controller.setRenderObjects(layout, renderObjects);
 };
 

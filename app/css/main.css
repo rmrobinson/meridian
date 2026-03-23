@@ -33,9 +33,10 @@
   --color-shadow: rgba(0, 0, 0, 0.60);
 
   /* Spine & structural SVG */
-  --color-spine:          hsl(0, 0%, 80%);
-  --color-station-ring:   hsl(0, 0%, 20%);  /* dot outline so it shows against spine */
-  --color-station-major:  hsl(0, 0%, 92%);  /* milestone dot fill */
+  --color-spine:          hsl(45, 50%, 60%);  /* warm amber — echoes trip/rating accents */
+  --color-spine-border:   hsl(45, 55%, 36%);  /* darker amber for the border line */
+  --color-station-ring:   hsl(0, 0%, 20%);    /* dot outline so it shows against spine */
+  --color-station-major:  hsl(45, 70%, 78%);  /* milestone dot fill — brighter amber */
   --color-station-hover:  #ffffff;
 
   /* Year / today markers */
@@ -69,9 +70,10 @@
 
     --color-shadow: rgba(0, 0, 0, 0.15);
 
-    --color-spine:         hsl(0, 0%, 35%);
+    --color-spine:         hsl(45, 50%, 33%);  /* warm amber, darkened for light bg */
+    --color-spine-border:  hsl(45, 55%, 20%);  /* darker amber border for light bg */
     --color-station-ring:  hsl(0, 0%, 92%);
-    --color-station-major: hsl(0, 0%, 20%);
+    --color-station-major: hsl(45, 60%, 28%);  /* milestone dot fill — deeper amber */
     --color-station-hover: #000000;
 
     --color-year-label:  rgba(0, 0, 0, 0.40);
@@ -102,9 +104,10 @@
 
   --color-shadow: rgba(0, 0, 0, 0.60);
 
-  --color-spine:         hsl(0, 0%, 80%);
+  --color-spine:         hsl(45, 50%, 60%);
+  --color-spine-border:  hsl(45, 55%, 36%);
   --color-station-ring:  hsl(0, 0%, 20%);
-  --color-station-major: hsl(0, 0%, 92%);
+  --color-station-major: hsl(45, 70%, 78%);
   --color-station-hover: #ffffff;
 
   --color-year-label:  rgba(255, 255, 255, 0.35);
@@ -134,9 +137,10 @@
 
   --color-shadow: rgba(0, 0, 0, 0.15);
 
-  --color-spine:         hsl(0, 0%, 35%);
+  --color-spine:         hsl(45, 50%, 33%);
+  --color-spine-border:  hsl(45, 55%, 20%);
   --color-station-ring:  hsl(0, 0%, 92%);
-  --color-station-major: hsl(0, 0%, 20%);
+  --color-station-major: hsl(45, 60%, 28%);
   --color-station-hover: #000000;
 
   --color-year-label:  rgba(0, 0, 0, 0.40);

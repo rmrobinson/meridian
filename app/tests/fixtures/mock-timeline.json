@@ -68,6 +68,7 @@
       "line_key": "spine",
       "type": "point",
       "title": "Moved to London",
+      "icon": "pin",
       "date": "2019-09-01",
       "location": {
         "label": "London, UK",
@@ -89,6 +90,7 @@
       "parent_line_key": null,
       "type": "span",
       "title": "Acme Corp",
+      "icon": "briefcase",
       "start_date": "2015-06-01",
       "end_date": "2018-11-30",
       "location": {
@@ -111,6 +113,8 @@
       "parent_line_key": "university-2010",
       "type": "span",
       "title": "Summer Placement — CERN",
+      "label": "CERN",
+      "icon": "briefcase",
       "start_date": "2012-06-01",
       "end_date": "2012-08-31",
       "location": {
@@ -133,6 +137,7 @@
       "parent_line_key": null,
       "type": "span",
       "title": "Japan Trip",
+      "icon": "airplane-takeoff",
       "start_date": "2023-03-10",
       "end_date": "2023-03-24",
       "location": {
@@ -156,6 +161,7 @@
       "parent_line_key": null,
       "type": "span",
       "title": "Dune",
+      "icon": "book",
       "start_date": "2022-07-20",
       "end_date": "2022-08-14",
       "location": null,
@@ -176,6 +182,8 @@
       "parent_line_key": null,
       "type": "point",
       "title": "Glastonbury Festival",
+      "label": "Glastonbury",
+      "icon": "music",
       "date": "2023-06-23",
       "location": {
         "label": "Glastonbury, UK",
@@ -200,6 +208,8 @@
       "parent_line_key": null,
       "type": "span",
       "title": "University of Edinburgh",
+      "label": "Edinburgh",
+      "icon": "graduation",
       "start_date": "2010-09-01",
       "end_date": "2014-05-30",
       "location": {
@@ -222,6 +232,8 @@
       "parent_line_key": null,
       "type": "span",
       "title": "The Midnight Library",
+      "label": "Midnight Library",
+      "icon": "book",
       "start_date": "2022-07-25",
       "end_date": "2022-09-10",
       "location": null,

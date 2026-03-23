@@ -56,7 +56,19 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
   const spineLayer    = appendGroup(svg, 'spine-layer');
   const stationsLayer = appendGroup(svg, 'stations-layer');
 
-  // ── Spine (single element, always in DOM) ─────────────────────────────────
+  // ── Spine (border + main line, always in DOM) ─────────────────────────────
+  // The border line is rendered first (behind) at a wider stroke-width.
+  // A CSS drop-shadow() filter is used for the shadow instead of the SVG
+  // filter used on span lines — the SVG filter collapses on zero-width
+  // bounding boxes (perfectly vertical <line> elements).
+  const spineLineBorder = svgEl('line');
+  spineLineBorder.setAttribute('class', 'spine-border');
+  spineLineBorder.setAttribute('x1', '50%');
+  spineLineBorder.setAttribute('y1', '0');
+  spineLineBorder.setAttribute('x2', '50%');
+  spineLineBorder.setAttribute('y2', totalHeight);
+  spineLayer.appendChild(spineLineBorder);
+
   const spineLine = svgEl('line');
   spineLine.setAttribute('class', 'spine-path');
   spineLine.setAttribute('data-testid', 'spine-path');
@@ -114,6 +126,7 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
 
     // Resize canvas and spine to match the new scale.
     svg.setAttribute('height', newHeight);
+    spineLineBorder.setAttribute('y2', newHeight);
     spineLine.setAttribute('y2', newHeight);
 
     // Rebuild year markers (always non-virtualized).
@@ -258,40 +271,111 @@ function buildSpanLine(obj, spineX) {
 }
 
 /**
- * Station dot: invisible hit area (≥44px) + visible circle.
+ * Station: invisible hit area (≥44px) + dot + optional icon + optional label.
  *
- * Spine stations use cx="50%" (resize-safe).
- * Lane stations use an absolute spineX + laneOffset coordinate.
+ * Spine stations (laneOffset===0) use cx="50%" for the dot/hit so they
+ * reposition correctly on window resize. Absolute coordinates are used for
+ * icon and label positioning — the ResizeObserver in initTimeline evicts and
+ * rebuilds live stations whenever spineX changes, so stale positions never linger.
+ *
+ * Layout at ZOOM_DAY (default):
+ *   Right-side lanes / spine:  icon to the right, label to the left of dot
+ *   Left-side lanes:           icon to the left,  label to the right of dot
+ *
+ * At ZOOM_MONTH: label hidden (hover/tap only); icon moves to dot center.
+ * At ZOOM_YEAR:  label hidden entirely;          icon moves to dot center.
+ * These states are driven by CSS via body.zoom-month / body.zoom-year classes.
  */
 function buildStation(obj, spineX) {
-  const { id, event, y, isMajor, laneOffset, color } = obj;
+  const { id, event, y, isMajor, laneOffset, color, label, icon } = obj;
   const onSpine = laneOffset === 0;
-  const cx = onSpine ? '50%' : String(spineX + laneOffset);
+  const cx_abs  = spineX + laneOffset;          // always absolute for math
+  const cx_svg  = onSpine ? '50%' : String(cx_abs); // percentage-safe for dot/hit
+
+  // Right-side and spine: icon goes right, label goes left (inner side).
+  // Left-side: icon goes left, label goes right (inner side).
+  const isRight = laneOffset >= 0;
+  const dotR    = isMajor ? 7 : 4;
 
   const g = svgEl('g');
-  g.setAttribute('class', `station station--${event.family_id}`);
+  g.setAttribute('class',
+    `station station--${event.family_id}${icon ? ' station--has-icon' : ''}`);
   // Use obj.id (not event.id) so start and end stations get distinct testids.
   g.setAttribute('data-testid', `station-${id}`);
   g.dataset.id       = event.id;
   g.dataset.familyId = event.family_id;
 
-  // Hit area — minimum 44×44px touch target.
+  // ── Hit area — minimum 44×44px touch target ───────────────────────────────
   const hit = svgEl('circle');
   hit.setAttribute('class', 'station-hit');
-  hit.setAttribute('cx', cx);
+  hit.setAttribute('cx', cx_svg);
   hit.setAttribute('cy', y);
   hit.setAttribute('r', '22');
+  g.appendChild(hit);
 
-  // Visual dot.
+  // ── Dot ───────────────────────────────────────────────────────────────────
   const dot = svgEl('circle');
   dot.setAttribute('class', 'station-dot');
-  dot.setAttribute('cx', cx);
+  dot.setAttribute('cx', cx_svg);
   dot.setAttribute('cy', y);
-  dot.setAttribute('r', isMajor ? 7 : 4);
+  dot.setAttribute('r', dotR);
   if (color) dot.setAttribute('fill', color);
-
-  g.appendChild(hit);
   g.appendChild(dot);
+
+  // ── Icon ─────────────────────────────────────────────────────────────────
+  // Renders as two <use> elements:
+  //   station-icon--beside : ZOOM_DAY — sits beside the dot on the outer side
+  //   station-icon--center : ZOOM_MONTH / ZOOM_YEAR — replaces the dot
+  // CSS shows/hides each variant based on the body zoom class.
+  if (icon) {
+    const ICON_SIZE = 16;
+    const ICON_GAP  = 4;
+
+    // Beside position: outer side of the dot.
+    const besideX = isRight
+      ? cx_abs + dotR + ICON_GAP
+      : cx_abs - dotR - ICON_GAP - ICON_SIZE;
+
+    const besideIcon = svgEl('use');
+    besideIcon.setAttribute('class', 'station-icon station-icon--beside');
+    besideIcon.setAttribute('href', `#icon-${icon}`);
+    besideIcon.setAttribute('x',      String(besideX));
+    besideIcon.setAttribute('y',      String(y - ICON_SIZE / 2));
+    besideIcon.setAttribute('width',  String(ICON_SIZE));
+    besideIcon.setAttribute('height', String(ICON_SIZE));
+    g.appendChild(besideIcon);
+
+    // Center position: replaces the dot at compressed zoom levels.
+    const centerIcon = svgEl('use');
+    centerIcon.setAttribute('class', 'station-icon station-icon--center');
+    centerIcon.setAttribute('href', `#icon-${icon}`);
+    centerIcon.setAttribute('x',      String(cx_abs - ICON_SIZE / 2));
+    centerIcon.setAttribute('y',      String(y - ICON_SIZE / 2));
+    centerIcon.setAttribute('width',  String(ICON_SIZE));
+    centerIcon.setAttribute('height', String(ICON_SIZE));
+    g.appendChild(centerIcon);
+  }
+
+  // ── Label ─────────────────────────────────────────────────────────────────
+  // Positioned on the inner side (between dot and spine).
+  // Visibility at ZOOM_MONTH (hover-only) and ZOOM_YEAR (hidden) handled by CSS.
+  if (label) {
+    const LABEL_GAP = 6;
+    const labelX = isRight
+      ? cx_abs - dotR - LABEL_GAP      // left of dot for right/spine lanes
+      : cx_abs + dotR + LABEL_GAP;     // right of dot for left lanes
+
+    const text = svgEl('text');
+    text.setAttribute('class',
+      `station-label${isMajor ? ' station-label--major' : ''}`);
+    text.setAttribute('x',                  String(labelX));
+    text.setAttribute('y',                  String(y));
+    text.setAttribute('text-anchor',        isRight ? 'end' : 'start');
+    text.setAttribute('dominant-baseline',  'middle');
+    text.textContent = label;
+    g.appendChild(text);
+  }
+
   return g;
 }
 

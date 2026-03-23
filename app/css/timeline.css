@@ -2,18 +2,63 @@
 
 /* ── Zoom state ───────────────────────────────────────────────────────────── */
 
-body.zoom-month .station-label--detail,
-body.zoom-year  .station-label--detail,
-body.zoom-year  .station-label--month {
+/* Icons: beside-dot variant shown at ZOOM_DAY; center variant shown at ZOOM_MONTH/ZOOM_YEAR. */
+.station-icon {
+  fill: currentColor;
+  pointer-events: none;
+}
+
+.station-icon--center {
+  display: none;
+}
+
+body.zoom-month .station-icon--beside,
+body.zoom-year  .station-icon--beside {
+  display: none;
+}
+
+body.zoom-month .station-icon--center,
+body.zoom-year  .station-icon--center {
+  display: block;
+}
+
+/* When icon replaces dot, hide the dot itself. */
+body.zoom-month .station--has-icon .station-dot,
+body.zoom-year  .station--has-icon .station-dot {
+  display: none;
+}
+
+/* Labels: always visible at ZOOM_DAY; hover/tap-only at ZOOM_MONTH; hidden at ZOOM_YEAR. */
+body.zoom-month .station-label {
+  display: none;
+}
+
+body.zoom-month .station:hover .station-label,
+body.zoom-month .station:focus-within .station-label {
+  display: block;
+}
+
+body.zoom-year .station-label {
   display: none;
 }
 
 /* ── Spine ────────────────────────────────────────────────────────────────── */
 
+/* Border line sits behind the main spine at a wider stroke-width. */
+.spine-border {
+  stroke: var(--color-spine-border);
+  stroke-width: 11;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+/* CSS drop-shadow adapts to light/dark via --color-shadow; avoids the SVG
+   filter whose objectBoundingBox percentages collapse on zero-width lines. */
 .spine-path {
   stroke: var(--color-spine);
-  stroke-width: 3;
+  stroke-width: 7;
   stroke-linecap: round;
+  filter: drop-shadow(0 2px 3px var(--color-shadow));
 }
 
 /* ── Year markers ─────────────────────────────────────────────────────────── */
@@ -49,11 +94,15 @@ body.zoom-year  .station-label--month {
 /* ── Span lines ───────────────────────────────────────────────────────────── */
 
 /* Color is set via the stroke attribute in JS (from base_color_hsl). */
+.span-line {
+  filter: url(#span-line-style);
+}
+
 .span-branch,
 .span-segment,
 .span-merge {
   fill: none;
-  stroke-width: 3;
+  stroke-width: 7;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -97,13 +146,13 @@ body.zoom-year  .station-label--month {
   [data-sibling-count="2"] .span-branch,
   [data-sibling-count="2"] .span-segment,
   [data-sibling-count="2"] .span-merge {
-    stroke-width: 5;
+    stroke-width: 11;
   }
 
   [data-sibling-count="3"] .span-branch,
   [data-sibling-count="3"] .span-segment,
   [data-sibling-count="3"] .span-merge {
-    stroke-width: 7;
+    stroke-width: 15;
   }
 }
 

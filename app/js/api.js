@@ -57,6 +57,8 @@ function normalizeEvent(evt) {
     parent_line_key: evt.parent_line_key ?? null,
     type: evt.type,
     title: evt.title,
+    label: evt.label ?? null,   // short display string; falls back to truncated title if null
+    icon: evt.icon ?? null,     // sprite sheet symbol ID, e.g. "book", "briefcase"
     // Span fields
     start_date: evt.start_date ?? null,
     end_date: evt.end_date ?? null,
@@ -110,6 +112,8 @@ export function generateBirthdays(birthDateStr, existingEvents = []) {
       parent_line_key: null,
       type: 'point',
       title: `Birthday — Age ${age}`,
+      label: `Age ${age}`,
+      icon: 'birthday-cake',
       date: isoDate,
       start_date: null,
       end_date: null,
