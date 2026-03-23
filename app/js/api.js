@@ -113,7 +113,7 @@ export function generateBirthdays(birthDateStr, existingEvents = []) {
       type: 'point',
       title: `Birthday — Age ${age}`,
       label: `Age ${age}`,
-      icon: 'birthday-cake',
+      icon: 'mdi:cake-variant',
       date: isoDate,
       start_date: null,
       end_date: null,

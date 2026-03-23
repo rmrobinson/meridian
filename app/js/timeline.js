@@ -17,6 +17,7 @@
  */
 
 import { branchBezier, mergeBezier, straightSegment } from './lines.js';
+import { getIconPath } from './icons.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -297,9 +298,12 @@ function buildStation(obj, spineX) {
   const isRight = laneOffset >= 0;
   const dotR    = isMajor ? 7 : 4;
 
+  // Resolve icon path from cache — null if icon ID unknown or file missing.
+  const iconPath = icon ? getIconPath(icon) : null;
+
   const g = svgEl('g');
   g.setAttribute('class',
-    `station station--${event.family_id}${icon ? ' station--has-icon' : ''}`);
+    `station station--${event.family_id}${iconPath ? ' station--has-icon' : ''}`);
   // Use obj.id (not event.id) so start and end stations get distinct testids.
   g.setAttribute('data-testid', `station-${id}`);
   g.dataset.id       = event.id;
@@ -323,11 +327,12 @@ function buildStation(obj, spineX) {
   g.appendChild(dot);
 
   // ── Icon ─────────────────────────────────────────────────────────────────
-  // Renders as two <use> elements:
+  // Renders as two nested <svg> elements, each containing the MDI <path>:
   //   station-icon--beside : ZOOM_DAY — sits beside the dot on the outer side
   //   station-icon--center : ZOOM_MONTH / ZOOM_YEAR — replaces the dot
   // CSS shows/hides each variant based on the body zoom class.
-  if (icon) {
+  // If iconPath is null (missing file), the icon is omitted gracefully.
+  if (iconPath) {
     const ICON_SIZE = 16;
     const ICON_GAP  = 4;
 
@@ -336,23 +341,13 @@ function buildStation(obj, spineX) {
       ? cx_abs + dotR + ICON_GAP
       : cx_abs - dotR - ICON_GAP - ICON_SIZE;
 
-    const besideIcon = svgEl('use');
-    besideIcon.setAttribute('class', 'station-icon station-icon--beside');
-    besideIcon.setAttribute('href', `#icon-${icon}`);
-    besideIcon.setAttribute('x',      String(besideX));
-    besideIcon.setAttribute('y',      String(y - ICON_SIZE / 2));
-    besideIcon.setAttribute('width',  String(ICON_SIZE));
-    besideIcon.setAttribute('height', String(ICON_SIZE));
+    const besideIcon = makeMdiIcon(iconPath, 'station-icon station-icon--beside',
+      besideX, y - ICON_SIZE / 2, ICON_SIZE);
     g.appendChild(besideIcon);
 
     // Center position: replaces the dot at compressed zoom levels.
-    const centerIcon = svgEl('use');
-    centerIcon.setAttribute('class', 'station-icon station-icon--center');
-    centerIcon.setAttribute('href', `#icon-${icon}`);
-    centerIcon.setAttribute('x',      String(cx_abs - ICON_SIZE / 2));
-    centerIcon.setAttribute('y',      String(y - ICON_SIZE / 2));
-    centerIcon.setAttribute('width',  String(ICON_SIZE));
-    centerIcon.setAttribute('height', String(ICON_SIZE));
+    const centerIcon = makeMdiIcon(iconPath, 'station-icon station-icon--center',
+      cx_abs - ICON_SIZE / 2, y - ICON_SIZE / 2, ICON_SIZE);
     g.appendChild(centerIcon);
   }
 
@@ -390,4 +385,32 @@ function appendGroup(parent, className) {
   g.setAttribute('class', className);
   parent.appendChild(g);
   return g;
+}
+
+/**
+ * Create a nested <svg> containing a single MDI <path>.
+ * MDI icons use a 24×24 viewBox; the outer svg scales them to ICON_SIZE.
+ *
+ * @param {string} d         - SVG path d attribute from the cached MDI file.
+ * @param {string} className - CSS class string for the outer <svg>.
+ * @param {number} x
+ * @param {number} y
+ * @param {number} size      - Width and height in px.
+ * @returns {SVGSVGElement}
+ */
+function makeMdiIcon(d, className, x, y, size) {
+  const icon = svgEl('svg');
+  icon.setAttribute('class',   className);
+  icon.setAttribute('viewBox', '0 0 24 24');
+  icon.setAttribute('x',       String(x));
+  icon.setAttribute('y',       String(y));
+  icon.setAttribute('width',   String(size));
+  icon.setAttribute('height',  String(size));
+
+  const path = svgEl('path');
+  path.setAttribute('d',    d);
+  path.setAttribute('fill', 'currentColor');
+  icon.appendChild(path);
+
+  return icon;
 }

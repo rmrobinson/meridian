@@ -16,6 +16,7 @@
  */
 
 import { fetchTimeline } from './api.js';
+import { preloadIcons } from './icons.js';
 import { timeToY } from './lines.js';
 import { assignLanes } from './lanes.js';
 import { initTimeline } from './timeline.js';
@@ -43,6 +44,11 @@ let _controller = null;
 
 async function init() {
   _data = await fetchTimeline(DATA_URL);
+
+  // Pre-load all icon files into the cache before any rendering begins.
+  // getIconPath() is called synchronously during scroll; the cache must be
+  // fully populated first.
+  await preloadIcons(_data.events);
 
   const svg             = document.getElementById('timeline-svg');
   const scrollContainer = document.getElementById('timeline-container');

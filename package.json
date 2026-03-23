@@ -10,7 +10,8 @@
     "serve": "npx serve app -p 3000"
   },
   "devDependencies": {
-    "vitest": "^2.1.0",
-    "@playwright/test": "^1.48.0"
+    "@mdi/svg": "^7.4.47",
+    "@playwright/test": "^1.48.0",
+    "vitest": "^2.1.0"
   }
 }
