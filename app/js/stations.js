@@ -46,6 +46,9 @@ export function buildStation(obj, spineX) {
   g.setAttribute('class',
     `station station--${event.family_id}${iconPath ? ' station--has-icon' : ''}${obj.departure ? ' station--departure' : ''}${obj.arrival ? ' station--arrival' : ''}`);
   g.setAttribute('data-testid', `station-${id}`);
+  g.setAttribute('role',        'button');
+  g.setAttribute('tabindex',    '0');
+  g.setAttribute('aria-label',  event.title ?? id);
   g.dataset.id       = event.id;
   g.dataset.familyId = event.family_id;
 

@@ -23,6 +23,14 @@ body.zoom-year .station-icon {
   display: none;
 }
 
+/* Hovering the span line bridge: reveal label + icon on both departure and
+   arrival stations. Applies at zoom-month (where direct station hover already
+   works) and zoom-year (which otherwise has no hover reveal). */
+body.zoom-month .station--span-hover .station-icon,
+body.zoom-year  .station--span-hover .station-icon {
+  display: block;
+}
+
 /* Labels: always visible at ZOOM_DAY; hover/tap-only at ZOOM_MONTH; hidden at ZOOM_YEAR. */
 body.zoom-month .station-label {
   display: none;
@@ -35,6 +43,11 @@ body.zoom-month .station:focus-within .station-label {
 
 body.zoom-year .station-label {
   display: none;
+}
+
+body.zoom-month .station--span-hover .station-label,
+body.zoom-year  .station--span-hover .station-label {
+  display: block;
 }
 
 /* ── Spine ────────────────────────────────────────────────────────────────── */
@@ -102,6 +115,28 @@ body.zoom-year .station-label {
   stroke-linejoin: round;
 }
 
+/* ── Span line hit area ───────────────────────────────────────────────────── */
+
+/* Wide transparent stroke over the segment path — makes the 7px visual line
+   much easier to click/tap without altering the appearance. */
+.span-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 20;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* Brighten the visual paths on hover/focus so the interaction is discoverable. */
+.span-line:hover .span-branch,
+.span-line:hover .span-segment,
+.span-line:hover .span-merge,
+.span-line:focus-within .span-branch,
+.span-line:focus-within .span-segment,
+.span-line:focus-within .span-merge {
+  filter: brightness(1.4);
+}
+
 /* ── Station dots ─────────────────────────────────────────────────────────── */
 
 .station-dot {
@@ -122,6 +157,7 @@ body.zoom-year .station-label {
 .station-hit {
   fill: transparent;
   cursor: pointer;
+  touch-action: manipulation; /* prevents 300ms tap delay on iOS */
 }
 
 /* Hover / focus — expand the dot slightly. */

@@ -197,8 +197,86 @@ test.describe('Desktop — spine and year markers', () => {
     expect(endX).toBeCloseTo(480, -1);
   });
 
+  // ── Phase 3 — card interaction ────────────────────────────────────────────
+
+  test('clicking a spine station opens a milestone card', async ({ page }) => {
+    // evt_000: "Moved to London" (2019-09-01) — spine relocation, no external_url → milestone card.
+    await scrollToDate(page, '2019-09-01');
+    await expect(page.locator('[data-testid="station-evt_000"]')).toBeAttached({ timeout: 3000 });
+
+    // dispatchEvent fires a real bubbling click on the <g> element.
+    // The SVG's delegated click listener picks it up via e.target.closest('.station').
+    await page.dispatchEvent('[data-testid="station-evt_000"]', 'click');
+
+    // Overlay should be visible (no [hidden] attribute).
+    await expect(page.locator('#card-overlay')).not.toHaveAttribute('hidden');
+    // Card wrapper should carry the milestone modifier class.
+    await expect(page.locator('#card-content .card--milestone')).toBeAttached();
+  });
+
+  test('clicking a trip station opens a trip card with a read-more link', async ({ page }) => {
+    // evt_002: Japan Trip (2023-03-10..2023-03-24) — has external_url → trip card.
+    await scrollToDate(page, '2023-03-10');
+    await expect(page.locator('[data-testid="station-evt_002"]')).toBeAttached({ timeout: 3000 });
+
+    await page.dispatchEvent('[data-testid="station-evt_002"]', 'click');
+
+    await expect(page.locator('#card-overlay')).not.toHaveAttribute('hidden');
+    await expect(page.locator('#card-content .card--trip')).toBeAttached();
+    const link = page.locator('#card-content .card-read-more');
+    await expect(link).toBeAttached();
+    expect(await link.getAttribute('href')).toContain('japan-2023');
+  });
+
+  test('close button hides the card overlay', async ({ page }) => {
+    await scrollToDate(page, '2019-09-01');
+    await expect(page.locator('[data-testid="station-evt_000"]')).toBeAttached({ timeout: 3000 });
+    await page.dispatchEvent('[data-testid="station-evt_000"]', 'click');
+    await expect(page.locator('#card-overlay')).not.toHaveAttribute('hidden');
+
+    await page.locator('#card-close').click();
+    await expect(page.locator('#card-overlay')).toHaveAttribute('hidden', '');
+  });
+
+  test('Escape key dismisses the open card', async ({ page }) => {
+    await scrollToDate(page, '2019-09-01');
+    await expect(page.locator('[data-testid="station-evt_000"]')).toBeAttached({ timeout: 3000 });
+    await page.dispatchEvent('[data-testid="station-evt_000"]', 'click');
+    await expect(page.locator('#card-overlay')).not.toHaveAttribute('hidden');
+
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#card-overlay')).toHaveAttribute('hidden', '');
+  });
+
+  // ── Phase 3 — zoom toggle ─────────────────────────────────────────────────
+
+  test('zoom toggle switches body class and active button', async ({ page }) => {
+    // Start: Day zoom (default).
+    await expect(page.locator('body')).toHaveClass(/zoom-day/);
+    await expect(page.locator('.zoom-btn[data-zoom="day"]')).toHaveClass(/zoom-btn--active/);
+
+    // Switch to Month.
+    await page.locator('.zoom-btn[data-zoom="month"]').click();
+    await expect(page.locator('body')).toHaveClass(/zoom-month/);
+    await expect(page.locator('.zoom-btn[data-zoom="month"]')).toHaveClass(/zoom-btn--active/);
+    await expect(page.locator('.zoom-btn[data-zoom="day"]')).not.toHaveClass(/zoom-btn--active/);
+
+    // Switch to Year.
+    await page.locator('.zoom-btn[data-zoom="year"]').click();
+    await expect(page.locator('body')).toHaveClass(/zoom-year/);
+    await expect(page.locator('.zoom-btn[data-zoom="year"]')).toHaveClass(/zoom-btn--active/);
+  });
+
+  test('switching to Month zoom renders aggregate stations', async ({ page }) => {
+    await page.locator('.zoom-btn[data-zoom="month"]').click();
+    await expect(page.locator('body')).toHaveClass(/zoom-month/);
+
+    // At Month zoom, scroll near the present to find any station (birthday
+    // aggregates or regular agg events should appear).
+    const stations = page.locator('.station');
+    await expect(stations.first()).toBeAttached({ timeout: 3000 });
+  });
+
   // ── Phase 3+ stubs ────────────────────────────────────────────────────────
-  test.fixme('clicking a station opens the correct card type', async () => {});
-  test.fixme('zoom toggle switches between Day / Month / Year and updates visible stations', async () => {});
   test.fixme('explicit birthday event replaces auto-generated station at that date', async () => {});
 });

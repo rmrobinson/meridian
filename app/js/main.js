@@ -16,6 +16,7 @@
  */
 
 import { fetchTimeline } from './api.js';
+import { buildCardContent } from './cards.js';
 import { preloadIcons } from './icons.js';
 import { CURVE_HEIGHT, timeToY } from './lines.js';
 import { assignLanes } from './lanes.js';
@@ -39,6 +40,16 @@ let _controller = null;
 /** Active zoom level — tracked so theme changes can re-render at the same scale. */
 let _pxPerDay   = ZOOM_DAY;
 
+/**
+ * Lookup maps built once from _data after fetch. Used by the click handler to
+ * resolve a station's dataset.id back to its event object.
+ * _eventById covers all original + birthday events.
+ * _aggregateById is rebuilt on every ZOOM_MONTH render (aggregates are
+ * zoom-level-specific synthetic objects).
+ */
+let _eventById     = new Map();
+let _aggregateById = new Map();
+
 async function init() {
   _data = await fetchTimeline(DATA_URL);
 
@@ -46,6 +57,9 @@ async function init() {
   // getIconPath() is called synchronously during scroll; the cache must be
   // fully populated first.
   await preloadIcons(_data.events);
+
+  // Build the event lookup map once — used by click handlers.
+  _eventById = new Map(_data.events.map((e) => [e.id, e]));
 
   const svg             = document.getElementById('timeline-svg');
   const scrollContainer = document.getElementById('timeline-container');
@@ -56,6 +70,8 @@ async function init() {
 
   setupZoomButtons();
   setupThemeToggle();
+  setupCardInteraction(svg);
+  setupSpanHoverSync(svg);
 }
 
 /**
@@ -92,8 +108,13 @@ function buildRenderObjects(data, pxPerDay) {
   let events = data.events;
   if (pxPerDay === ZOOM_MONTH) {
     events = aggregateByMonth(events, data.line_families);
-  } else if (pxPerDay === ZOOM_YEAR) {
-    events = filterForYearZoom(events);
+    // Rebuild the aggregate lookup so click handlers can resolve agg-* IDs.
+    _aggregateById = new Map(
+      events.filter((e) => e.type === 'aggregate').map((e) => [e.id, e]),
+    );
+  } else {
+    _aggregateById = new Map();
+    if (pxPerDay === ZOOM_YEAR) events = filterForYearZoom(events);
   }
 
   // ── Lane assignment ────────────────────────────────────────────────────────
@@ -151,6 +172,7 @@ function buildRenderObjects(data, pxPerDay) {
       type:         'span-line',
       id:           `span-${evt.id}`,
       eventId:      evt.id,
+      title:        evt.title,
       familyId:     family.id,
       laneOffset,
       parentOffset,
@@ -337,6 +359,193 @@ function setupZoomButtons() {
       setBodyZoom(pxPerDay);
       _controller.setRenderObjects(layout, renderObjects);
     });
+  });
+}
+
+// ── Card interaction ──────────────────────────────────────────────────────────
+
+/**
+ * Wire delegated click on the SVG → open card, close button, backdrop, Escape.
+ * Must be called after initTimeline() so the SVG layers exist.
+ */
+function setupCardInteraction(svg) {
+  const overlay = document.getElementById('card-overlay');
+  const sheet   = document.getElementById('card-sheet');
+  const content = document.getElementById('card-content');
+  const closeBtn = document.getElementById('card-close');
+
+  // Delegated click on the SVG — stations and span lines both bubble up here.
+  svg.addEventListener('click', (e) => {
+    const el = e.target.closest('.station') ?? e.target.closest('.span-line');
+    if (!el) return;
+    handleActivate(el, e, overlay, sheet, content);
+  });
+
+  // Keyboard activation for elements with role=button + tabindex.
+  svg.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const el = e.target.closest('.station') ?? e.target.closest('.span-line');
+    if (!el) return;
+    e.preventDefault();
+    handleActivate(el, null, overlay, sheet, content);
+  });
+
+  closeBtn.addEventListener('click', () => closeCard(overlay));
+
+  // Clicking the backdrop (overlay itself, not the sheet) dismisses.
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeCard(overlay);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !overlay.hasAttribute('hidden')) closeCard(overlay);
+  });
+
+  // Mobile swipe-down dismiss.
+  setupSwipeDismiss(sheet, overlay);
+}
+
+function handleActivate(el, mouseEvent, overlay, sheet, content) {
+  const eventId = el.dataset.id;
+  const event = _aggregateById.get(eventId) ?? _eventById.get(eventId);
+  if (!event) return;
+  openCard(event, el, mouseEvent, overlay, sheet, content);
+}
+
+function openCard(event, el, mouseEvent, overlay, sheet, content) {
+  // Populate content.
+  content.innerHTML = '';
+  content.appendChild(buildCardContent(event));
+
+  // Position (desktop only — mobile is handled entirely by CSS bottom-sheet).
+  if (window.innerWidth >= 480) {
+    positionCard(el, mouseEvent, sheet);
+  } else {
+    // Remove any inline positioning set by a prior desktop open.
+    sheet.style.top  = '';
+    sheet.style.left = '';
+  }
+
+  overlay.removeAttribute('hidden');
+}
+
+function closeCard(overlay) {
+  overlay.setAttribute('hidden', '');
+}
+
+/**
+ * Compute the anchor rect for card positioning.
+ *
+ * Stations anchor to their visible dot.
+ * Span lines anchor to the mouse/touch point (click), or the element's
+ * bounding-rect centre (keyboard activation).
+ *
+ * @returns {{ left: number, right: number, top: number }}
+ */
+function anchorRectFor(el, mouseEvent) {
+  const dot = el.querySelector('.station-dot');
+  if (dot) return dot.getBoundingClientRect();
+  if (mouseEvent) {
+    return { left: mouseEvent.clientX, right: mouseEvent.clientX, top: mouseEvent.clientY };
+  }
+  const r = el.getBoundingClientRect();
+  const cx = (r.left + r.right) / 2;
+  return { left: cx, right: cx, top: (r.top + r.bottom) / 2 };
+}
+
+/**
+ * Position the floating card beside the activation point.
+ * Clamps to the viewport so the card never overflows.
+ *
+ * Card max-width is 400px (from CSS). We use this as a constant to avoid
+ * needing to measure the rendered card (which would require a layout pass).
+ */
+function positionCard(el, mouseEvent, sheet) {
+  const CARD_WIDTH  = 400;
+  const GAP         = 12;
+  const MARGIN      = 12;
+
+  const anchor    = anchorRectFor(el, mouseEvent);
+  const vpWidth   = window.innerWidth;
+  const vpHeight  = window.innerHeight;
+
+  // Clamp card width to viewport (handles narrow desktop windows).
+  const effectiveW = Math.min(CARD_WIDTH, vpWidth - MARGIN * 2);
+  sheet.style.maxWidth = `${effectiveW}px`;
+
+  // Prefer right of anchor; flip left if insufficient space.
+  let left;
+  if (anchor.right + GAP + effectiveW <= vpWidth - MARGIN) {
+    left = anchor.right + GAP;
+  } else {
+    left = anchor.left - GAP - effectiveW;
+  }
+  // Clamp to viewport margins.
+  left = Math.max(MARGIN, Math.min(left, vpWidth - effectiveW - MARGIN));
+
+  // Align top of card to anchor, clamped so it doesn't extend below viewport.
+  const cardHeight = sheet.offsetHeight || 300; // rough fallback before layout
+  const top = Math.max(MARGIN,
+    Math.min(anchor.top, vpHeight - cardHeight - MARGIN));
+
+  sheet.style.left = `${left}px`;
+  sheet.style.top  = `${top}px`;
+}
+
+/**
+ * When hovering a span line, mirror the hover state onto the departure/arrival
+ * stations so their labels and icons appear in compressed zoom levels.
+ *
+ * Stations and span lines live in separate SVG layers, so CSS alone cannot
+ * express this relationship. A delegated mouseover/mouseout pair bridges them
+ * by toggling the `station--span-hover` class on matching station elements.
+ */
+function setupSpanHoverSync(svg) {
+  function stationsFor(spanG) {
+    return svg.querySelectorAll(`.station[data-id="${spanG.dataset.id}"]`);
+  }
+
+  svg.addEventListener('mouseover', (e) => {
+    const spanG = e.target.closest('.span-line');
+    if (!spanG) return;
+    // Ignore moves between child elements within the same span.
+    if (e.relatedTarget?.closest('.span-line') === spanG) return;
+    stationsFor(spanG).forEach((s) => s.classList.add('station--span-hover'));
+  });
+
+  svg.addEventListener('mouseout', (e) => {
+    const spanG = e.target.closest('.span-line');
+    if (!spanG) return;
+    if (e.relatedTarget?.closest('.span-line') === spanG) return;
+    stationsFor(spanG).forEach((s) => s.classList.remove('station--span-hover'));
+  });
+}
+
+/**
+ * Swipe-down gesture to dismiss the bottom sheet on mobile.
+ * Tracks touch delta and dismisses if the user drags down ≥ 80px.
+ */
+function setupSwipeDismiss(sheet, overlay) {
+  let startY = null;
+
+  sheet.addEventListener('touchstart', (e) => {
+    startY = e.touches[0].clientY;
+    sheet.style.transition = 'none';
+  }, { passive: true });
+
+  sheet.addEventListener('touchmove', (e) => {
+    if (startY === null) return;
+    const delta = e.touches[0].clientY - startY;
+    if (delta > 0) sheet.style.transform = `translateY(${delta}px)`;
+  }, { passive: true });
+
+  sheet.addEventListener('touchend', (e) => {
+    if (startY === null) return;
+    const delta = e.changedTouches[0].clientY - startY;
+    sheet.style.transition = '';
+    sheet.style.transform  = '';
+    startY = null;
+    if (delta >= 80) closeCard(overlay);
   });
 }
 

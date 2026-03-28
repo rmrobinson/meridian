@@ -83,8 +83,61 @@ test.describe('Mobile — layout and interaction', () => {
     expect(isHidden).toBe(true);
   });
 
+  // ── Phase 3 — card interaction ────────────────────────────────────────────
+
+  test('tapping a station opens a bottom sheet card', async ({ page }) => {
+    // Scroll to evt_000 (Moved to London, 2019-09-01 — spine relocation → milestone card).
+    await page.evaluate((targetDate) => {
+      const birth  = new Date('1990-04-12');
+      const today  = new Date(); today.setHours(0, 0, 0, 0);
+      const totalH = Number(document.getElementById('timeline-svg').getAttribute('height'));
+      const ratio  = (today - new Date(targetDate)) / (today - birth);
+      const y      = ratio * totalH;
+      const c      = document.getElementById('timeline-container');
+      c.scrollTop  = Math.max(0, y - c.clientHeight / 2);
+      return new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve)),
+      );
+    }, '2019-09-01');
+
+    await expect(page.locator('[data-testid="station-evt_000"]')).toBeAttached({ timeout: 3000 });
+    // dispatchEvent fires a real bubbling click on the <g> element.
+    // The SVG's delegated click listener picks it up via e.target.closest('.station').
+    await page.dispatchEvent('[data-testid="station-evt_000"]', 'click');
+
+    // On mobile the overlay becomes visible (no [hidden] attribute).
+    await expect(page.locator('#card-overlay')).not.toHaveAttribute('hidden');
+    // The card content should exist and have a recognisable card class.
+    await expect(page.locator('#card-content .card--milestone')).toBeAttached();
+    // Sheet positioning should be unset — mobile uses CSS bottom-sheet, no inline top/left.
+    const sheetTop = await page.locator('#card-sheet').evaluate((el) => el.style.top);
+    expect(sheetTop).toBe('');
+  });
+
+  test('bottom sheet dismisses on close button tap', async ({ page }) => {
+    // Open the card first.
+    await page.evaluate((targetDate) => {
+      const birth  = new Date('1990-04-12');
+      const today  = new Date(); today.setHours(0, 0, 0, 0);
+      const totalH = Number(document.getElementById('timeline-svg').getAttribute('height'));
+      const ratio  = (today - new Date(targetDate)) / (today - birth);
+      const y      = ratio * totalH;
+      const c      = document.getElementById('timeline-container');
+      c.scrollTop  = Math.max(0, y - c.clientHeight / 2);
+      return new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve)),
+      );
+    }, '2019-09-01');
+
+    await expect(page.locator('[data-testid="station-evt_000"]')).toBeAttached({ timeout: 3000 });
+    await page.dispatchEvent('[data-testid="station-evt_000"]', 'click');
+    await expect(page.locator('#card-overlay')).not.toHaveAttribute('hidden');
+
+    // Tap the close button (regular click, not SVG element).
+    await page.locator('#card-close').click();
+    await expect(page.locator('#card-overlay')).toHaveAttribute('hidden', '');
+  });
+
   // ── Phase 2+ stubs ────────────────────────────────────────────────────────
   test.fixme('when one book ends, its termination station renders and the line continues at reduced weight', async () => {});
-  test.fixme('tapping a station opens a bottom sheet card', async () => {});
-  test.fixme('bottom sheet dismisses on swipe down or close tap', async () => {});
 });

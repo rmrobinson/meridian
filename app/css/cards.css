@@ -89,9 +89,51 @@
   padding-left: 10px;
 }
 
+/* ── TV / show card ─────────────────────────────────────────────────────────── */
+
+.card--tv .card-rating {
+  color: var(--color-rating);
+  letter-spacing: 2px;
+}
+
+.card--tv .card-network {
+  font-size: 0.8rem;
+  color: var(--color-label-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.card--tv .card-seasons {
+  font-size: 0.8rem;
+  color: var(--color-label-secondary);
+}
+
 /* ── Standard / milestone card ─────────────────────────────────────────────── */
 
 .card--milestone .card-icon {
   font-size: 2rem;
   text-align: center;
+}
+
+/* ── Aggregate card ──────────────────────────────────────────────────────────── */
+
+.card--aggregate .card-aggregate-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.card--aggregate .card-aggregate-list li {
+  font-size: 0.875rem;
+  color: var(--color-label-secondary);
+  padding-left: 12px;
+  position: relative;
+}
+
+.card--aggregate .card-aggregate-list li::before {
+  content: '·';
+  position: absolute;
+  left: 0;
+  color: var(--color-label-tertiary);
 }

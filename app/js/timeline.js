@@ -237,7 +237,11 @@ function buildSpanLine(obj, spineX) {
   const g = svgEl('g');
   g.setAttribute('class', `span-line span-line--${familyId}`);
   g.setAttribute('data-testid', `span-line-${obj.id}`);
-  g.dataset.family = familyId;
+  g.dataset.family    = familyId;
+  g.dataset.id        = obj.eventId;
+  g.setAttribute('role',       'button');
+  g.setAttribute('tabindex',   '0');
+  g.setAttribute('aria-label', obj.title ?? obj.eventId);
 
   // Mobile sibling-collapse data attributes (set when concurrent siblings exist).
   if ((obj.siblingCount ?? 1) > 1) {
@@ -270,6 +274,13 @@ function buildSpanLine(obj, spineX) {
     merge.setAttribute('stroke', color);
     g.appendChild(merge);
   }
+
+  // Transparent wide hit path over the straight segment for easier mouse/touch targeting.
+  // Appended last so it sits on top of the visual paths and captures events first.
+  const hit = svgEl('path');
+  hit.setAttribute('class', 'span-hit');
+  hit.setAttribute('d', straightSegment(laneX, yStart, yEnd));
+  g.appendChild(hit);
 
   return g;
 }

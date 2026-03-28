@@ -36,6 +36,10 @@ export function normalize(raw) {
   const line_families = raw.line_families ?? [];
   const events = (raw.events ?? []).map(normalizeEvent);
 
+  // Inject computed age into any explicit birthday spine events so cards.js
+  // can always read event.metadata.age without needing person.birth_date.
+  injectBirthdayAge(events, person.birth_date);
+
   const birthdays = generateBirthdays(person.birth_date, events);
 
   return {
@@ -43,6 +47,23 @@ export function normalize(raw) {
     line_families,
     events: [...events, ...birthdays],
   };
+}
+
+/**
+ * Mutate explicit spine birthday events to include a computed `age` in their
+ * metadata, matching the shape of auto-generated birthday events.
+ *
+ * @param {object[]} events       - Already-normalized events.
+ * @param {string}   birthDateStr - ISO date string from person.birth_date.
+ */
+function injectBirthdayAge(events, birthDateStr) {
+  const birth = new Date(birthDateStr);
+  for (const evt of events) {
+    if (evt.family_id !== 'spine' || evt.metadata?.milestone_type !== 'birthday') continue;
+    if (typeof evt.metadata.age === 'number') continue; // already set
+    const evtDate = new Date(evt.date);
+    evt.metadata.age = evtDate.getFullYear() - birth.getFullYear();
+  }
 }
 
 // ---------------------------------------------------------------------------
