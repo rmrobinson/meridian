@@ -2,29 +2,24 @@
 
 /* ── Zoom state ───────────────────────────────────────────────────────────── */
 
-/* Icons: beside-dot variant shown at ZOOM_DAY; center variant shown at ZOOM_MONTH/ZOOM_YEAR. */
+/* Icons always appear beside the dot at all zoom levels.
+   The dot is always visible — the icon complements it, does not replace it. */
 .station-icon {
   fill: currentColor;
   pointer-events: none;
 }
 
-.station-icon--center {
+/* Icons: hover/tap only at ZOOM_MONTH, hidden at ZOOM_YEAR (matches label behaviour). */
+body.zoom-month .station-icon {
   display: none;
 }
 
-body.zoom-month .station-icon--beside,
-body.zoom-year  .station-icon--beside {
-  display: none;
-}
-
-body.zoom-month .station-icon--center,
-body.zoom-year  .station-icon--center {
+body.zoom-month .station:hover .station-icon,
+body.zoom-month .station:focus-within .station-icon {
   display: block;
 }
 
-/* When icon replaces dot, hide the dot itself. */
-body.zoom-month .station--has-icon .station-dot,
-body.zoom-year  .station--has-icon .station-dot {
+body.zoom-year .station-icon {
   display: none;
 }
 
@@ -117,7 +112,9 @@ body.zoom-year .station-label {
   transition: r 0.12s ease, fill 0.12s ease;
 }
 
-/* Major milestones (non-birthday spine events) get a brighter fill. */
+/* All spine stations get the major (brighter amber) fill.
+   Non-birthday milestones are additionally distinguished by a larger dot radius
+   (isMajor=true in JS → r=7 vs r=4 for birthdays). */
 .station--spine .station-dot {
   fill: var(--color-station-major);
 }

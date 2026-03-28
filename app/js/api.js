@@ -58,7 +58,8 @@ function normalizeEvent(evt) {
     type: evt.type,
     title: evt.title,
     label: evt.label ?? null,   // short display string; falls back to truncated title if null
-    icon: evt.icon ?? null,     // sprite sheet symbol ID, e.g. "book", "briefcase"
+    icon: evt.icon ?? null,       // icon shown at the departure station (start of span / point event)
+    end_icon: evt.end_icon ?? null, // icon shown at the arrival station (merge end of span only)
     // Span fields
     start_date: evt.start_date ?? null,
     end_date: evt.end_date ?? null,

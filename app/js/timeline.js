@@ -17,7 +17,7 @@
  */
 
 import { branchBezier, mergeBezier, straightSegment } from './lines.js';
-import { getIconPath } from './icons.js';
+import { buildStation } from './stations.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -274,109 +274,6 @@ function buildSpanLine(obj, spineX) {
   return g;
 }
 
-/**
- * Station: invisible hit area (≥44px) + dot + optional icon + optional label.
- *
- * Spine stations (laneOffset===0) use cx="50%" for the dot/hit so they
- * reposition correctly on window resize. Absolute coordinates are used for
- * icon and label positioning — the ResizeObserver in initTimeline evicts and
- * rebuilds live stations whenever spineX changes, so stale positions never linger.
- *
- * Layout at ZOOM_DAY (default):
- *   Right-side lanes / spine:  icon to the right, label to the left of dot
- *   Left-side lanes:           icon to the left,  label to the right of dot
- *
- * At ZOOM_MONTH: label hidden (hover/tap only); icon moves to dot center.
- * At ZOOM_YEAR:  label hidden entirely;          icon moves to dot center.
- * These states are driven by CSS via body.zoom-month / body.zoom-year classes.
- */
-function buildStation(obj, spineX) {
-  const { id, event, y, isMajor, laneOffset, color, label, icon } = obj;
-  const onSpine = laneOffset === 0;
-  const cx_abs  = spineX + laneOffset;          // always absolute for math
-  const cx_svg  = onSpine ? '50%' : String(cx_abs); // percentage-safe for dot/hit
-
-  // Right-side and spine: icon goes right, label goes left (inner side).
-  // Left-side: icon goes left, label goes right (inner side).
-  const isRight = laneOffset >= 0;
-  const dotR    = isMajor ? 7 : 4;
-
-  // Resolve icon path from cache — null if icon ID unknown or file missing.
-  const iconPath = icon ? getIconPath(icon) : null;
-
-  const g = svgEl('g');
-  g.setAttribute('class',
-    `station station--${event.family_id}${iconPath ? ' station--has-icon' : ''}`);
-  // Use obj.id (not event.id) so start and end stations get distinct testids.
-  g.setAttribute('data-testid', `station-${id}`);
-  g.dataset.id       = event.id;
-  g.dataset.familyId = event.family_id;
-
-  // ── Hit area — minimum 44×44px touch target ───────────────────────────────
-  const hit = svgEl('circle');
-  hit.setAttribute('class', 'station-hit');
-  hit.setAttribute('cx', cx_svg);
-  hit.setAttribute('cy', y);
-  hit.setAttribute('r', '22');
-  g.appendChild(hit);
-
-  // ── Dot ───────────────────────────────────────────────────────────────────
-  const dot = svgEl('circle');
-  dot.setAttribute('class', 'station-dot');
-  dot.setAttribute('cx', cx_svg);
-  dot.setAttribute('cy', y);
-  dot.setAttribute('r', dotR);
-  if (color) dot.setAttribute('fill', color);
-  g.appendChild(dot);
-
-  // ── Icon ─────────────────────────────────────────────────────────────────
-  // Renders as two nested <svg> elements, each containing the MDI <path>:
-  //   station-icon--beside : ZOOM_DAY — sits beside the dot on the outer side
-  //   station-icon--center : ZOOM_MONTH / ZOOM_YEAR — replaces the dot
-  // CSS shows/hides each variant based on the body zoom class.
-  // If iconPath is null (missing file), the icon is omitted gracefully.
-  if (iconPath) {
-    const ICON_SIZE = 16;
-    const ICON_GAP  = 4;
-
-    // Beside position: outer side of the dot.
-    const besideX = isRight
-      ? cx_abs + dotR + ICON_GAP
-      : cx_abs - dotR - ICON_GAP - ICON_SIZE;
-
-    const besideIcon = makeMdiIcon(iconPath, 'station-icon station-icon--beside',
-      besideX, y - ICON_SIZE / 2, ICON_SIZE);
-    g.appendChild(besideIcon);
-
-    // Center position: replaces the dot at compressed zoom levels.
-    const centerIcon = makeMdiIcon(iconPath, 'station-icon station-icon--center',
-      cx_abs - ICON_SIZE / 2, y - ICON_SIZE / 2, ICON_SIZE);
-    g.appendChild(centerIcon);
-  }
-
-  // ── Label ─────────────────────────────────────────────────────────────────
-  // Positioned on the inner side (between dot and spine).
-  // Visibility at ZOOM_MONTH (hover-only) and ZOOM_YEAR (hidden) handled by CSS.
-  if (label) {
-    const LABEL_GAP = 6;
-    const labelX = isRight
-      ? cx_abs - dotR - LABEL_GAP      // left of dot for right/spine lanes
-      : cx_abs + dotR + LABEL_GAP;     // right of dot for left lanes
-
-    const text = svgEl('text');
-    text.setAttribute('class',
-      `station-label${isMajor ? ' station-label--major' : ''}`);
-    text.setAttribute('x',                  String(labelX));
-    text.setAttribute('y',                  String(y));
-    text.setAttribute('text-anchor',        isRight ? 'end' : 'start');
-    text.setAttribute('dominant-baseline',  'middle');
-    text.textContent = label;
-    g.appendChild(text);
-  }
-
-  return g;
-}
-
 // ── SVG helpers ───────────────────────────────────────────────────────────────
 
 function svgEl(tag) {
@@ -388,32 +285,4 @@ function appendGroup(parent, className) {
   g.setAttribute('class', className);
   parent.appendChild(g);
   return g;
-}
-
-/**
- * Create a nested <svg> containing a single MDI <path>.
- * MDI icons use a 24×24 viewBox; the outer svg scales them to ICON_SIZE.
- *
- * @param {string} d         - SVG path d attribute from the cached MDI file.
- * @param {string} className - CSS class string for the outer <svg>.
- * @param {number} x
- * @param {number} y
- * @param {number} size      - Width and height in px.
- * @returns {SVGSVGElement}
- */
-function makeMdiIcon(d, className, x, y, size) {
-  const icon = svgEl('svg');
-  icon.setAttribute('class',   className);
-  icon.setAttribute('viewBox', '0 0 24 24');
-  icon.setAttribute('x',       String(x));
-  icon.setAttribute('y',       String(y));
-  icon.setAttribute('width',   String(size));
-  icon.setAttribute('height',  String(size));
-
-  const path = svgEl('path');
-  path.setAttribute('d',    d);
-  path.setAttribute('fill', 'currentColor');
-  icon.appendChild(path);
-
-  return icon;
 }

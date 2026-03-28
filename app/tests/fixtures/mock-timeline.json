@@ -138,6 +138,7 @@
       "type": "span",
       "title": "Japan Trip",
       "icon": "mdi:airplane-takeoff",
+      "end_icon": "mdi:airplane-landing",
       "start_date": "2023-03-10",
       "end_date": "2023-03-24",
       "location": {
@@ -152,6 +153,56 @@
       "metadata": {
         "countries": ["Japan"],
         "cities": ["Tokyo", "Kyoto"]
+      }
+    },
+    {
+      "id": "evt_002b",
+      "family_id": "travel",
+      "line_key": "scotland-2024",
+      "parent_line_key": null,
+      "type": "span",
+      "title": "Scotland Road Trip",
+      "label": "Scotland",
+      "icon": "mdi:tent",
+      "start_date": "2024-07-14",
+      "end_date": "2024-07-28",
+      "location": {
+        "label": "Scottish Highlands, UK",
+        "lat": 57.1200,
+        "lng": -4.7130
+      },
+      "description": "Two weeks driving the NC500 through the Highlands.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": {
+        "countries": ["United Kingdom"],
+        "cities": ["Inverness", "Ullapool", "Thurso"]
+      }
+    },
+    {
+      "id": "evt_002c",
+      "family_id": "travel",
+      "line_key": "lisbon-2025",
+      "parent_line_key": null,
+      "type": "span",
+      "title": "Lisbon",
+      "icon": "mdi:airplane-takeoff",
+      "end_icon": "mdi:airplane-landing",
+      "start_date": "2025-10-03",
+      "end_date": "2025-10-10",
+      "location": {
+        "label": "Lisbon, Portugal",
+        "lat": 38.7223,
+        "lng": -9.1393
+      },
+      "description": "Long weekend in Lisbon — Alfama, pastéis de nata, Sintra day trip.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": {
+        "countries": ["Portugal"],
+        "cities": ["Lisbon", "Sintra"]
       }
     },
     {

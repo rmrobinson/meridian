@@ -7,6 +7,14 @@
     <link rel="stylesheet" href="css/main.css" />
     <link rel="stylesheet" href="css/timeline.css" />
     <link rel="stylesheet" href="css/cards.css" />
+    <!-- Apply stored theme before first paint to prevent flash of wrong theme.
+         Runs synchronously (no defer/async) so data-theme is set before CSS renders. -->
+    <script>
+      (function () {
+        var t = localStorage.getItem('theme');
+        if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      })();
+    </script>
   </head>
   <body>
     <!-- Hidden SVG defs — span-line filter only; icons are loaded from /assets/icons/ -->
@@ -45,13 +53,17 @@
       </defs>
     </svg>
 
-    <!-- Zoom control — segmented on mobile, toggle group on desktop -->
-    <header class="zoom-bar" role="toolbar" aria-label="Zoom level">
+    <!-- Zoom control + theme toggle -->
+    <header class="zoom-bar" role="toolbar" aria-label="Timeline controls">
       <div class="zoom-controls">
         <button class="zoom-btn zoom-btn--active" data-zoom="day">Day</button>
         <button class="zoom-btn" data-zoom="month">Month</button>
         <button class="zoom-btn" data-zoom="year">Year</button>
       </div>
+      <button class="theme-toggle" id="theme-toggle" aria-label="Toggle light/dark mode">
+        <span class="theme-toggle__icon theme-toggle__icon--dark" aria-hidden="true">☀</span>
+        <span class="theme-toggle__icon theme-toggle__icon--light" aria-hidden="true">☾</span>
+      </button>
     </header>
 
     <!-- Timeline scroll container -->

@@ -21,7 +21,9 @@ const iconCache = new Map();
  * @param {object[]} events - Normalized events from api.js.
  */
 export async function preloadIcons(events) {
-  const ids = new Set(events.map((e) => e.icon).filter(Boolean));
+  const ids = new Set(
+    events.flatMap((e) => [e.icon, e.end_icon]).filter(Boolean),
+  );
   await Promise.all([...ids].map(loadIcon));
 }
 

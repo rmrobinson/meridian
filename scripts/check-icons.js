@@ -2,7 +2,7 @@
 /**
  * check-icons.js — Pre-commit validation script.
  *
- * Scans JSON data files for "icon" field values, strips the "mdi:" prefix,
+ * Scans JSON data files for "icon" and "end_icon" field values, strips the "mdi:" prefix,
  * and checks that /assets/icons/{name}.svg exists for each referenced icon.
  * Exits non-zero with a clear error message if any files are missing.
  *
@@ -35,11 +35,13 @@ for (const relPath of DATA_FILES) {
 
   const events = data.events ?? [];
   for (const evt of events) {
-    if (!evt.icon) continue;
-    const name = evt.icon.replace(/^mdi:/, '');
-    const svgPath = resolve(root, 'app/assets/icons', `${name}.svg`);
-    if (!existsSync(svgPath)) {
-      missing.push(`  ${evt.icon}  (referenced in ${relPath}, event "${evt.id}")`);
+    for (const field of ['icon', 'end_icon']) {
+      if (!evt[field]) continue;
+      const name = evt[field].replace(/^mdi:/, '');
+      const svgPath = resolve(root, 'app/assets/icons', `${name}.svg`);
+      if (!existsSync(svgPath)) {
+        missing.push(`  ${evt[field]}  (referenced in ${relPath}, event "${evt.id}", field "${field}")`);
+      }
     }
   }
 }

@@ -5,6 +5,12 @@
  */
 
 /**
+ * Pixel height of the branch / merge bezier curve.
+ * Shared by main.js (render-object construction) and the bezier helpers below.
+ */
+export const CURVE_HEIGHT = 40;
+
+/**
  * Map a date to a Y pixel position on the canvas.
  *
  * Top of canvas (Y=0) is today. Bottom (Y=totalHeight) is birth date.
@@ -56,7 +62,7 @@ export function straightSegment(x, yStart, yEnd) {
  * @param {number} [curveHeight=30]
  * @returns {string}
  */
-export function branchBezier(parentX, laneX, branchY, curveHeight = 30) {
+export function branchBezier(parentX, laneX, branchY, curveHeight = CURVE_HEIGHT) {
   const cy = branchY + curveHeight / 2;
   return (
     `M ${parentX},${branchY + curveHeight} ` +
@@ -80,7 +86,7 @@ export function branchBezier(parentX, laneX, branchY, curveHeight = 30) {
  * @param {number} [curveHeight=30]
  * @returns {string}
  */
-export function mergeBezier(laneX, parentX, mergeY, curveHeight = 30) {
+export function mergeBezier(laneX, parentX, mergeY, curveHeight = CURVE_HEIGHT) {
   const cy = mergeY - curveHeight / 2;
   return (
     `M ${laneX},${mergeY} ` +

@@ -71,7 +71,7 @@
   object-fit: cover;
   border-radius: 4px;
   cursor: zoom-in;
-  loading: lazy;
+  /* loading="lazy" is an HTML attribute set when <img> elements are created in cards.js */
 }
 
 /* ── Book card ─────────────────────────────────────────────────────────────── */

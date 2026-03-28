@@ -17,7 +17,7 @@
 
 import { fetchTimeline } from './api.js';
 import { preloadIcons } from './icons.js';
-import { timeToY } from './lines.js';
+import { CURVE_HEIGHT, timeToY } from './lines.js';
 import { assignLanes } from './lanes.js';
 import { initTimeline } from './timeline.js';
 import {
@@ -27,12 +27,6 @@ import {
 
 const MS_PER_DAY = 86_400_000;
 
-/**
- * Pixel height of the branch / merge bezier curve.
- * Stored on each span-line render object so timeline.js stays in sync.
- */
-const CURVE_HEIGHT = 40;
-
 /** In Phase 1 serve the mock fixture. Phase 4 replaces with the real endpoint. */
 const DATA_URL = '/tests/fixtures/mock-timeline.json';
 
@@ -41,6 +35,9 @@ let _data       = null;
 
 /** Controller returned by initTimeline — exposes setRenderObjects. */
 let _controller = null;
+
+/** Active zoom level — tracked so theme changes can re-render at the same scale. */
+let _pxPerDay   = ZOOM_DAY;
 
 async function init() {
   _data = await fetchTimeline(DATA_URL);
@@ -56,6 +53,9 @@ async function init() {
   const { layout, renderObjects } = buildRenderObjects(_data, ZOOM_DAY);
   setBodyZoom(ZOOM_DAY);
   _controller = initTimeline({ svg, scrollContainer, layout, renderObjects });
+
+  setupZoomButtons();
+  setupThemeToggle();
 }
 
 /**
@@ -108,7 +108,7 @@ function buildRenderObjects(data, pxPerDay) {
   const currentYear = today.getFullYear();
 
   for (let yr = currentYear; yr >= birthYear; yr--) {
-    const y = yFor(new Date(`${yr}-01-01`));
+    const y = yFor(new Date(yr, 0, 1));   // local midnight — consistent with today/birthDate
     if (y < 0 || y > totalHeight) continue;
     renderObjects.push({ type: 'year-marker', id: `year-${yr}`, y, label: String(yr), isToday: false });
   }
@@ -119,6 +119,10 @@ function buildRenderObjects(data, pxPerDay) {
   // ── Pass 1 — span-line render objects + start / end stations ─────────────
 
   const spanRenderObjects = [];
+
+  // Maps span id → station render object, used in Pass 1b to copy sibling info.
+  const startStationById = new Map();
+  const endStationById   = new Map();
 
   for (const evt of events) {
     if (evt.type !== 'span') continue;
@@ -167,12 +171,15 @@ function buildRenderObjects(data, pxPerDay) {
     // sits curveHeight pixels below (older than) the event start date.
     const startStationY = yStart + CURVE_HEIGHT;
     if (startStationY >= 0 && startStationY <= totalHeight) {
-      renderObjects.push({
+      const startStation = {
         type: 'station', id: evt.id,
         y: startStationY, laneOffset: parentOffset, color, event: evt, isMajor: false,
-        label: evt.label ?? truncate(evt.title),
-        icon:  evt.icon ?? null,
-      });
+        label:     evt.label ?? truncate(evt.title),
+        icon:      evt.icon ?? null,
+        departure: true,  // CSS hides icon at compressed zooms to avoid spine clutter
+      };
+      renderObjects.push(startStation);
+      startStationById.set(evt.id, startStation);
     }
 
     // End station: termination dot only — no label or icon.
@@ -181,21 +188,26 @@ function buildRenderObjects(data, pxPerDay) {
     if (family.on_end === 'merge') {
       const endY = yEnd - CURVE_HEIGHT;
       if (endY >= 0 && endY <= totalHeight) {
-        renderObjects.push({
+        const endStation = {
           type: 'station', id: `${evt.id}-end`,
           y: endY, laneOffset: parentOffset, color, event: evt, isMajor: false,
-          label: null,
-          icon:  null,
-        });
+          label:   null,
+          icon:    evt.end_icon ?? null,
+          arrival: true,  // CSS hides icon at compressed zooms
+        };
+        renderObjects.push(endStation);
+        endStationById.set(evt.id, endStation);
       }
     } else {
       if (yEnd >= 0 && yEnd <= totalHeight) {
-        renderObjects.push({
+        const endStation = {
           type: 'station', id: `${evt.id}-end`,
           y: yEnd, laneOffset, color, event: evt, isMajor: false,
           label: null,
           icon:  null,
-        });
+        };
+        renderObjects.push(endStation);
+        endStationById.set(evt.id, endStation);
       }
     }
   }
@@ -239,6 +251,20 @@ function buildRenderObjects(data, pxPerDay) {
 
   renderObjects.push(...spanRenderObjects);
 
+  // ── Pass 1c — propagate sibling info to start/end station objects ──────────
+  //
+  // CSS hides non-innermost sibling span-lines on mobile via [data-sibling-index].
+  // Their stations must also be hidden. Copy siblingCount/siblingIndex onto the
+  // station objects so buildStation() can set the matching data attributes.
+
+  for (const obj of spanRenderObjects) {
+    if (obj.siblingCount <= 1) continue;
+    const startSt = startStationById.get(obj.eventId);
+    if (startSt) { startSt.siblingCount = obj.siblingCount; startSt.siblingIndex = obj.siblingIndex; }
+    const endSt = endStationById.get(obj.eventId);
+    if (endSt) { endSt.siblingCount = obj.siblingCount; endSt.siblingIndex = obj.siblingIndex; }
+  }
+
   // ── Pass 2 — point / aggregate event stations ─────────────────────────────
   //
   // Spine point events go on the spine (laneOffset: 0).
@@ -276,10 +302,67 @@ function buildRenderObjects(data, pxPerDay) {
   return { layout, renderObjects };
 }
 
+// ── Zoom button wiring ────────────────────────────────────────────────────────
+
+/**
+ * Attach click listeners to the Day / Month / Year buttons in the zoom bar.
+ * Toggles `zoom-btn--active` class and `aria-pressed` attribute on each press,
+ * then rebuilds render objects and hands off to the timeline controller.
+ *
+ * Called once after first render so _data and _controller are guaranteed set.
+ */
+function setupZoomButtons() {
+  const ZOOM_BY_NAME = { day: ZOOM_DAY, month: ZOOM_MONTH, year: ZOOM_YEAR };
+  const buttons = Array.from(document.querySelectorAll('.zoom-btn'));
+
+  // Initialise aria-pressed to match the visually-active button.
+  buttons.forEach((btn) => {
+    btn.setAttribute('aria-pressed', btn.classList.contains('zoom-btn--active') ? 'true' : 'false');
+  });
+
+  buttons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const pxPerDay = ZOOM_BY_NAME[btn.dataset.zoom];
+      if (!pxPerDay) return;
+
+      buttons.forEach((b) => {
+        b.classList.remove('zoom-btn--active');
+        b.setAttribute('aria-pressed', 'false');
+      });
+      btn.classList.add('zoom-btn--active');
+      btn.setAttribute('aria-pressed', 'true');
+
+      _pxPerDay = pxPerDay;
+      const { layout, renderObjects } = buildRenderObjects(_data, pxPerDay);
+      setBodyZoom(pxPerDay);
+      _controller.setRenderObjects(layout, renderObjects);
+    });
+  });
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+/**
+ * True when the current active theme is light.
+ * Checks explicit data-theme override first, then the system preference.
+ */
+function isLightMode() {
+  const theme = document.documentElement.getAttribute('data-theme');
+  if (theme === 'light') return true;
+  if (theme === 'dark')  return false;
+  return !window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
+/**
+ * Adjust HSL lightness for the current theme.
+ * Base API values are tuned for dark mode; lighten further for dark, darken for light.
+ */
+function themeL(l) {
+  return isLightMode() ? Math.max(l - 20, 20) : l;
+}
+
 function hslColor([h, s, l]) {
-  return `hsl(${h}, ${s}%, ${l}%)`;
+  return `hsl(${h}, ${s}%, ${themeL(l)}%)`;
 }
 
 /**
@@ -288,7 +371,7 @@ function hslColor([h, s, l]) {
  */
 function variantColor([h, s, l], colorIndex) {
   const shiftedH = (h + colorIndex * 15) % 360;
-  return `hsl(${shiftedH}, ${s}%, ${l}%)`;
+  return `hsl(${shiftedH}, ${s}%, ${themeL(l)}%)`;
 }
 
 function formatDate(date) {
@@ -328,13 +411,57 @@ window.__timeline_setZoom = function (pxPerDay) {
     console.warn('__timeline_setZoom: timeline not yet initialized');
     return;
   }
+  _pxPerDay = pxPerDay;
   const { layout, renderObjects } = buildRenderObjects(_data, pxPerDay);
   setBodyZoom(pxPerDay);
   _controller.setRenderObjects(layout, renderObjects);
 };
 
+// ── Theme toggle ──────────────────────────────────────────────────────────────
+
+function setupThemeToggle() {
+  const btn = document.getElementById('theme-toggle');
+  if (!btn) return;
+
+  btn.addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme');
+    // Determine the active mode: explicit override, or from system preference.
+    const isDark = current === 'dark' ||
+      (!current && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    const next = isDark ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    rebuildForThemeChange();
+  });
+
+  // When the OS preference changes, clear any stored override so the
+  // system setting takes full effect via the prefers-color-scheme media query.
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    document.documentElement.removeAttribute('data-theme');
+    localStorage.removeItem('theme');
+    rebuildForThemeChange();
+  });
+}
+
+/**
+ * Rebuild render objects after a theme change so line colors (computed in JS
+ * from base_color_hsl) adapt to the new light/dark mode.
+ */
+function rebuildForThemeChange() {
+  if (!_data || !_controller) return;
+  const { layout, renderObjects } = buildRenderObjects(_data, _pxPerDay);
+  _controller.setRenderObjects(layout, renderObjects);
+}
+
 // ── Boot ──────────────────────────────────────────────────────────────────────
 
 init().catch((err) => {
   console.error('Timeline failed to initialize:', err);
+  const container = document.getElementById('timeline-container');
+  if (container) {
+    const msg = document.createElement('p');
+    msg.className = 'timeline-error';
+    msg.textContent = 'Failed to load timeline data. Please refresh the page.';
+    container.appendChild(msg);
+  }
 });

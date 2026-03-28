@@ -7,29 +7,11 @@
  *   ZOOM_YEAR:  0.07px/day (~1 800px total)
  *
  * All aggregation functions are pure — no DOM dependency, no side effects.
- * The only module-level state is the current zoom level.
  */
 
 export const ZOOM_DAY   = 2;     // px per day
 export const ZOOM_MONTH = 0.25;  // px per day
 export const ZOOM_YEAR  = 0.07;  // px per day
-
-export const ZOOM_LEVELS = [ZOOM_DAY, ZOOM_MONTH, ZOOM_YEAR];
-
-let _currentZoom = ZOOM_DAY;
-
-export function getZoom() {
-  return _currentZoom;
-}
-
-export function setZoom(pxPerDay) {
-  if (!ZOOM_LEVELS.includes(pxPerDay)) {
-    throw new Error(
-      `Unknown zoom level: ${pxPerDay}. Expected one of ${ZOOM_LEVELS.join(', ')}.`,
-    );
-  }
-  _currentZoom = pxPerDay;
-}
 
 /**
  * Aggregate point events by (family_id, year-month) bucket.
@@ -71,8 +53,16 @@ export function aggregateByMonth(events, line_families = []) {
   const aggregates = [];
   for (const { family_id, year_month, events: evts } of buckets.values()) {
     const family = familyById.get(family_id);
-    const label  = family ? family.label : family_id;
     const [yr, mo] = year_month.split('-');
+
+    // Single-event buckets: inherit the source event's icon and label so the
+    // station looks identical to a day-view station. Multi-event buckets: show
+    // a count label and no icon so they're visually distinct from point stations.
+    const single = evts.length === 1;
+    const familyLabel = family ? family.label : 'events';
+    const icon  = single ? (evts[0].icon ?? null) : null;
+    const label = single ? (evts[0].label ?? null) : null;
+    const title = single ? evts[0].title : `${evts.length} ${familyLabel}`;
 
     aggregates.push({
       id:            `agg-${family_id}-${year_month}`,
@@ -81,7 +71,9 @@ export function aggregateByMonth(events, line_families = []) {
       line_key:      evts[0].line_key,
       year_month,
       count:         evts.length,
-      title:         `${evts.length} ${label}`,
+      icon,
+      label,
+      title,
       date:          `${yr}-${mo}-15`,
       location:      null,
       description:   null,
@@ -128,6 +120,8 @@ export function filterForYearZoom(events) {
       start_date:      null,
       end_date:        null,
       title:           evt.title,
+      label:           evt.label           ?? null,
+      icon:            evt.icon            ?? null,
       location:        evt.location        ?? null,
       description:     evt.description     ?? null,
       external_url:    evt.external_url    ?? null,
