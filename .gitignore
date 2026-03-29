@@ -3,7 +3,7 @@ backend/bin/
 *.test
 
 # Generated proto output — never committed
-backend/internal/grpc/gen/
+backend/gen/go/
 mcp/proto-gen/
 android/app/src/main/java/com/meridian/proto/
 
