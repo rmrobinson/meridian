@@ -1,0 +1,576 @@
+package grpc_test
+
+import (
+	"context"
+	"fmt"
+	"net"
+	"strings"
+	"testing"
+	"time"
+
+	"golang.org/x/crypto/bcrypt"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/test/bufconn"
+
+	pb "github.com/rmrobinson/meridian/backend/gen/go/meridian/v1"
+	grpcapi "github.com/rmrobinson/meridian/backend/internal/api/grpc"
+	"github.com/rmrobinson/meridian/backend/internal/config"
+	"github.com/rmrobinson/meridian/backend/internal/db"
+	"go.uber.org/zap"
+)
+
+const testRawToken = "test-raw-token-for-grpc"
+
+type testEnv struct {
+	client pb.TimelineServiceClient
+	db     *db.DB
+}
+
+func newTestEnv(t *testing.T) *testEnv {
+	t.Helper()
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(testRawToken), bcrypt.MinCost)
+	if err != nil {
+		t.Fatalf("hashing token: %v", err)
+	}
+
+	name := strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
+	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", name)
+	database, err := db.Open(dsn)
+	if err != nil {
+		t.Fatalf("opening test db: %v", err)
+	}
+
+	cfg := &config.Config{
+		Server: config.Server{GRPCPort: 9090},
+		Auth: config.Auth{
+			WriteTokens: []config.WriteToken{
+				{Name: "test", TokenHash: string(hash)},
+			},
+		},
+	}
+
+	gs := grpcapi.NewGRPCServer(cfg, database, zap.NewNop())
+
+	lis := bufconn.Listen(1024 * 1024)
+	go gs.Serve(lis)
+
+	conn, err := grpc.NewClient("passthrough://bufnet",
+		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+			return lis.DialContext(ctx)
+		}),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		t.Fatalf("dialing bufconn: %v", err)
+	}
+
+	t.Cleanup(func() {
+		conn.Close()
+		gs.Stop()
+		database.Close()
+	})
+
+	return &testEnv{
+		client: pb.NewTimelineServiceClient(conn),
+		db:     database,
+	}
+}
+
+// authCtx returns a context with the test bearer token attached.
+func authCtx(t *testing.T) context.Context {
+	t.Helper()
+	return metadata.NewOutgoingContext(context.Background(),
+		metadata.Pairs("authorization", "Bearer "+testRawToken))
+}
+
+func assertCode(t *testing.T, err error, want codes.Code) {
+	t.Helper()
+	if err == nil {
+		t.Fatalf("expected gRPC error with code %v, got nil", want)
+	}
+	if got := status.Code(err); got != want {
+		t.Errorf("code: got %v, want %v (err: %v)", got, want, err)
+	}
+}
+
+// --- CreateEvent ---
+
+func TestCreateEvent_WithProvidedID(t *testing.T) {
+	env := newTestEnv(t)
+	resp, err := env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "japan-2023", FamilyId: "travel", LineKey: "travel-japan",
+		Type: "point", Title: "Japan Trip", Date: "2023-06-01", Visibility: "public",
+	})
+	if err != nil {
+		t.Fatalf("CreateEvent: %v", err)
+	}
+	if resp.Id != "japan-2023" {
+		t.Errorf("id: got %q, want %q", resp.Id, "japan-2023")
+	}
+}
+
+func TestCreateEvent_WithoutID_GeneratesNanoid(t *testing.T) {
+	env := newTestEnv(t)
+	resp, err := env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		FamilyId: "travel", LineKey: "travel-x", Type: "point", Title: "Auto ID",
+	})
+	if err != nil {
+		t.Fatalf("CreateEvent: %v", err)
+	}
+	if resp.Id == "" {
+		t.Error("expected a generated id, got empty string")
+	}
+}
+
+func TestCreateEvent_SpanEvent(t *testing.T) {
+	env := newTestEnv(t)
+	resp, err := env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "acme-corp", FamilyId: "employment", LineKey: "employment-acme",
+		Type: "span", Title: "Acme Corp", StartDate: "2020-01-01", EndDate: "2023-06-01",
+	})
+	if err != nil {
+		t.Fatalf("CreateEvent: %v", err)
+	}
+	if resp.StartDate != "2020-01-01" {
+		t.Errorf("start_date: got %q, want 2020-01-01", resp.StartDate)
+	}
+}
+
+func TestCreateEvent_PointEvent(t *testing.T) {
+	env := newTestEnv(t)
+	resp, err := env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "concert-1", FamilyId: "hobbies", LineKey: "hobbies-concert",
+		Type: "point", Title: "Concert", Date: "2023-03-15",
+	})
+	if err != nil {
+		t.Fatalf("CreateEvent: %v", err)
+	}
+	if resp.Date != "2023-03-15" {
+		t.Errorf("date: got %q, want 2023-03-15", resp.Date)
+	}
+}
+
+func TestCreateEvent_EmptyTitle_ReturnsInvalidArgument(t *testing.T) {
+	env := newTestEnv(t)
+	_, err := env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		FamilyId: "travel", LineKey: "travel-x", Type: "point", Title: "",
+	})
+	assertCode(t, err, codes.InvalidArgument)
+}
+
+func TestCreateEvent_UnknownFamilyID_ReturnsInvalidArgument(t *testing.T) {
+	env := newTestEnv(t)
+	_, err := env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		FamilyId: "unknown", LineKey: "x", Type: "point", Title: "Test",
+	})
+	assertCode(t, err, codes.InvalidArgument)
+}
+
+func TestCreateEvent_DuplicateID_ReturnsAlreadyExists(t *testing.T) {
+	env := newTestEnv(t)
+	req := &pb.CreateEventRequest{
+		Id: "dup-id", FamilyId: "travel", LineKey: "l", Type: "point", Title: "First",
+	}
+	env.client.CreateEvent(authCtx(t), req)
+	_, err := env.client.CreateEvent(authCtx(t), req)
+	assertCode(t, err, codes.AlreadyExists)
+}
+
+func TestCreateEvent_NoToken_ReturnsUnauthenticated(t *testing.T) {
+	env := newTestEnv(t)
+	_, err := env.client.CreateEvent(context.Background(), &pb.CreateEventRequest{
+		FamilyId: "travel", LineKey: "l", Type: "point", Title: "Test",
+	})
+	assertCode(t, err, codes.Unauthenticated)
+}
+
+func TestCreateEvent_WrongToken_ReturnsUnauthenticated(t *testing.T) {
+	env := newTestEnv(t)
+	ctx := metadata.NewOutgoingContext(context.Background(),
+		metadata.Pairs("authorization", "Bearer wrongtoken"))
+	_, err := env.client.CreateEvent(ctx, &pb.CreateEventRequest{
+		FamilyId: "travel", LineKey: "l", Type: "point", Title: "Test",
+	})
+	assertCode(t, err, codes.Unauthenticated)
+}
+
+func TestCreateEvent_DefaultVisibilityIsPersonal(t *testing.T) {
+	env := newTestEnv(t)
+	resp, err := env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "vis-default", FamilyId: "travel", LineKey: "l", Type: "point", Title: "Test",
+		// Visibility intentionally omitted
+	})
+	if err != nil {
+		t.Fatalf("CreateEvent: %v", err)
+	}
+	if resp.Visibility != "personal" {
+		t.Errorf("visibility: got %q, want personal", resp.Visibility)
+	}
+}
+
+// --- UpdateEvent ---
+
+func TestUpdateEvent_FullReplacement(t *testing.T) {
+	env := newTestEnv(t)
+	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "upd-1", FamilyId: "travel", LineKey: "l", Type: "point",
+		Title: "Original", Label: "old label",
+	})
+
+	resp, err := env.client.UpdateEvent(authCtx(t), &pb.UpdateEventRequest{
+		Id: "upd-1", FamilyId: "travel", LineKey: "l", Type: "point",
+		Title: "Updated", // Label intentionally omitted — should be cleared
+	})
+	if err != nil {
+		t.Fatalf("UpdateEvent: %v", err)
+	}
+	if resp.Title != "Updated" {
+		t.Errorf("title: got %q, want Updated", resp.Title)
+	}
+	if resp.Label != "" {
+		t.Errorf("label should be cleared, got %q", resp.Label)
+	}
+}
+
+func TestUpdateEvent_UpdatesTimestamp(t *testing.T) {
+	env := newTestEnv(t)
+	created, err := env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "ts-evt", FamilyId: "travel", LineKey: "l", Type: "point", Title: "Original",
+	})
+	if err != nil {
+		t.Fatalf("CreateEvent: %v", err)
+	}
+
+	// Fetch the raw domain event so we can compare updated_at precisely.
+	before, err := env.db.GetEventByID(context.Background(), created.Id)
+	if err != nil {
+		t.Fatalf("GetEventByID before update: %v", err)
+	}
+
+	// Force a small wall-clock gap.
+	time.Sleep(10 * time.Millisecond)
+
+	_, err = env.client.UpdateEvent(authCtx(t), &pb.UpdateEventRequest{
+		Id: "ts-evt", FamilyId: "travel", LineKey: "l", Type: "point", Title: "Updated",
+	})
+	if err != nil {
+		t.Fatalf("UpdateEvent: %v", err)
+	}
+
+	after, err := env.db.GetEventByID(context.Background(), created.Id)
+	if err != nil {
+		t.Fatalf("GetEventByID after update: %v", err)
+	}
+
+	if !after.UpdatedAt.After(before.UpdatedAt) {
+		t.Errorf("updated_at not advanced: before=%v after=%v", before.UpdatedAt, after.UpdatedAt)
+	}
+}
+
+func TestUpdateEvent_NotFound(t *testing.T) {
+	env := newTestEnv(t)
+	_, err := env.client.UpdateEvent(authCtx(t), &pb.UpdateEventRequest{
+		Id: "ghost", FamilyId: "travel", LineKey: "l", Type: "point", Title: "x",
+	})
+	assertCode(t, err, codes.NotFound)
+}
+
+func TestUpdateEvent_SoftDeletedReturnsNotFound(t *testing.T) {
+	env := newTestEnv(t)
+	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "del-upd", FamilyId: "travel", LineKey: "l", Type: "point", Title: "x",
+	})
+	env.client.DeleteEvent(authCtx(t), &pb.DeleteEventRequest{Id: "del-upd"})
+
+	_, err := env.client.UpdateEvent(authCtx(t), &pb.UpdateEventRequest{
+		Id: "del-upd", FamilyId: "travel", LineKey: "l", Type: "point", Title: "x",
+	})
+	assertCode(t, err, codes.NotFound)
+}
+
+// --- DeleteEvent ---
+
+func TestDeleteEvent_SoftDeletes(t *testing.T) {
+	env := newTestEnv(t)
+	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "to-del", FamilyId: "travel", LineKey: "l", Type: "point", Title: "x",
+	})
+	_, err := env.client.DeleteEvent(authCtx(t), &pb.DeleteEventRequest{Id: "to-del"})
+	if err != nil {
+		t.Fatalf("DeleteEvent: %v", err)
+	}
+	// Verify via DB that the event is soft-deleted.
+	_, dbErr := env.db.GetEventByID(context.Background(), "to-del")
+	if dbErr == nil {
+		t.Error("expected not-found after soft delete, got nil")
+	}
+}
+
+func TestDeleteEvent_NotFound(t *testing.T) {
+	env := newTestEnv(t)
+	_, err := env.client.DeleteEvent(authCtx(t), &pb.DeleteEventRequest{Id: "ghost"})
+	assertCode(t, err, codes.NotFound)
+}
+
+func TestDeleteEvent_AlreadyDeleted_ReturnsNotFound(t *testing.T) {
+	env := newTestEnv(t)
+	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "double-del", FamilyId: "travel", LineKey: "l", Type: "point", Title: "x",
+	})
+	env.client.DeleteEvent(authCtx(t), &pb.DeleteEventRequest{Id: "double-del"})
+	_, err := env.client.DeleteEvent(authCtx(t), &pb.DeleteEventRequest{Id: "double-del"})
+	assertCode(t, err, codes.NotFound)
+}
+
+// --- AddPhoto ---
+
+func TestAddPhoto_AppearsInEvent(t *testing.T) {
+	env := newTestEnv(t)
+	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "evt-p", FamilyId: "travel", LineKey: "l", Type: "point", Title: "x",
+	})
+	resp, err := env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{
+		EventId: "evt-p", S3Url: "https://s3/p1.jpg", Variant: "original",
+	})
+	if err != nil {
+		t.Fatalf("AddPhoto: %v", err)
+	}
+	if resp.Id == "" {
+		t.Error("expected non-empty photo id")
+	}
+	if resp.SortOrder != 0 {
+		t.Errorf("sort_order: got %d, want 0", resp.SortOrder)
+	}
+}
+
+func TestAddPhoto_AppendedAtEnd(t *testing.T) {
+	env := newTestEnv(t)
+	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "evt-p2", FamilyId: "travel", LineKey: "l", Type: "point", Title: "x",
+	})
+	env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-p2", S3Url: "https://s3/a.jpg", Variant: "original"})
+	resp, _ := env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-p2", S3Url: "https://s3/b.jpg", Variant: "original"})
+	if resp.SortOrder != 1 {
+		t.Errorf("second photo sort_order: got %d, want 1", resp.SortOrder)
+	}
+}
+
+func TestAddPhoto_UnknownEvent_ReturnsNotFound(t *testing.T) {
+	env := newTestEnv(t)
+	_, err := env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{
+		EventId: "no-such-event", S3Url: "https://s3/x.jpg", Variant: "original",
+	})
+	assertCode(t, err, codes.NotFound)
+}
+
+// --- RemovePhoto ---
+
+func TestRemovePhoto_NoLongerListed(t *testing.T) {
+	env := newTestEnv(t)
+	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "evt-rm", FamilyId: "travel", LineKey: "l", Type: "point", Title: "x",
+	})
+	p, _ := env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-rm", S3Url: "https://s3/x.jpg", Variant: "original"})
+	_, err := env.client.RemovePhoto(authCtx(t), &pb.RemovePhotoRequest{Id: p.Id})
+	if err != nil {
+		t.Fatalf("RemovePhoto: %v", err)
+	}
+	photos, _ := env.db.ListPhotosForEvent(context.Background(), "evt-rm")
+	if len(photos) != 0 {
+		t.Errorf("expected 0 photos after remove, got %d", len(photos))
+	}
+}
+
+func TestRemovePhoto_NotFound(t *testing.T) {
+	env := newTestEnv(t)
+	_, err := env.client.RemovePhoto(authCtx(t), &pb.RemovePhotoRequest{Id: "ghost"})
+	assertCode(t, err, codes.NotFound)
+}
+
+// --- ReorderPhotos ---
+
+func TestReorderPhotos_UpdatesOrder(t *testing.T) {
+	env := newTestEnv(t)
+	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "evt-reorder", FamilyId: "travel", LineKey: "l", Type: "point", Title: "x",
+	})
+	p1, _ := env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-reorder", S3Url: "https://s3/1.jpg", Variant: "original"})
+	p2, _ := env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-reorder", S3Url: "https://s3/2.jpg", Variant: "original"})
+	p3, _ := env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-reorder", S3Url: "https://s3/3.jpg", Variant: "original"})
+
+	resp, err := env.client.ReorderPhotos(authCtx(t), &pb.ReorderPhotosRequest{
+		EventId:  "evt-reorder",
+		PhotoIds: []string{p3.Id, p1.Id, p2.Id},
+	})
+	if err != nil {
+		t.Fatalf("ReorderPhotos: %v", err)
+	}
+	want := []string{p3.Id, p1.Id, p2.Id}
+	for i, p := range resp.Photos {
+		if p.Id != want[i] {
+			t.Errorf("photos[%d]: got %q, want %q", i, p.Id, want[i])
+		}
+	}
+}
+
+func TestReorderPhotos_IDNotBelongingToEvent_ReturnsInvalidArgument(t *testing.T) {
+	env := newTestEnv(t)
+	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "evt-ro-bad", FamilyId: "travel", LineKey: "l", Type: "point", Title: "x",
+	})
+	p1, _ := env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-ro-bad", S3Url: "https://s3/1.jpg", Variant: "original"})
+
+	_, err := env.client.ReorderPhotos(authCtx(t), &pb.ReorderPhotosRequest{
+		EventId:  "evt-ro-bad",
+		PhotoIds: []string{p1.Id, "foreign-photo-id"},
+	})
+	assertCode(t, err, codes.InvalidArgument)
+}
+
+func TestReorderPhotos_MissingPhotoIDs_ReturnsInvalidArgument(t *testing.T) {
+	env := newTestEnv(t)
+	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "evt-ro-inc", FamilyId: "travel", LineKey: "l", Type: "point", Title: "x",
+	})
+	p1, _ := env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-ro-inc", S3Url: "https://s3/1.jpg", Variant: "original"})
+	env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-ro-inc", S3Url: "https://s3/2.jpg", Variant: "original"})
+
+	// Only submitting one of two photos
+	_, err := env.client.ReorderPhotos(authCtx(t), &pb.ReorderPhotosRequest{
+		EventId:  "evt-ro-inc",
+		PhotoIds: []string{p1.Id},
+	})
+	assertCode(t, err, codes.InvalidArgument)
+}
+
+// --- ListEvents ---
+
+func TestListEvents_ReturnsAllEvents(t *testing.T) {
+	env := newTestEnv(t)
+	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "le-1", FamilyId: "travel", LineKey: "l", Type: "point", Title: "Trip A",
+		Date: "2023-01-10", Visibility: "public",
+	})
+	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "le-2", FamilyId: "travel", LineKey: "l", Type: "point", Title: "Trip B",
+		Date: "2023-06-15", Visibility: "public",
+	})
+
+	resp, err := env.client.ListEvents(authCtx(t), &pb.ListEventsRequest{})
+	if err != nil {
+		t.Fatalf("ListEvents: %v", err)
+	}
+	if len(resp.Events) != 2 {
+		t.Errorf("event count: got %d, want 2", len(resp.Events))
+	}
+}
+
+func TestListEvents_FilterByFamilyID(t *testing.T) {
+	env := newTestEnv(t)
+	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "le-travel", FamilyId: "travel", LineKey: "l", Type: "point", Title: "Trip",
+		Date: "2023-01-01", Visibility: "public",
+	})
+	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "le-book", FamilyId: "books", LineKey: "l", Type: "point", Title: "Book",
+		Date: "2023-01-01", Visibility: "public",
+	})
+
+	resp, err := env.client.ListEvents(authCtx(t), &pb.ListEventsRequest{FamilyId: "travel"})
+	if err != nil {
+		t.Fatalf("ListEvents: %v", err)
+	}
+	if len(resp.Events) != 1 || resp.Events[0].Id != "le-travel" {
+		t.Errorf("expected only le-travel, got %+v", resp.Events)
+	}
+}
+
+func TestListEvents_FilterByDateRange(t *testing.T) {
+	env := newTestEnv(t)
+	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "le-early", FamilyId: "travel", LineKey: "l", Type: "point", Title: "Early",
+		Date: "2022-03-01", Visibility: "public",
+	})
+	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "le-mid", FamilyId: "travel", LineKey: "l", Type: "point", Title: "Mid",
+		Date: "2023-06-01", Visibility: "public",
+	})
+	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "le-late", FamilyId: "travel", LineKey: "l", Type: "point", Title: "Late",
+		Date: "2024-09-01", Visibility: "public",
+	})
+
+	resp, err := env.client.ListEvents(authCtx(t), &pb.ListEventsRequest{
+		From: "2023-01-01",
+		To:   "2023-12-31",
+	})
+	if err != nil {
+		t.Fatalf("ListEvents: %v", err)
+	}
+	if len(resp.Events) != 1 || resp.Events[0].Id != "le-mid" {
+		t.Errorf("expected only le-mid, got %+v", resp.Events)
+	}
+}
+
+func TestListEvents_FilterByVisibility(t *testing.T) {
+	env := newTestEnv(t)
+	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "le-pub", FamilyId: "travel", LineKey: "l", Type: "point", Title: "Public",
+		Date: "2023-01-01", Visibility: "public",
+	})
+	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "le-priv", FamilyId: "travel", LineKey: "l", Type: "point", Title: "Private",
+		Date: "2023-01-01", Visibility: "personal",
+	})
+
+	resp, err := env.client.ListEvents(authCtx(t), &pb.ListEventsRequest{
+		Visibilities: []string{"public"},
+	})
+	if err != nil {
+		t.Fatalf("ListEvents: %v", err)
+	}
+	if len(resp.Events) != 1 || resp.Events[0].Id != "le-pub" {
+		t.Errorf("expected only le-pub, got %+v", resp.Events)
+	}
+}
+
+func TestListEvents_SoftDeletedEventExcluded(t *testing.T) {
+	env := newTestEnv(t)
+	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "le-del", FamilyId: "travel", LineKey: "l", Type: "point", Title: "x",
+		Date: "2023-01-01", Visibility: "public",
+	})
+	env.client.DeleteEvent(authCtx(t), &pb.DeleteEventRequest{Id: "le-del"})
+
+	resp, err := env.client.ListEvents(authCtx(t), &pb.ListEventsRequest{})
+	if err != nil {
+		t.Fatalf("ListEvents: %v", err)
+	}
+	if len(resp.Events) != 0 {
+		t.Errorf("expected 0 events after soft delete, got %d", len(resp.Events))
+	}
+}
+
+func TestListEvents_IncludesPhotos(t *testing.T) {
+	env := newTestEnv(t)
+	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "le-photo", FamilyId: "travel", LineKey: "l", Type: "point", Title: "x",
+		Date: "2023-01-01", Visibility: "public",
+	})
+	env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{
+		EventId: "le-photo", S3Url: "https://s3/x.jpg", Variant: "original",
+	})
+
+	resp, err := env.client.ListEvents(authCtx(t), &pb.ListEventsRequest{})
+	if err != nil {
+		t.Fatalf("ListEvents: %v", err)
+	}
+	if len(resp.Events) != 1 || len(resp.Events[0].Photos) != 1 {
+		t.Errorf("expected 1 event with 1 photo, got %+v", resp.Events)
+	}
+}

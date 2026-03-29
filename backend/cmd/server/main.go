@@ -2,11 +2,13 @@ package main
 
 import (
 	"flag"
+	"net"
 	"net/http"
 	"os"
 
 	"go.uber.org/zap"
 
+	grpcapi "github.com/rmrobinson/meridian/backend/internal/api/grpc"
 	"github.com/rmrobinson/meridian/backend/internal/api/rest"
 	"github.com/rmrobinson/meridian/backend/internal/config"
 	"github.com/rmrobinson/meridian/backend/internal/db"
@@ -25,7 +27,6 @@ func main() {
 	cfg, err := config.Load(*configPath)
 	if err != nil {
 		logger.Fatal("failed to load config", zap.Error(err))
-		os.Exit(1)
 	}
 
 	logger.Info("config loaded",
@@ -63,9 +64,26 @@ func main() {
 
 	logger.Info("database ready", zap.String("path", cfg.Database.Path))
 
+	// Start gRPC server in background.
+	grpcServer := grpcapi.NewGRPCServer(cfg, database, logger)
+	grpcAddr := grpcapi.Addr(cfg)
+	lis, err := net.Listen("tcp", grpcAddr)
+	if err != nil {
+		logger.Fatal("failed to listen for gRPC", zap.String("addr", grpcAddr), zap.Error(err))
+	}
+	go func() {
+		logger.Info("starting gRPC server", zap.String("addr", grpcAddr))
+		if err := grpcServer.Serve(lis); err != nil {
+			logger.Fatal("gRPC server failed", zap.Error(err))
+		}
+	}()
+
+	// Start REST server (blocks).
 	restServer := rest.NewServer(cfg, database, logger)
-	logger.Info("starting REST server", zap.String("addr", restServer.Addr()))
-	if err := http.ListenAndServe(restServer.Addr(), restServer); err != nil {
+	restAddr := restServer.Addr()
+	logger.Info("starting REST server", zap.String("addr", restAddr))
+	if err := http.ListenAndServe(restAddr, restServer); err != nil {
 		logger.Fatal("REST server failed", zap.Error(err))
+		os.Exit(1)
 	}
 }

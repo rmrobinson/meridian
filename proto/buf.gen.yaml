@@ -1,14 +1,14 @@
 version: v2
 plugins:
-  - plugin: buf.build/protocolbuffers/go
+  - remote: buf.build/protocolbuffers/go
     out: ../backend/gen/go
     opt:
       - paths=source_relative
-  - plugin: buf.build/grpc/go
+  - remote: buf.build/grpc/go
     out: ../backend/gen/go
     opt:
       - paths=source_relative
-  - plugin: buf.build/community/stephenh-ts-proto
+  - remote: buf.build/community/stephenh-ts-proto
     out: ../mcp/proto-gen
     opt:
       - esModuleInterop=true

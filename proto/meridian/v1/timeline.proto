@@ -1,0 +1,161 @@
+syntax = "proto3";
+
+package meridian.v1;
+
+option go_package = "github.com/rmrobinson/meridian/backend/gen/go/meridian/v1;meridianv1";
+
+service TimelineService {
+    rpc CreateEvent(CreateEventRequest) returns (Event);
+    rpc UpdateEvent(UpdateEventRequest) returns (Event);
+    rpc DeleteEvent(DeleteEventRequest) returns (DeleteEventResponse);
+    rpc ListEvents(ListEventsRequest) returns (ListEventsResponse);
+    rpc ImportEvents(ImportEventsRequest) returns (ImportEventsResponse);
+
+    rpc AddPhoto(AddPhotoRequest) returns (Photo);
+    rpc RemovePhoto(RemovePhotoRequest) returns (RemovePhotoResponse);
+    rpc ReorderPhotos(ReorderPhotosRequest) returns (Event);
+
+    rpc MergeEvents(MergeEventsRequest) returns (Event);
+    rpc UnmergeEvent(UnmergeEventRequest) returns (Event);
+}
+
+enum ConflictStrategy {
+    CONFLICT_STRATEGY_UNSPECIFIED = 0;
+    CONFLICT_STRATEGY_UPSERT = 1;
+    CONFLICT_STRATEGY_SKIP = 2;
+}
+
+message Location {
+    string label = 1;
+    double lat = 2;
+    double lng = 3;
+}
+
+message Photo {
+    string id = 1;
+    string event_id = 2;
+    string s3_url = 3;
+    string variant = 4;
+    int32 sort_order = 5;
+}
+
+message Event {
+    string id = 1;
+    string family_id = 2;
+    string line_key = 3;
+    string parent_line_key = 4;
+    string type = 5;
+    string title = 6;
+    string label = 7;
+    string icon = 8;
+    string date = 9;
+    string start_date = 10;
+    string end_date = 11;
+    Location location = 12;
+    string external_url = 13;
+    string hero_image_url = 14;
+    string metadata = 15;
+    string visibility = 16;
+    string source_service = 17;
+    string source_event_id = 18;
+    string canonical_id = 19;
+    repeated Photo photos = 20;
+}
+
+message CreateEventRequest {
+    string id = 1; // optional; nanoid generated if absent
+    string family_id = 2;
+    string line_key = 3;
+    string parent_line_key = 4;
+    string type = 5;
+    string title = 6;
+    string label = 7;
+    string icon = 8;
+    string date = 9;
+    string start_date = 10;
+    string end_date = 11;
+    Location location = 12;
+    string external_url = 13;
+    string hero_image_url = 14;
+    string metadata = 15;
+    string visibility = 16;
+    string source_event_id = 17;
+}
+
+message UpdateEventRequest {
+    string id = 1;
+    string family_id = 2;
+    string line_key = 3;
+    string parent_line_key = 4;
+    string type = 5;
+    string title = 6;
+    string label = 7;
+    string icon = 8;
+    string date = 9;
+    string start_date = 10;
+    string end_date = 11;
+    Location location = 12;
+    string external_url = 13;
+    string hero_image_url = 14;
+    string metadata = 15;
+    string visibility = 16;
+}
+
+message DeleteEventRequest {
+    string id = 1;
+}
+
+message DeleteEventResponse {}
+
+message ListEventsRequest {
+    string family_id = 1;
+    string from = 2;
+    string to = 3;
+    repeated string visibilities = 4;
+}
+
+message ListEventsResponse {
+    repeated Event events = 1;
+}
+
+message AddPhotoRequest {
+    string event_id = 1;
+    string s3_url = 2;
+    string variant = 3;
+}
+
+message RemovePhotoRequest {
+    string id = 1;
+}
+
+message RemovePhotoResponse {}
+
+message ReorderPhotosRequest {
+    string event_id = 1;
+    repeated string photo_ids = 2;
+}
+
+// ImportEvents — implemented in Phase 5
+message ImportEventsRequest {
+    repeated CreateEventRequest events = 1;
+    ConflictStrategy conflict_strategy = 2;
+    string source_service = 3;
+}
+
+message ImportEventsResponse {
+    int32 created = 1;
+    int32 updated = 2;
+    int32 skipped = 3;
+    int32 failed = 4;
+    repeated string errors = 5;
+}
+
+// MergeEvents / UnmergeEvent — implemented in Phase 5
+message MergeEventsRequest {
+    string canonical_id = 1;
+    repeated string event_ids = 2;
+}
+
+message UnmergeEventRequest {
+    string id = 1;
+}
