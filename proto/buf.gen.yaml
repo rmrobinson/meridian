@@ -1,0 +1,16 @@
+version: v2
+plugins:
+  - plugin: buf.build/protocolbuffers/go
+    out: ../backend/internal/grpc/gen
+    opt:
+      - paths=source_relative
+  - plugin: buf.build/grpc/go
+    out: ../backend/internal/grpc/gen
+    opt:
+      - paths=source_relative
+  - plugin: buf.build/community/stephenh-ts-proto
+    out: ../mcp/proto-gen
+    opt:
+      - esModuleInterop=true
+      - outputServices=nice-grpc
+      - useDate=string

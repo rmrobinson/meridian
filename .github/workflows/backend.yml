@@ -1,0 +1,30 @@
+name: Backend
+
+on:
+  push:
+    paths:
+      - 'backend/**'
+      - 'proto/**'
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'proto/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      - uses: bufbuild/buf-action@v1
+        with:
+          working-directory: proto
+          push: false
+      - name: Generate proto
+        run: ./generate.sh
+      - name: Build
+        run: cd backend && go build ./...
+      - name: Test
+        run: cd backend && go test ./...

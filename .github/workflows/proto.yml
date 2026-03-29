@@ -1,0 +1,21 @@
+name: Proto
+
+on:
+  push:
+    paths:
+      - 'proto/**'
+  pull_request:
+    paths:
+      - 'proto/**'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bufbuild/buf-action@v1
+        with:
+          working-directory: proto
+          lint: true
+          breaking: true
+          breaking_against: "https://github.com/rmrobinson/meridian.git#branch=main,subdir=proto"

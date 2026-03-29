@@ -1,0 +1,28 @@
+# Meridian
+
+A monorepo containing:
+
+- **backend/** — Go gRPC/REST server
+- **web-timeline/** — Vanilla JS web frontend
+- **android/** — Android app
+- **mcp/** — TypeScript MCP server
+- **proto/** — Shared protobuf definitions (source of truth)
+
+## Prerequisites
+
+- [buf](https://buf.build/docs/installation) — `brew install bufbuild/buf/buf`
+- Go 1.23+
+- Node.js 20+
+- Java 17+ (for Android)
+
+## Proto codegen
+
+Generated code is never committed. Run before building any component:
+
+```bash
+./generate.sh
+```
+
+## Components
+
+See each component's `README.md` for details.

@@ -1,0 +1,9 @@
+# Meridian backend configuration example
+# Copy to config.yaml and fill in values
+
+server:
+  grpc_port: 9090
+  rest_port: 8080
+
+database:
+  dsn: "postgres://user:password@localhost:5432/meridian?sslmode=disable"

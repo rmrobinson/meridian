@@ -1,0 +1,27 @@
+name: Web
+
+on:
+  push:
+    paths:
+      - 'web-timeline/**'
+  pull_request:
+    paths:
+      - 'web-timeline/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: cd web-timeline && npm ci
+      - name: Check icons
+        run: cd web-timeline && node scripts/check-icons.js
+      - name: Unit tests
+        run: cd web-timeline && npx vitest run
+      - name: Install Playwright
+        run: cd web-timeline && npx playwright install --with-deps
+      - name: Integration tests
+        run: cd web-timeline && npx playwright test

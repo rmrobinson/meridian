@@ -1,0 +1,26 @@
+# Go
+backend/bin/
+*.test
+
+# Generated proto output — never committed
+backend/internal/grpc/gen/
+mcp/proto-gen/
+android/app/src/main/java/com/meridian/proto/
+
+# Node / TypeScript
+node_modules/
+mcp/dist/
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+*.apk
+*.aab
+
+# Environment
+.env
+*.env.local
+
+# OS
+.DS_Store

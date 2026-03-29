@@ -1,0 +1,1 @@
+// deleteEvent MCP tool
