@@ -2,10 +2,12 @@ package main
 
 import (
 	"flag"
+	"net/http"
 	"os"
 
 	"go.uber.org/zap"
 
+	"github.com/rmrobinson/meridian/backend/internal/api/rest"
 	"github.com/rmrobinson/meridian/backend/internal/config"
 	"github.com/rmrobinson/meridian/backend/internal/db"
 )
@@ -60,4 +62,10 @@ func main() {
 	defer database.Close()
 
 	logger.Info("database ready", zap.String("path", cfg.Database.Path))
+
+	restServer := rest.NewServer(cfg, database, logger)
+	logger.Info("starting REST server", zap.String("addr", restServer.Addr()))
+	if err := http.ListenAndServe(restServer.Addr(), restServer); err != nil {
+		logger.Fatal("REST server failed", zap.Error(err))
+	}
 }
