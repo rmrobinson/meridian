@@ -63,6 +63,23 @@
   ],
   "events": [
     {
+      "id": "evt_birthday_30",
+      "family_id": "spine",
+      "line_key": "spine",
+      "type": "point",
+      "title": "Turning 30",
+      "icon": "mdi:cake-variant",
+      "date": "2020-04-12",
+      "location": null,
+      "description": "The big three-oh.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": {
+        "milestone_type": "birthday"
+      }
+    },
+    {
       "id": "evt_000",
       "family_id": "spine",
       "line_key": "spine",

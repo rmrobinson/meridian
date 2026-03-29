@@ -108,7 +108,12 @@
   color: var(--color-label-secondary);
 }
 
-/* ── Standard / milestone card ─────────────────────────────────────────────── */
+/* ── Standard card ───────────────────────────────────────────────────────────── */
+
+/* .card--standard has no type-specific rules — the shared elements
+   (.card-title, .card-dates, .card-description, .card-location) are sufficient. */
+
+/* ── Milestone card ──────────────────────────────────────────────────────────── */
 
 .card--milestone .card-icon {
   font-size: 2rem;

@@ -137,6 +137,15 @@ body.zoom-year  .station--span-hover .station-label {
   filter: brightness(1.4);
 }
 
+/* ── Station modifier class hooks ────────────────────────────────────────── */
+
+/* station--has-icon: added when a rendered icon is present beside the dot.
+   Reserved for future use (e.g. nudging label offset to clear the icon). */
+
+/* station--departure / station--arrival: added to the start/end stations of
+   span events. Reserved for future use (e.g. distinct dot styling or
+   departure-specific icon rules). */
+
 /* ── Station dots ─────────────────────────────────────────────────────────── */
 
 .station-dot {

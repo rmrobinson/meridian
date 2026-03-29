@@ -278,7 +278,7 @@ html, body {
 
 /* Breakpoints */
 
-@media (max-width: 479px) {
+@media (max-width: 480px) {
   /* Mobile: bottom sheet */
   .card-overlay {
     display: flex;

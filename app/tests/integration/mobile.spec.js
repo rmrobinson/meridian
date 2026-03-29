@@ -1,5 +1,21 @@
 import { test, expect } from '@playwright/test';
 
+async function scrollToDate(page, isoDate) {
+  await page.evaluate((targetDate) => {
+    const birth  = new Date('1990-04-12');
+    const today  = new Date();
+    today.setHours(0, 0, 0, 0);
+    const totalH = Number(document.getElementById('timeline-svg').getAttribute('height'));
+    const ratio  = (today - new Date(targetDate)) / (today - birth);
+    const y      = ratio * totalH;
+    const c      = document.getElementById('timeline-container');
+    c.scrollTop  = Math.max(0, y - c.clientHeight / 2);
+    return new Promise((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(resolve)),
+    );
+  }, isoDate);
+}
+
 test.describe('Mobile — layout and interaction', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
@@ -87,18 +103,7 @@ test.describe('Mobile — layout and interaction', () => {
 
   test('tapping a station opens a bottom sheet card', async ({ page }) => {
     // Scroll to evt_000 (Moved to London, 2019-09-01 — spine relocation → milestone card).
-    await page.evaluate((targetDate) => {
-      const birth  = new Date('1990-04-12');
-      const today  = new Date(); today.setHours(0, 0, 0, 0);
-      const totalH = Number(document.getElementById('timeline-svg').getAttribute('height'));
-      const ratio  = (today - new Date(targetDate)) / (today - birth);
-      const y      = ratio * totalH;
-      const c      = document.getElementById('timeline-container');
-      c.scrollTop  = Math.max(0, y - c.clientHeight / 2);
-      return new Promise((resolve) =>
-        requestAnimationFrame(() => requestAnimationFrame(resolve)),
-      );
-    }, '2019-09-01');
+    await scrollToDate(page, '2019-09-01');
 
     await expect(page.locator('[data-testid="station-evt_000"]')).toBeAttached({ timeout: 3000 });
     // dispatchEvent fires a real bubbling click on the <g> element.
@@ -115,19 +120,7 @@ test.describe('Mobile — layout and interaction', () => {
   });
 
   test('bottom sheet dismisses on close button tap', async ({ page }) => {
-    // Open the card first.
-    await page.evaluate((targetDate) => {
-      const birth  = new Date('1990-04-12');
-      const today  = new Date(); today.setHours(0, 0, 0, 0);
-      const totalH = Number(document.getElementById('timeline-svg').getAttribute('height'));
-      const ratio  = (today - new Date(targetDate)) / (today - birth);
-      const y      = ratio * totalH;
-      const c      = document.getElementById('timeline-container');
-      c.scrollTop  = Math.max(0, y - c.clientHeight / 2);
-      return new Promise((resolve) =>
-        requestAnimationFrame(() => requestAnimationFrame(resolve)),
-      );
-    }, '2019-09-01');
+    await scrollToDate(page, '2019-09-01');
 
     await expect(page.locator('[data-testid="station-evt_000"]')).toBeAttached({ timeout: 3000 });
     await page.dispatchEvent('[data-testid="station-evt_000"]', 'click');
@@ -135,6 +128,44 @@ test.describe('Mobile — layout and interaction', () => {
 
     // Tap the close button (regular click, not SVG element).
     await page.locator('#card-close').click();
+    await expect(page.locator('#card-overlay')).toHaveAttribute('hidden', '');
+  });
+
+  test('bottom sheet dismisses on swipe down ≥ 80px', async ({ page }) => {
+    await scrollToDate(page, '2019-09-01');
+    await expect(page.locator('[data-testid="station-evt_000"]')).toBeAttached({ timeout: 3000 });
+    await page.dispatchEvent('[data-testid="station-evt_000"]', 'click');
+    await expect(page.locator('#card-overlay')).not.toHaveAttribute('hidden');
+
+    // Simulate swipe-down on the card sheet via synthetic touch events.
+    // setupSwipeDismiss dismisses when touchend delta ≥ 80px.
+    await page.evaluate(() => {
+      const sheet = document.getElementById('card-sheet');
+      const startY = 300;
+      const endY   = 390; // 90px drag — above the 80px threshold
+
+      const makeTouch = (y) => new Touch({
+        identifier: 1, target: sheet,
+        clientX: 195, clientY: y,
+        screenX: 195, screenY: y,
+        pageX:   195, pageY:   y,
+        radiusX: 1, radiusY: 1, rotationAngle: 0, force: 1,
+      });
+
+      sheet.dispatchEvent(new TouchEvent('touchstart', {
+        cancelable: true, bubbles: true,
+        touches: [makeTouch(startY)], changedTouches: [makeTouch(startY)],
+      }));
+      sheet.dispatchEvent(new TouchEvent('touchmove', {
+        cancelable: true, bubbles: true,
+        touches: [makeTouch(endY)], changedTouches: [makeTouch(endY)],
+      }));
+      sheet.dispatchEvent(new TouchEvent('touchend', {
+        cancelable: true, bubbles: true,
+        touches: [], changedTouches: [makeTouch(endY)],
+      }));
+    });
+
     await expect(page.locator('#card-overlay')).toHaveAttribute('hidden', '');
   });
 

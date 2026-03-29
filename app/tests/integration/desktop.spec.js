@@ -277,6 +277,59 @@ test.describe('Desktop — spine and year markers', () => {
     await expect(stations.first()).toBeAttached({ timeout: 3000 });
   });
 
-  // ── Phase 3+ stubs ────────────────────────────────────────────────────────
-  test.fixme('explicit birthday event replaces auto-generated station at that date', async () => {});
+  // ── Phase 3 — span hover sync ─────────────────────────────────────────────
+
+  test('hovering a span line in month zoom adds station--span-hover to its stations', async ({ page }) => {
+    await page.locator('.zoom-btn[data-zoom="month"]').click();
+    await expect(page.locator('body')).toHaveClass(/zoom-month/);
+
+    await scrollToDate(page, '2023-03-10');
+    await expect(page.locator('[data-testid="span-line-span-evt_002"]')).toBeAttached({ timeout: 3000 });
+
+    // Trigger mouseover on the span line via JS so the delegated listener fires.
+    await page.evaluate(() => {
+      const span = document.querySelector('[data-testid="span-line-span-evt_002"]');
+      span.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, relatedTarget: null }));
+    });
+
+    await expect(page.locator('[data-testid="station-evt_002"]')).toHaveClass(/station--span-hover/);
+  });
+
+  test('mousing out of a span line removes station--span-hover from its stations', async ({ page }) => {
+    await page.locator('.zoom-btn[data-zoom="month"]').click();
+    await scrollToDate(page, '2023-03-10');
+    await expect(page.locator('[data-testid="span-line-span-evt_002"]')).toBeAttached({ timeout: 3000 });
+
+    await page.evaluate(() => {
+      const span = document.querySelector('[data-testid="span-line-span-evt_002"]');
+      span.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, relatedTarget: null }));
+    });
+    await expect(page.locator('[data-testid="station-evt_002"]')).toHaveClass(/station--span-hover/);
+
+    await page.evaluate(() => {
+      const span = document.querySelector('[data-testid="span-line-span-evt_002"]');
+      span.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: document.body }));
+    });
+    await expect(page.locator('[data-testid="station-evt_002"]')).not.toHaveClass(/station--span-hover/);
+  });
+
+  // ── Phase 3+ — birthday override ─────────────────────────────────────────
+
+  test('explicit birthday event replaces auto-generated station at that date', async ({ page }) => {
+    // The fixture has an explicit spine birthday on 2020-04-12 ("Turning 30").
+    // The auto-generator would produce "Birthday — Age 30" for the same date —
+    // the explicit event must suppress it so only one station exists.
+    await scrollToDate(page, '2020-04-12');
+
+    // Only one station with data-id matching the explicit event's ID should exist.
+    await expect(page.locator('[data-testid="station-evt_birthday_30"]')).toBeAttached({ timeout: 3000 });
+
+    // The auto-generated counterpart must NOT be in the DOM.
+    await expect(page.locator('[data-testid="station-auto_birthday_30"]')).not.toBeAttached();
+
+    // Opening the card shows the custom title, not the auto-generated one.
+    await page.dispatchEvent('[data-testid="station-evt_birthday_30"]', 'click');
+    await expect(page.locator('#card-overlay')).not.toHaveAttribute('hidden');
+    await expect(page.locator('#card-content .card-title')).toHaveText('Turning 30');
+  });
 });
