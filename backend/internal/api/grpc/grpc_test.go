@@ -588,3 +588,270 @@ func TestListEvents_IncludesPhotos(t *testing.T) {
 		t.Errorf("expected 1 event with 1 photo, got %+v", resp.Events)
 	}
 }
+
+// --- MergeEvents ---
+
+func TestMergeEvents_SetsCanonicalID(t *testing.T) {
+	env := newTestEnv(t)
+	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "canon-1", FamilyId: "fitness", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT,
+		Title: "Canonical Run", ActivityType: pb.ActivityType_ACTIVITY_TYPE_RUN,
+	})
+	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "linked-1", FamilyId: "fitness", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT,
+		Title: "Garmin Run", ActivityType: pb.ActivityType_ACTIVITY_TYPE_RUN,
+	})
+
+	_, err := env.client.MergeEvents(authCtx(t), &pb.MergeEventsRequest{
+		CanonicalId: "canon-1",
+		EventIds:    []string{"linked-1"},
+	})
+	if err != nil {
+		t.Fatalf("MergeEvents: %v", err)
+	}
+
+	// ListEvents should only return the canonical row.
+	list, err := env.client.ListEvents(authCtx(t), &pb.ListEventsRequest{})
+	if err != nil {
+		t.Fatalf("ListEvents after merge: %v", err)
+	}
+	if len(list.Events) != 1 || list.Events[0].Id != "canon-1" {
+		t.Errorf("expected only canon-1, got %+v", list.Events)
+	}
+}
+
+func TestMergeEvents_UnknownCanonicalID_ReturnsNotFound(t *testing.T) {
+	env := newTestEnv(t)
+	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "linked-x", FamilyId: "fitness", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "x",
+	})
+	_, err := env.client.MergeEvents(authCtx(t), &pb.MergeEventsRequest{
+		CanonicalId: "ghost",
+		EventIds:    []string{"linked-x"},
+	})
+	assertCode(t, err, codes.NotFound)
+}
+
+func TestMergeEvents_UnknownLinkedID_ReturnsInvalidArgument(t *testing.T) {
+	env := newTestEnv(t)
+	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "canon-x", FamilyId: "fitness", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "x",
+	})
+	_, err := env.client.MergeEvents(authCtx(t), &pb.MergeEventsRequest{
+		CanonicalId: "canon-x",
+		EventIds:    []string{"ghost"},
+	})
+	assertCode(t, err, codes.InvalidArgument)
+}
+
+// --- UnmergeEvent ---
+
+func TestUnmergeEvent_ClearsCanonicalID(t *testing.T) {
+	env := newTestEnv(t)
+	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "canon-2", FamilyId: "fitness", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "Canon",
+	})
+	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "linked-2", FamilyId: "fitness", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "Linked",
+	})
+	env.client.MergeEvents(authCtx(t), &pb.MergeEventsRequest{
+		CanonicalId: "canon-2",
+		EventIds:    []string{"linked-2"},
+	})
+
+	// Unmerge: linked-2 should become standalone.
+	_, err := env.client.UnmergeEvent(authCtx(t), &pb.UnmergeEventRequest{Id: "linked-2"})
+	if err != nil {
+		t.Fatalf("UnmergeEvent: %v", err)
+	}
+
+	list, err := env.client.ListEvents(authCtx(t), &pb.ListEventsRequest{})
+	if err != nil {
+		t.Fatalf("ListEvents after unmerge: %v", err)
+	}
+	ids := make(map[string]bool)
+	for _, e := range list.Events {
+		ids[e.Id] = true
+	}
+	if !ids["canon-2"] || !ids["linked-2"] {
+		t.Errorf("expected both events after unmerge, got ids: %v", ids)
+	}
+}
+
+func TestUnmergeEvent_UnknownID_ReturnsNotFound(t *testing.T) {
+	env := newTestEnv(t)
+	_, err := env.client.UnmergeEvent(authCtx(t), &pb.UnmergeEventRequest{Id: "ghost"})
+	assertCode(t, err, codes.NotFound)
+}
+
+// --- ImportEvents ---
+
+func importReqs(count int, familyID string) []*pb.CreateEventRequest {
+	reqs := make([]*pb.CreateEventRequest, count)
+	for i := 0; i < count; i++ {
+		reqs[i] = &pb.CreateEventRequest{
+			FamilyId:      familyID,
+			LineKey:       "l",
+			Type:          pb.EventType_EVENT_TYPE_POINT,
+			Title:         fmt.Sprintf("Event %d", i+1),
+			Date:          fmt.Sprintf("2024-01-%02d", i+1),
+			SourceEventId: fmt.Sprintf("src-%d", i+1),
+		}
+	}
+	return reqs
+}
+
+func TestImportEvents_NewEvents_Created(t *testing.T) {
+	env := newTestEnv(t)
+	resp, err := env.client.ImportEvents(authCtx(t), &pb.ImportEventsRequest{
+		Events:           importReqs(3, "travel"),
+		ConflictStrategy: pb.ConflictStrategy_CONFLICT_STRATEGY_UPSERT,
+		SourceService:    "garmin",
+	})
+	if err != nil {
+		t.Fatalf("ImportEvents: %v", err)
+	}
+	if resp.Created != 3 || resp.Updated != 0 || resp.Skipped != 0 || resp.Failed != 0 {
+		t.Errorf("counts: got created=%d updated=%d skipped=%d failed=%d, want 3/0/0/0",
+			resp.Created, resp.Updated, resp.Skipped, resp.Failed)
+	}
+}
+
+func TestImportEvents_Upsert_ReimportUpdates(t *testing.T) {
+	env := newTestEnv(t)
+	reqs := importReqs(3, "travel")
+	env.client.ImportEvents(authCtx(t), &pb.ImportEventsRequest{
+		Events:           reqs,
+		ConflictStrategy: pb.ConflictStrategy_CONFLICT_STRATEGY_UPSERT,
+		SourceService:    "garmin",
+	})
+	resp, err := env.client.ImportEvents(authCtx(t), &pb.ImportEventsRequest{
+		Events:           reqs,
+		ConflictStrategy: pb.ConflictStrategy_CONFLICT_STRATEGY_UPSERT,
+		SourceService:    "garmin",
+	})
+	if err != nil {
+		t.Fatalf("ImportEvents (re-import): %v", err)
+	}
+	if resp.Created != 0 || resp.Updated != 3 || resp.Skipped != 0 || resp.Failed != 0 {
+		t.Errorf("counts: got created=%d updated=%d skipped=%d failed=%d, want 0/3/0/0",
+			resp.Created, resp.Updated, resp.Skipped, resp.Failed)
+	}
+}
+
+func TestImportEvents_Skip_ReimportSkips(t *testing.T) {
+	env := newTestEnv(t)
+	reqs := importReqs(3, "travel")
+	env.client.ImportEvents(authCtx(t), &pb.ImportEventsRequest{
+		Events:           reqs,
+		ConflictStrategy: pb.ConflictStrategy_CONFLICT_STRATEGY_UPSERT,
+		SourceService:    "garmin",
+	})
+	resp, err := env.client.ImportEvents(authCtx(t), &pb.ImportEventsRequest{
+		Events:           reqs,
+		ConflictStrategy: pb.ConflictStrategy_CONFLICT_STRATEGY_SKIP,
+		SourceService:    "garmin",
+	})
+	if err != nil {
+		t.Fatalf("ImportEvents (skip): %v", err)
+	}
+	if resp.Created != 0 || resp.Updated != 0 || resp.Skipped != 3 || resp.Failed != 0 {
+		t.Errorf("counts: got created=%d updated=%d skipped=%d failed=%d, want 0/0/3/0",
+			resp.Created, resp.Updated, resp.Skipped, resp.Failed)
+	}
+}
+
+func TestImportEvents_InvalidEvent_CountedAsFailed(t *testing.T) {
+	env := newTestEnv(t)
+	resp, err := env.client.ImportEvents(authCtx(t), &pb.ImportEventsRequest{
+		Events: []*pb.CreateEventRequest{
+			{FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "Good"},
+			{FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: ""}, // invalid
+			{FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "Also Good"},
+		},
+		ConflictStrategy: pb.ConflictStrategy_CONFLICT_STRATEGY_UPSERT,
+		SourceService:    "garmin",
+	})
+	if err != nil {
+		t.Fatalf("ImportEvents: %v", err)
+	}
+	if resp.Created != 2 || resp.Failed != 1 || len(resp.Errors) == 0 {
+		t.Errorf("counts: got created=%d failed=%d errors=%v, want 2/1/non-empty",
+			resp.Created, resp.Failed, resp.Errors)
+	}
+}
+
+func TestImportEvents_SourceServiceStoredOnEvents(t *testing.T) {
+	env := newTestEnv(t)
+	env.client.ImportEvents(authCtx(t), &pb.ImportEventsRequest{
+		Events: []*pb.CreateEventRequest{
+			{FamilyId: "fitness", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT,
+				Title: "Run", Date: "2024-03-01", SourceEventId: "g-001",
+				ActivityType: pb.ActivityType_ACTIVITY_TYPE_RUN},
+		},
+		ConflictStrategy: pb.ConflictStrategy_CONFLICT_STRATEGY_UPSERT,
+		SourceService:    "garmin",
+	})
+
+	list, err := env.client.ListEvents(authCtx(t), &pb.ListEventsRequest{})
+	if err != nil {
+		t.Fatalf("ListEvents: %v", err)
+	}
+	if len(list.Events) != 1 || list.Events[0].SourceService != "garmin" {
+		t.Errorf("expected source_service=garmin, got %+v", list.Events)
+	}
+}
+
+func TestImportEvents_AutoMerge_LinkedToCanonical(t *testing.T) {
+	env := newTestEnv(t)
+
+	// Create a canonical run event manually.
+	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "manual-run", FamilyId: "fitness", LineKey: "l",
+		Type: pb.EventType_EVENT_TYPE_POINT, Title: "My Run",
+		Date: "2024-06-01", ActivityType: pb.ActivityType_ACTIVITY_TYPE_RUN,
+	})
+
+	// Import a Garmin run on the same date — should auto-merge.
+	env.client.ImportEvents(authCtx(t), &pb.ImportEventsRequest{
+		Events: []*pb.CreateEventRequest{
+			{FamilyId: "fitness", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT,
+				Title: "Garmin Run", Date: "2024-06-01", SourceEventId: "g-100",
+				ActivityType: pb.ActivityType_ACTIVITY_TYPE_RUN},
+		},
+		ConflictStrategy: pb.ConflictStrategy_CONFLICT_STRATEGY_UPSERT,
+		SourceService:    "garmin",
+	})
+
+	// ListEvents should return only the canonical row.
+	list, err := env.client.ListEvents(authCtx(t), &pb.ListEventsRequest{})
+	if err != nil {
+		t.Fatalf("ListEvents: %v", err)
+	}
+	if len(list.Events) != 1 || list.Events[0].Id != "manual-run" {
+		t.Errorf("expected only canonical manual-run, got %d events: %+v", len(list.Events), list.Events)
+	}
+}
+
+func TestImportEvents_SourceEventIDUsedForDedup(t *testing.T) {
+	env := newTestEnv(t)
+	req := &pb.ImportEventsRequest{
+		Events: []*pb.CreateEventRequest{
+			{FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT,
+				Title: "Trip", Date: "2024-01-01", SourceEventId: "dedup-1"},
+		},
+		ConflictStrategy: pb.ConflictStrategy_CONFLICT_STRATEGY_UPSERT,
+		SourceService:    "garmin",
+	}
+	env.client.ImportEvents(authCtx(t), req)
+	// Re-import same source_event_id — should update, not create duplicate.
+	env.client.ImportEvents(authCtx(t), req)
+
+	list, err := env.client.ListEvents(authCtx(t), &pb.ListEventsRequest{})
+	if err != nil {
+		t.Fatalf("ListEvents: %v", err)
+	}
+	if len(list.Events) != 1 {
+		t.Errorf("expected 1 event after re-import, got %d", len(list.Events))
+	}
+}

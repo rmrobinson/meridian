@@ -13,6 +13,7 @@ import (
 	pb "github.com/rmrobinson/meridian/backend/gen/go/meridian/v1"
 	"github.com/rmrobinson/meridian/backend/internal/db"
 	"github.com/rmrobinson/meridian/backend/internal/domain"
+	"github.com/rmrobinson/meridian/backend/internal/merge"
 )
 
 var newID func() string
@@ -165,6 +166,136 @@ func (s *Server) ListEvents(ctx context.Context, req *pb.ListEventsRequest) (*pb
 		photos, _ := s.db.ListPhotosForEvent(ctx, e.ID)
 		resp.Events = append(resp.Events, eventToProto(e, photos))
 	}
+	return resp, nil
+}
+
+func (s *Server) ImportEvents(ctx context.Context, req *pb.ImportEventsRequest) (*pb.ImportEventsResponse, error) {
+	resp := &pb.ImportEventsResponse{}
+
+	for _, evtReq := range req.Events {
+		if evtReq.Title == "" {
+			resp.Failed++
+			resp.Errors = append(resp.Errors, "event missing title")
+			continue
+		}
+
+		// Check for an existing row from the same source.
+		if req.SourceService != "" && evtReq.SourceEventId != "" {
+			existing, err := s.db.GetEventBySourceID(ctx, req.SourceService, evtReq.SourceEventId)
+			if err == nil {
+				// Row exists — apply conflict strategy.
+				switch req.ConflictStrategy {
+				case pb.ConflictStrategy_CONFLICT_STRATEGY_SKIP:
+					resp.Skipped++
+					continue
+				case pb.ConflictStrategy_CONFLICT_STRATEGY_UPSERT:
+					vis := protoToVisibility(evtReq.Visibility)
+					if vis == "" {
+						vis = domain.VisibilityPersonal
+					}
+					updated := &domain.Event{
+						ID:            existing.ID,
+						FamilyID:      evtReq.FamilyId,
+						LineKey:       evtReq.LineKey,
+						ParentLineKey: strPtr(evtReq.ParentLineKey),
+						Type:          protoToEventType(evtReq.Type),
+						ActivityType:  protoToActivityType(evtReq.ActivityType),
+						Title:         evtReq.Title,
+						Label:         strPtr(evtReq.Label),
+						Icon:          strPtr(evtReq.Icon),
+						Date:          strPtr(evtReq.Date),
+						StartDate:     strPtr(evtReq.StartDate),
+						EndDate:       strPtr(evtReq.EndDate),
+						ExternalURL:   strPtr(evtReq.ExternalUrl),
+						HeroImageURL:  strPtr(evtReq.HeroImageUrl),
+						Metadata:      strPtr(evtReq.Metadata),
+						Visibility:    vis,
+						SourceEventID: strPtr(evtReq.SourceEventId),
+					}
+					if req.SourceService != "" {
+						updated.SourceService = &req.SourceService
+					}
+					if evtReq.Location != nil {
+						updated.LocationLabel = strPtr(evtReq.Location.Label)
+						if evtReq.Location.Lat != 0 || evtReq.Location.Lng != 0 {
+							updated.LocationLat = float64Ptr(evtReq.Location.Lat)
+							updated.LocationLng = float64Ptr(evtReq.Location.Lng)
+						}
+					}
+					if dbErr := s.db.UpdateEvent(ctx, updated); dbErr != nil {
+						resp.Failed++
+						resp.Errors = append(resp.Errors, "failed to update event: "+evtReq.SourceEventId)
+						continue
+					}
+					resp.Updated++
+					continue
+				}
+			} else if !errors.Is(err, db.ErrNotFound) {
+				s.logger.Error("checking source event", zap.Error(err))
+				resp.Failed++
+				resp.Errors = append(resp.Errors, "internal error checking source event")
+				continue
+			}
+		}
+
+		// New event — generate ID if absent.
+		id := evtReq.Id
+		if id == "" {
+			id = newID()
+		}
+
+		vis := protoToVisibility(evtReq.Visibility)
+		if vis == "" {
+			vis = domain.VisibilityPersonal
+		}
+
+		now := time.Now().UTC()
+		e := &domain.Event{
+			ID:            id,
+			FamilyID:      evtReq.FamilyId,
+			LineKey:       evtReq.LineKey,
+			ParentLineKey: strPtr(evtReq.ParentLineKey),
+			Type:          protoToEventType(evtReq.Type),
+			ActivityType:  protoToActivityType(evtReq.ActivityType),
+			Title:         evtReq.Title,
+			Label:         strPtr(evtReq.Label),
+			Icon:          strPtr(evtReq.Icon),
+			Date:          strPtr(evtReq.Date),
+			StartDate:     strPtr(evtReq.StartDate),
+			EndDate:       strPtr(evtReq.EndDate),
+			ExternalURL:   strPtr(evtReq.ExternalUrl),
+			HeroImageURL:  strPtr(evtReq.HeroImageUrl),
+			Metadata:      strPtr(evtReq.Metadata),
+			Visibility:    vis,
+			SourceEventID: strPtr(evtReq.SourceEventId),
+			CreatedAt:     now,
+			UpdatedAt:     now,
+		}
+		if req.SourceService != "" {
+			e.SourceService = &req.SourceService
+		}
+		if evtReq.Location != nil {
+			e.LocationLabel = strPtr(evtReq.Location.Label)
+			if evtReq.Location.Lat != 0 || evtReq.Location.Lng != 0 {
+				e.LocationLat = float64Ptr(evtReq.Location.Lat)
+				e.LocationLng = float64Ptr(evtReq.Location.Lng)
+			}
+		}
+
+		// Auto-merge: find a canonical event matching date + activity_type.
+		if candidate, err := merge.FindMergeCandidates(ctx, s.db, e); err == nil && candidate != nil {
+			e.CanonicalID = &candidate.ID
+		}
+
+		if dbErr := s.db.CreateEvent(ctx, e); dbErr != nil {
+			s.logger.Error("importing event", zap.Error(dbErr))
+			resp.Failed++
+			resp.Errors = append(resp.Errors, "failed to create event")
+			continue
+		}
+		resp.Created++
+	}
+
 	return resp, nil
 }
 

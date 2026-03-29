@@ -164,6 +164,62 @@ func (d *DB) SoftDeleteEvent(ctx context.Context, id string) error {
 	return nil
 }
 
+// GetEventBySourceID returns the canonical event with the given source service and
+// source event ID, excluding soft-deleted rows.
+func (d *DB) GetEventBySourceID(ctx context.Context, sourceService, sourceEventID string) (*domain.Event, error) {
+	row := d.db.QueryRowContext(ctx, `
+		SELECT id, family_id, line_key, parent_line_key, type, activity_type, title, label, icon,
+		       date, start_date, end_date, location_label, location_lat, location_lng,
+		       external_url, hero_image_url, metadata, visibility,
+		       source_service, source_event_id, canonical_id, created_at, updated_at, deleted_at
+		FROM events
+		WHERE source_service = ? AND source_event_id = ? AND deleted_at IS NULL
+		LIMIT 1`, sourceService, sourceEventID)
+	e, err := scanEvent(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	return e, err
+}
+
+// SetCanonicalID links an event to a canonical event by setting its canonical_id.
+func (d *DB) SetCanonicalID(ctx context.Context, id, canonicalID string) error {
+	res, err := d.db.ExecContext(ctx,
+		`UPDATE events SET canonical_id = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL`,
+		canonicalID, time.Now().UTC().Format(time.RFC3339Nano), id,
+	)
+	if err != nil {
+		return fmt.Errorf("setting canonical_id: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// ClearCanonicalID detaches a linked event back to standalone canonical.
+func (d *DB) ClearCanonicalID(ctx context.Context, id string) error {
+	res, err := d.db.ExecContext(ctx,
+		`UPDATE events SET canonical_id = NULL, updated_at = ? WHERE id = ? AND deleted_at IS NULL`,
+		time.Now().UTC().Format(time.RFC3339Nano), id,
+	)
+	if err != nil {
+		return fmt.Errorf("clearing canonical_id: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 // GetEventWithLinked returns the canonical event and all non-canonical rows linked to it.
 func (d *DB) GetEventWithLinked(ctx context.Context, id string) (*domain.Event, []*domain.Event, error) {
 	canonical, err := d.GetEventByID(ctx, id)
