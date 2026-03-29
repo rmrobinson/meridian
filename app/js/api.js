@@ -62,7 +62,7 @@ function injectBirthdayAge(events, birthDateStr) {
     if (evt.family_id !== 'spine' || evt.metadata?.milestone_type !== 'birthday') continue;
     if (typeof evt.metadata.age === 'number') continue; // already set
     const evtDate = new Date(evt.date);
-    evt.metadata.age = evtDate.getFullYear() - birth.getFullYear();
+    evt.metadata.age = evtDate.getUTCFullYear() - birth.getUTCFullYear();
   }
 }
 
@@ -121,7 +121,7 @@ export function generateBirthdays(birthDateStr, existingEvents = []) {
   const birthdays = [];
   for (let age = 0; ; age++) {
     const bday = new Date(birth);
-    bday.setFullYear(birth.getFullYear() + age);
+    bday.setUTCFullYear(birth.getUTCFullYear() + age);
     if (bday > today) break;
 
     const isoDate = bday.toISOString().slice(0, 10);

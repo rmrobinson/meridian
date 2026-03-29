@@ -86,7 +86,7 @@ async function init() {
 function buildRenderObjects(data, pxPerDay) {
   // Clamp to midnight so year-marker positions are stable.
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  today.setUTCHours(0, 0, 0, 0);
 
   const birthDate   = new Date(data.person.birth_date);
   const totalDays   = (today - birthDate) / MS_PER_DAY;
@@ -125,11 +125,11 @@ function buildRenderObjects(data, pxPerDay) {
 
   // ── Year markers ──────────────────────────────────────────────────────────
 
-  const birthYear   = birthDate.getFullYear();
-  const currentYear = today.getFullYear();
+  const birthYear   = birthDate.getUTCFullYear();
+  const currentYear = today.getUTCFullYear();
 
   for (let yr = currentYear; yr >= birthYear; yr--) {
-    const y = yFor(new Date(yr, 0, 1));   // local midnight — consistent with today/birthDate
+    const y = yFor(new Date(Date.UTC(yr, 0, 1)));
     if (y < 0 || y > totalHeight) continue;
     renderObjects.push({ type: 'year-marker', id: `year-${yr}`, y, label: String(yr), isToday: false });
   }
@@ -187,11 +187,14 @@ function buildRenderObjects(data, pxPerDay) {
     };
     spanRenderObjects.push(spanObj);
 
+    const clampedYStart = spanObj.yStart;
+    const clampedYEnd   = spanObj.yEnd;
+
     // Start station: departure dot on the PARENT line at the exact point where
-    // the branch bezier departs — (parentX, yStart + curveHeight).
+    // the branch bezier departs — (parentX, clampedYStart + curveHeight).
     // branchBezier departs from (parentX, branchY + curveHeight), so the station
     // sits curveHeight pixels below (older than) the event start date.
-    const startStationY = yStart + CURVE_HEIGHT;
+    const startStationY = clampedYStart + CURVE_HEIGHT;
     if (startStationY >= 0 && startStationY <= totalHeight) {
       const startStation = {
         type: 'station', id: evt.id,
@@ -208,7 +211,7 @@ function buildRenderObjects(data, pxPerDay) {
     // merge:     arrival dot on PARENT line where the merge bezier ends (yEnd − curveHeight).
     // terminate: dot on the branch lane at yEnd.
     if (family.on_end === 'merge') {
-      const endY = yEnd - CURVE_HEIGHT;
+      const endY = clampedYEnd - CURVE_HEIGHT;
       if (endY >= 0 && endY <= totalHeight) {
         const endStation = {
           type: 'station', id: `${evt.id}-end`,
@@ -221,10 +224,10 @@ function buildRenderObjects(data, pxPerDay) {
         endStationById.set(evt.id, endStation);
       }
     } else {
-      if (yEnd >= 0 && yEnd <= totalHeight) {
+      if (clampedYEnd >= 0 && clampedYEnd <= totalHeight) {
         const endStation = {
           type: 'station', id: `${evt.id}-end`,
-          y: yEnd, laneOffset, color, event: evt, isMajor: false,
+          y: clampedYEnd, laneOffset, color, event: evt, isMajor: false,
           label: null,
           icon:  null,
         };
