@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/rmrobinson/meridian/backend/internal/config"
+	"github.com/rmrobinson/meridian/backend/internal/db"
 )
 
 func main() {
@@ -51,4 +52,12 @@ func main() {
 		tokenNames[i] = t.Name
 	}
 	logger.Info("write tokens configured", zap.Strings("names", tokenNames))
+
+	database, err := db.Open(cfg.Database.Path)
+	if err != nil {
+		logger.Fatal("failed to open database", zap.Error(err))
+	}
+	defer database.Close()
+
+	logger.Info("database ready", zap.String("path", cfg.Database.Path))
 }
