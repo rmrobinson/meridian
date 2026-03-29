@@ -43,7 +43,7 @@ func (s *Server) CreateEvent(ctx context.Context, req *pb.CreateEventRequest) (*
 		id = newID()
 	}
 
-	vis := domain.Visibility(req.Visibility)
+	vis := protoToVisibility(req.Visibility)
 	if vis == "" {
 		vis = domain.VisibilityPersonal
 	}
@@ -54,7 +54,8 @@ func (s *Server) CreateEvent(ctx context.Context, req *pb.CreateEventRequest) (*
 		FamilyID:      req.FamilyId,
 		LineKey:       req.LineKey,
 		ParentLineKey: strPtr(req.ParentLineKey),
-		Type:          domain.EventType(req.Type),
+		Type:          protoToEventType(req.Type),
+		ActivityType:  protoToActivityType(req.ActivityType),
 		Title:         req.Title,
 		Label:         strPtr(req.Label),
 		Icon:          strPtr(req.Icon),
@@ -93,7 +94,7 @@ func (s *Server) UpdateEvent(ctx context.Context, req *pb.UpdateEventRequest) (*
 		return nil, status.Error(codes.InvalidArgument, "title is required")
 	}
 
-	vis := domain.Visibility(req.Visibility)
+	vis := protoToVisibility(req.Visibility)
 	if vis == "" {
 		vis = domain.VisibilityPersonal
 	}
@@ -103,7 +104,8 @@ func (s *Server) UpdateEvent(ctx context.Context, req *pb.UpdateEventRequest) (*
 		FamilyID:      req.FamilyId,
 		LineKey:       req.LineKey,
 		ParentLineKey: strPtr(req.ParentLineKey),
-		Type:          domain.EventType(req.Type),
+		Type:          protoToEventType(req.Type),
+		ActivityType:  protoToActivityType(req.ActivityType),
 		Title:         req.Title,
 		Label:         strPtr(req.Label),
 		Icon:          strPtr(req.Icon),
@@ -147,7 +149,7 @@ func (s *Server) ListEvents(ctx context.Context, req *pb.ListEventsRequest) (*pb
 		To:       req.To,
 	}
 	for _, v := range req.Visibilities {
-		f.Visibilities = append(f.Visibilities, domain.Visibility(v))
+		f.Visibilities = append(f.Visibilities, protoToVisibility(v))
 	}
 
 	events, err := s.db.ListEvents(ctx, f)

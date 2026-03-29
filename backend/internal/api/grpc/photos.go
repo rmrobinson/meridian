@@ -25,7 +25,7 @@ func (s *Server) AddPhoto(ctx context.Context, req *pb.AddPhotoRequest) (*pb.Pho
 		ID:        newID(),
 		EventID:   req.EventId,
 		S3URL:     req.S3Url,
-		Variant:   domain.PhotoVariant(req.Variant),
+		Variant:   protoToPhotoVariant(req.Variant),
 		SortOrder: len(existing),
 	}
 

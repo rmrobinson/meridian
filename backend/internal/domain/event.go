@@ -33,12 +33,36 @@ const (
 	PhotoVariantOriginal PhotoVariant = "original"
 )
 
+type ActivityType string
+
+const (
+	ActivityTypeUnspecified ActivityType = ""
+	// fitness
+	ActivityTypeRun    ActivityType = "run"
+	ActivityTypeCycle  ActivityType = "cycle"
+	ActivityTypeHike   ActivityType = "hike"
+	ActivityTypeSki    ActivityType = "ski"
+	ActivityTypeScuba  ActivityType = "scuba"
+	ActivityTypeClimb  ActivityType = "climb"
+	ActivityTypeGolf   ActivityType = "golf"
+	ActivityTypeSquash ActivityType = "squash"
+	// hobbies
+	ActivityTypeConcert ActivityType = "concert"
+	// flights
+	ActivityTypeFlight ActivityType = "flight"
+	// books / film_tv
+	ActivityTypeBook  ActivityType = "book"
+	ActivityTypeMovie ActivityType = "movie"
+	ActivityTypeTV    ActivityType = "tv"
+)
+
 type Event struct {
 	ID            string
 	FamilyID      string
 	LineKey       string
 	ParentLineKey *string
 	Type          EventType
+	ActivityType  ActivityType
 	Title         string
 	Label         *string
 	Icon          *string

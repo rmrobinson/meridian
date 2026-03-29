@@ -104,7 +104,7 @@ func TestCreateEvent_WithProvidedID(t *testing.T) {
 	env := newTestEnv(t)
 	resp, err := env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
 		Id: "japan-2023", FamilyId: "travel", LineKey: "travel-japan",
-		Type: "point", Title: "Japan Trip", Date: "2023-06-01", Visibility: "public",
+		Type: pb.EventType_EVENT_TYPE_POINT, Title: "Japan Trip", Date: "2023-06-01", Visibility: pb.Visibility_VISIBILITY_PUBLIC,
 	})
 	if err != nil {
 		t.Fatalf("CreateEvent: %v", err)
@@ -117,7 +117,7 @@ func TestCreateEvent_WithProvidedID(t *testing.T) {
 func TestCreateEvent_WithoutID_GeneratesNanoid(t *testing.T) {
 	env := newTestEnv(t)
 	resp, err := env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
-		FamilyId: "travel", LineKey: "travel-x", Type: "point", Title: "Auto ID",
+		FamilyId: "travel", LineKey: "travel-x", Type: pb.EventType_EVENT_TYPE_POINT, Title: "Auto ID",
 	})
 	if err != nil {
 		t.Fatalf("CreateEvent: %v", err)
@@ -131,7 +131,7 @@ func TestCreateEvent_SpanEvent(t *testing.T) {
 	env := newTestEnv(t)
 	resp, err := env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
 		Id: "acme-corp", FamilyId: "employment", LineKey: "employment-acme",
-		Type: "span", Title: "Acme Corp", StartDate: "2020-01-01", EndDate: "2023-06-01",
+		Type: pb.EventType_EVENT_TYPE_SPAN, Title: "Acme Corp", StartDate: "2020-01-01", EndDate: "2023-06-01",
 	})
 	if err != nil {
 		t.Fatalf("CreateEvent: %v", err)
@@ -145,7 +145,7 @@ func TestCreateEvent_PointEvent(t *testing.T) {
 	env := newTestEnv(t)
 	resp, err := env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
 		Id: "concert-1", FamilyId: "hobbies", LineKey: "hobbies-concert",
-		Type: "point", Title: "Concert", Date: "2023-03-15",
+		Type: pb.EventType_EVENT_TYPE_POINT, Title: "Concert", Date: "2023-03-15",
 	})
 	if err != nil {
 		t.Fatalf("CreateEvent: %v", err)
@@ -158,7 +158,7 @@ func TestCreateEvent_PointEvent(t *testing.T) {
 func TestCreateEvent_EmptyTitle_ReturnsInvalidArgument(t *testing.T) {
 	env := newTestEnv(t)
 	_, err := env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
-		FamilyId: "travel", LineKey: "travel-x", Type: "point", Title: "",
+		FamilyId: "travel", LineKey: "travel-x", Type: pb.EventType_EVENT_TYPE_POINT, Title: "",
 	})
 	assertCode(t, err, codes.InvalidArgument)
 }
@@ -166,7 +166,7 @@ func TestCreateEvent_EmptyTitle_ReturnsInvalidArgument(t *testing.T) {
 func TestCreateEvent_UnknownFamilyID_ReturnsInvalidArgument(t *testing.T) {
 	env := newTestEnv(t)
 	_, err := env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
-		FamilyId: "unknown", LineKey: "x", Type: "point", Title: "Test",
+		FamilyId: "unknown", LineKey: "x", Type: pb.EventType_EVENT_TYPE_POINT, Title: "Test",
 	})
 	assertCode(t, err, codes.InvalidArgument)
 }
@@ -174,7 +174,7 @@ func TestCreateEvent_UnknownFamilyID_ReturnsInvalidArgument(t *testing.T) {
 func TestCreateEvent_DuplicateID_ReturnsAlreadyExists(t *testing.T) {
 	env := newTestEnv(t)
 	req := &pb.CreateEventRequest{
-		Id: "dup-id", FamilyId: "travel", LineKey: "l", Type: "point", Title: "First",
+		Id: "dup-id", FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "First",
 	}
 	env.client.CreateEvent(authCtx(t), req)
 	_, err := env.client.CreateEvent(authCtx(t), req)
@@ -184,7 +184,7 @@ func TestCreateEvent_DuplicateID_ReturnsAlreadyExists(t *testing.T) {
 func TestCreateEvent_NoToken_ReturnsUnauthenticated(t *testing.T) {
 	env := newTestEnv(t)
 	_, err := env.client.CreateEvent(context.Background(), &pb.CreateEventRequest{
-		FamilyId: "travel", LineKey: "l", Type: "point", Title: "Test",
+		FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "Test",
 	})
 	assertCode(t, err, codes.Unauthenticated)
 }
@@ -194,22 +194,36 @@ func TestCreateEvent_WrongToken_ReturnsUnauthenticated(t *testing.T) {
 	ctx := metadata.NewOutgoingContext(context.Background(),
 		metadata.Pairs("authorization", "Bearer wrongtoken"))
 	_, err := env.client.CreateEvent(ctx, &pb.CreateEventRequest{
-		FamilyId: "travel", LineKey: "l", Type: "point", Title: "Test",
+		FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "Test",
 	})
 	assertCode(t, err, codes.Unauthenticated)
+}
+
+func TestCreateEvent_ActivityTypeRoundTrip(t *testing.T) {
+	env := newTestEnv(t)
+	resp, err := env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		Id: "run-1", FamilyId: "fitness", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT,
+		Title: "Morning Run", Date: "2024-05-01", ActivityType: pb.ActivityType_ACTIVITY_TYPE_RUN,
+	})
+	if err != nil {
+		t.Fatalf("CreateEvent: %v", err)
+	}
+	if resp.ActivityType != pb.ActivityType_ACTIVITY_TYPE_RUN {
+		t.Errorf("activity_type: got %v, want ACTIVITY_TYPE_RUN", resp.ActivityType)
+	}
 }
 
 func TestCreateEvent_DefaultVisibilityIsPersonal(t *testing.T) {
 	env := newTestEnv(t)
 	resp, err := env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
-		Id: "vis-default", FamilyId: "travel", LineKey: "l", Type: "point", Title: "Test",
+		Id: "vis-default", FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "Test",
 		// Visibility intentionally omitted
 	})
 	if err != nil {
 		t.Fatalf("CreateEvent: %v", err)
 	}
-	if resp.Visibility != "personal" {
-		t.Errorf("visibility: got %q, want personal", resp.Visibility)
+	if resp.Visibility != pb.Visibility_VISIBILITY_PERSONAL {
+		t.Errorf("visibility: got %v, want VISIBILITY_PERSONAL", resp.Visibility)
 	}
 }
 
@@ -218,12 +232,12 @@ func TestCreateEvent_DefaultVisibilityIsPersonal(t *testing.T) {
 func TestUpdateEvent_FullReplacement(t *testing.T) {
 	env := newTestEnv(t)
 	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
-		Id: "upd-1", FamilyId: "travel", LineKey: "l", Type: "point",
+		Id: "upd-1", FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT,
 		Title: "Original", Label: "old label",
 	})
 
 	resp, err := env.client.UpdateEvent(authCtx(t), &pb.UpdateEventRequest{
-		Id: "upd-1", FamilyId: "travel", LineKey: "l", Type: "point",
+		Id: "upd-1", FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT,
 		Title: "Updated", // Label intentionally omitted — should be cleared
 	})
 	if err != nil {
@@ -240,7 +254,7 @@ func TestUpdateEvent_FullReplacement(t *testing.T) {
 func TestUpdateEvent_UpdatesTimestamp(t *testing.T) {
 	env := newTestEnv(t)
 	created, err := env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
-		Id: "ts-evt", FamilyId: "travel", LineKey: "l", Type: "point", Title: "Original",
+		Id: "ts-evt", FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "Original",
 	})
 	if err != nil {
 		t.Fatalf("CreateEvent: %v", err)
@@ -256,7 +270,7 @@ func TestUpdateEvent_UpdatesTimestamp(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	_, err = env.client.UpdateEvent(authCtx(t), &pb.UpdateEventRequest{
-		Id: "ts-evt", FamilyId: "travel", LineKey: "l", Type: "point", Title: "Updated",
+		Id: "ts-evt", FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "Updated",
 	})
 	if err != nil {
 		t.Fatalf("UpdateEvent: %v", err)
@@ -275,7 +289,7 @@ func TestUpdateEvent_UpdatesTimestamp(t *testing.T) {
 func TestUpdateEvent_NotFound(t *testing.T) {
 	env := newTestEnv(t)
 	_, err := env.client.UpdateEvent(authCtx(t), &pb.UpdateEventRequest{
-		Id: "ghost", FamilyId: "travel", LineKey: "l", Type: "point", Title: "x",
+		Id: "ghost", FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "x",
 	})
 	assertCode(t, err, codes.NotFound)
 }
@@ -283,12 +297,12 @@ func TestUpdateEvent_NotFound(t *testing.T) {
 func TestUpdateEvent_SoftDeletedReturnsNotFound(t *testing.T) {
 	env := newTestEnv(t)
 	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
-		Id: "del-upd", FamilyId: "travel", LineKey: "l", Type: "point", Title: "x",
+		Id: "del-upd", FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "x",
 	})
 	env.client.DeleteEvent(authCtx(t), &pb.DeleteEventRequest{Id: "del-upd"})
 
 	_, err := env.client.UpdateEvent(authCtx(t), &pb.UpdateEventRequest{
-		Id: "del-upd", FamilyId: "travel", LineKey: "l", Type: "point", Title: "x",
+		Id: "del-upd", FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "x",
 	})
 	assertCode(t, err, codes.NotFound)
 }
@@ -298,7 +312,7 @@ func TestUpdateEvent_SoftDeletedReturnsNotFound(t *testing.T) {
 func TestDeleteEvent_SoftDeletes(t *testing.T) {
 	env := newTestEnv(t)
 	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
-		Id: "to-del", FamilyId: "travel", LineKey: "l", Type: "point", Title: "x",
+		Id: "to-del", FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "x",
 	})
 	_, err := env.client.DeleteEvent(authCtx(t), &pb.DeleteEventRequest{Id: "to-del"})
 	if err != nil {
@@ -320,7 +334,7 @@ func TestDeleteEvent_NotFound(t *testing.T) {
 func TestDeleteEvent_AlreadyDeleted_ReturnsNotFound(t *testing.T) {
 	env := newTestEnv(t)
 	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
-		Id: "double-del", FamilyId: "travel", LineKey: "l", Type: "point", Title: "x",
+		Id: "double-del", FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "x",
 	})
 	env.client.DeleteEvent(authCtx(t), &pb.DeleteEventRequest{Id: "double-del"})
 	_, err := env.client.DeleteEvent(authCtx(t), &pb.DeleteEventRequest{Id: "double-del"})
@@ -332,10 +346,10 @@ func TestDeleteEvent_AlreadyDeleted_ReturnsNotFound(t *testing.T) {
 func TestAddPhoto_AppearsInEvent(t *testing.T) {
 	env := newTestEnv(t)
 	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
-		Id: "evt-p", FamilyId: "travel", LineKey: "l", Type: "point", Title: "x",
+		Id: "evt-p", FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "x",
 	})
 	resp, err := env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{
-		EventId: "evt-p", S3Url: "https://s3/p1.jpg", Variant: "original",
+		EventId: "evt-p", S3Url: "https://s3/p1.jpg", Variant: pb.PhotoVariant_PHOTO_VARIANT_ORIGINAL,
 	})
 	if err != nil {
 		t.Fatalf("AddPhoto: %v", err)
@@ -351,10 +365,10 @@ func TestAddPhoto_AppearsInEvent(t *testing.T) {
 func TestAddPhoto_AppendedAtEnd(t *testing.T) {
 	env := newTestEnv(t)
 	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
-		Id: "evt-p2", FamilyId: "travel", LineKey: "l", Type: "point", Title: "x",
+		Id: "evt-p2", FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "x",
 	})
-	env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-p2", S3Url: "https://s3/a.jpg", Variant: "original"})
-	resp, _ := env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-p2", S3Url: "https://s3/b.jpg", Variant: "original"})
+	env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-p2", S3Url: "https://s3/a.jpg", Variant: pb.PhotoVariant_PHOTO_VARIANT_ORIGINAL})
+	resp, _ := env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-p2", S3Url: "https://s3/b.jpg", Variant: pb.PhotoVariant_PHOTO_VARIANT_ORIGINAL})
 	if resp.SortOrder != 1 {
 		t.Errorf("second photo sort_order: got %d, want 1", resp.SortOrder)
 	}
@@ -363,7 +377,7 @@ func TestAddPhoto_AppendedAtEnd(t *testing.T) {
 func TestAddPhoto_UnknownEvent_ReturnsNotFound(t *testing.T) {
 	env := newTestEnv(t)
 	_, err := env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{
-		EventId: "no-such-event", S3Url: "https://s3/x.jpg", Variant: "original",
+		EventId: "no-such-event", S3Url: "https://s3/x.jpg", Variant: pb.PhotoVariant_PHOTO_VARIANT_ORIGINAL,
 	})
 	assertCode(t, err, codes.NotFound)
 }
@@ -373,9 +387,9 @@ func TestAddPhoto_UnknownEvent_ReturnsNotFound(t *testing.T) {
 func TestRemovePhoto_NoLongerListed(t *testing.T) {
 	env := newTestEnv(t)
 	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
-		Id: "evt-rm", FamilyId: "travel", LineKey: "l", Type: "point", Title: "x",
+		Id: "evt-rm", FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "x",
 	})
-	p, _ := env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-rm", S3Url: "https://s3/x.jpg", Variant: "original"})
+	p, _ := env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-rm", S3Url: "https://s3/x.jpg", Variant: pb.PhotoVariant_PHOTO_VARIANT_ORIGINAL})
 	_, err := env.client.RemovePhoto(authCtx(t), &pb.RemovePhotoRequest{Id: p.Id})
 	if err != nil {
 		t.Fatalf("RemovePhoto: %v", err)
@@ -397,11 +411,11 @@ func TestRemovePhoto_NotFound(t *testing.T) {
 func TestReorderPhotos_UpdatesOrder(t *testing.T) {
 	env := newTestEnv(t)
 	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
-		Id: "evt-reorder", FamilyId: "travel", LineKey: "l", Type: "point", Title: "x",
+		Id: "evt-reorder", FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "x",
 	})
-	p1, _ := env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-reorder", S3Url: "https://s3/1.jpg", Variant: "original"})
-	p2, _ := env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-reorder", S3Url: "https://s3/2.jpg", Variant: "original"})
-	p3, _ := env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-reorder", S3Url: "https://s3/3.jpg", Variant: "original"})
+	p1, _ := env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-reorder", S3Url: "https://s3/1.jpg", Variant: pb.PhotoVariant_PHOTO_VARIANT_ORIGINAL})
+	p2, _ := env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-reorder", S3Url: "https://s3/2.jpg", Variant: pb.PhotoVariant_PHOTO_VARIANT_ORIGINAL})
+	p3, _ := env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-reorder", S3Url: "https://s3/3.jpg", Variant: pb.PhotoVariant_PHOTO_VARIANT_ORIGINAL})
 
 	resp, err := env.client.ReorderPhotos(authCtx(t), &pb.ReorderPhotosRequest{
 		EventId:  "evt-reorder",
@@ -421,9 +435,9 @@ func TestReorderPhotos_UpdatesOrder(t *testing.T) {
 func TestReorderPhotos_IDNotBelongingToEvent_ReturnsInvalidArgument(t *testing.T) {
 	env := newTestEnv(t)
 	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
-		Id: "evt-ro-bad", FamilyId: "travel", LineKey: "l", Type: "point", Title: "x",
+		Id: "evt-ro-bad", FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "x",
 	})
-	p1, _ := env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-ro-bad", S3Url: "https://s3/1.jpg", Variant: "original"})
+	p1, _ := env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-ro-bad", S3Url: "https://s3/1.jpg", Variant: pb.PhotoVariant_PHOTO_VARIANT_ORIGINAL})
 
 	_, err := env.client.ReorderPhotos(authCtx(t), &pb.ReorderPhotosRequest{
 		EventId:  "evt-ro-bad",
@@ -435,10 +449,10 @@ func TestReorderPhotos_IDNotBelongingToEvent_ReturnsInvalidArgument(t *testing.T
 func TestReorderPhotos_MissingPhotoIDs_ReturnsInvalidArgument(t *testing.T) {
 	env := newTestEnv(t)
 	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
-		Id: "evt-ro-inc", FamilyId: "travel", LineKey: "l", Type: "point", Title: "x",
+		Id: "evt-ro-inc", FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "x",
 	})
-	p1, _ := env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-ro-inc", S3Url: "https://s3/1.jpg", Variant: "original"})
-	env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-ro-inc", S3Url: "https://s3/2.jpg", Variant: "original"})
+	p1, _ := env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-ro-inc", S3Url: "https://s3/1.jpg", Variant: pb.PhotoVariant_PHOTO_VARIANT_ORIGINAL})
+	env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-ro-inc", S3Url: "https://s3/2.jpg", Variant: pb.PhotoVariant_PHOTO_VARIANT_ORIGINAL})
 
 	// Only submitting one of two photos
 	_, err := env.client.ReorderPhotos(authCtx(t), &pb.ReorderPhotosRequest{
@@ -453,12 +467,12 @@ func TestReorderPhotos_MissingPhotoIDs_ReturnsInvalidArgument(t *testing.T) {
 func TestListEvents_ReturnsAllEvents(t *testing.T) {
 	env := newTestEnv(t)
 	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
-		Id: "le-1", FamilyId: "travel", LineKey: "l", Type: "point", Title: "Trip A",
-		Date: "2023-01-10", Visibility: "public",
+		Id: "le-1", FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "Trip A",
+		Date: "2023-01-10", Visibility: pb.Visibility_VISIBILITY_PUBLIC,
 	})
 	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
-		Id: "le-2", FamilyId: "travel", LineKey: "l", Type: "point", Title: "Trip B",
-		Date: "2023-06-15", Visibility: "public",
+		Id: "le-2", FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "Trip B",
+		Date: "2023-06-15", Visibility: pb.Visibility_VISIBILITY_PUBLIC,
 	})
 
 	resp, err := env.client.ListEvents(authCtx(t), &pb.ListEventsRequest{})
@@ -473,12 +487,12 @@ func TestListEvents_ReturnsAllEvents(t *testing.T) {
 func TestListEvents_FilterByFamilyID(t *testing.T) {
 	env := newTestEnv(t)
 	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
-		Id: "le-travel", FamilyId: "travel", LineKey: "l", Type: "point", Title: "Trip",
-		Date: "2023-01-01", Visibility: "public",
+		Id: "le-travel", FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "Trip",
+		Date: "2023-01-01", Visibility: pb.Visibility_VISIBILITY_PUBLIC,
 	})
 	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
-		Id: "le-book", FamilyId: "books", LineKey: "l", Type: "point", Title: "Book",
-		Date: "2023-01-01", Visibility: "public",
+		Id: "le-book", FamilyId: "books", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "Book",
+		Date: "2023-01-01", Visibility: pb.Visibility_VISIBILITY_PUBLIC,
 	})
 
 	resp, err := env.client.ListEvents(authCtx(t), &pb.ListEventsRequest{FamilyId: "travel"})
@@ -493,16 +507,16 @@ func TestListEvents_FilterByFamilyID(t *testing.T) {
 func TestListEvents_FilterByDateRange(t *testing.T) {
 	env := newTestEnv(t)
 	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
-		Id: "le-early", FamilyId: "travel", LineKey: "l", Type: "point", Title: "Early",
-		Date: "2022-03-01", Visibility: "public",
+		Id: "le-early", FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "Early",
+		Date: "2022-03-01", Visibility: pb.Visibility_VISIBILITY_PUBLIC,
 	})
 	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
-		Id: "le-mid", FamilyId: "travel", LineKey: "l", Type: "point", Title: "Mid",
-		Date: "2023-06-01", Visibility: "public",
+		Id: "le-mid", FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "Mid",
+		Date: "2023-06-01", Visibility: pb.Visibility_VISIBILITY_PUBLIC,
 	})
 	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
-		Id: "le-late", FamilyId: "travel", LineKey: "l", Type: "point", Title: "Late",
-		Date: "2024-09-01", Visibility: "public",
+		Id: "le-late", FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "Late",
+		Date: "2024-09-01", Visibility: pb.Visibility_VISIBILITY_PUBLIC,
 	})
 
 	resp, err := env.client.ListEvents(authCtx(t), &pb.ListEventsRequest{
@@ -520,16 +534,16 @@ func TestListEvents_FilterByDateRange(t *testing.T) {
 func TestListEvents_FilterByVisibility(t *testing.T) {
 	env := newTestEnv(t)
 	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
-		Id: "le-pub", FamilyId: "travel", LineKey: "l", Type: "point", Title: "Public",
-		Date: "2023-01-01", Visibility: "public",
+		Id: "le-pub", FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "Public",
+		Date: "2023-01-01", Visibility: pb.Visibility_VISIBILITY_PUBLIC,
 	})
 	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
-		Id: "le-priv", FamilyId: "travel", LineKey: "l", Type: "point", Title: "Private",
-		Date: "2023-01-01", Visibility: "personal",
+		Id: "le-priv", FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "Private",
+		Date: "2023-01-01", Visibility: pb.Visibility_VISIBILITY_PERSONAL,
 	})
 
 	resp, err := env.client.ListEvents(authCtx(t), &pb.ListEventsRequest{
-		Visibilities: []string{"public"},
+		Visibilities: []pb.Visibility{pb.Visibility_VISIBILITY_PUBLIC},
 	})
 	if err != nil {
 		t.Fatalf("ListEvents: %v", err)
@@ -542,8 +556,8 @@ func TestListEvents_FilterByVisibility(t *testing.T) {
 func TestListEvents_SoftDeletedEventExcluded(t *testing.T) {
 	env := newTestEnv(t)
 	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
-		Id: "le-del", FamilyId: "travel", LineKey: "l", Type: "point", Title: "x",
-		Date: "2023-01-01", Visibility: "public",
+		Id: "le-del", FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "x",
+		Date: "2023-01-01", Visibility: pb.Visibility_VISIBILITY_PUBLIC,
 	})
 	env.client.DeleteEvent(authCtx(t), &pb.DeleteEventRequest{Id: "le-del"})
 
@@ -559,11 +573,11 @@ func TestListEvents_SoftDeletedEventExcluded(t *testing.T) {
 func TestListEvents_IncludesPhotos(t *testing.T) {
 	env := newTestEnv(t)
 	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
-		Id: "le-photo", FamilyId: "travel", LineKey: "l", Type: "point", Title: "x",
-		Date: "2023-01-01", Visibility: "public",
+		Id: "le-photo", FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "x",
+		Date: "2023-01-01", Visibility: pb.Visibility_VISIBILITY_PUBLIC,
 	})
 	env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{
-		EventId: "le-photo", S3Url: "https://s3/x.jpg", Variant: "original",
+		EventId: "le-photo", S3Url: "https://s3/x.jpg", Variant: pb.PhotoVariant_PHOTO_VARIANT_ORIGINAL,
 	})
 
 	resp, err := env.client.ListEvents(authCtx(t), &pb.ListEventsRequest{})
