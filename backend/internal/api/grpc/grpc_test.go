@@ -173,8 +173,8 @@ func TestCreateEvent_WithProvidedID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateEvent: %v", err)
 	}
-	if resp.Id != "japan-2023" {
-		t.Errorf("id: got %q, want %q", resp.Id, "japan-2023")
+	if resp.Event.Id != "japan-2023" {
+		t.Errorf("id: got %q, want %q", resp.Event.Id, "japan-2023")
 	}
 }
 
@@ -186,7 +186,7 @@ func TestCreateEvent_WithoutID_GeneratesNanoid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateEvent: %v", err)
 	}
-	if resp.Id == "" {
+	if resp.Event.Id == "" {
 		t.Error("expected a generated id, got empty string")
 	}
 }
@@ -200,8 +200,8 @@ func TestCreateEvent_SpanEvent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateEvent: %v", err)
 	}
-	if resp.StartDate != "2020-01-01" {
-		t.Errorf("start_date: got %q, want 2020-01-01", resp.StartDate)
+	if resp.Event.StartDate != "2020-01-01" {
+		t.Errorf("start_date: got %q, want 2020-01-01", resp.Event.StartDate)
 	}
 }
 
@@ -214,8 +214,8 @@ func TestCreateEvent_PointEvent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateEvent: %v", err)
 	}
-	if resp.Date != "2023-03-15" {
-		t.Errorf("date: got %q, want 2023-03-15", resp.Date)
+	if resp.Event.Date != "2023-03-15" {
+		t.Errorf("date: got %q, want 2023-03-15", resp.Event.Date)
 	}
 }
 
@@ -272,8 +272,8 @@ func TestCreateEvent_ActivityTypeRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateEvent: %v", err)
 	}
-	if resp.ActivityType != pb.ActivityType_ACTIVITY_TYPE_RUN {
-		t.Errorf("activity_type: got %v, want ACTIVITY_TYPE_RUN", resp.ActivityType)
+	if resp.Event.ActivityType != pb.ActivityType_ACTIVITY_TYPE_RUN {
+		t.Errorf("activity_type: got %v, want ACTIVITY_TYPE_RUN", resp.Event.ActivityType)
 	}
 }
 
@@ -286,8 +286,8 @@ func TestCreateEvent_DefaultVisibilityIsPersonal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateEvent: %v", err)
 	}
-	if resp.Visibility != pb.Visibility_VISIBILITY_PERSONAL {
-		t.Errorf("visibility: got %v, want VISIBILITY_PERSONAL", resp.Visibility)
+	if resp.Event.Visibility != pb.Visibility_VISIBILITY_PERSONAL {
+		t.Errorf("visibility: got %v, want VISIBILITY_PERSONAL", resp.Event.Visibility)
 	}
 }
 
@@ -307,11 +307,11 @@ func TestUpdateEvent_FullReplacement(t *testing.T) {
 	if err != nil {
 		t.Fatalf("UpdateEvent: %v", err)
 	}
-	if resp.Title != "Updated" {
-		t.Errorf("title: got %q, want Updated", resp.Title)
+	if resp.Event.Title != "Updated" {
+		t.Errorf("title: got %q, want Updated", resp.Event.Title)
 	}
-	if resp.Label != "" {
-		t.Errorf("label should be cleared, got %q", resp.Label)
+	if resp.Event.Label != "" {
+		t.Errorf("label should be cleared, got %q", resp.Event.Label)
 	}
 }
 
@@ -325,7 +325,7 @@ func TestUpdateEvent_UpdatesTimestamp(t *testing.T) {
 	}
 
 	// Fetch the raw domain event so we can compare updated_at precisely.
-	before, err := env.db.GetEventByID(context.Background(), created.Id)
+	before, err := env.db.GetEventByID(context.Background(), created.Event.Id)
 	if err != nil {
 		t.Fatalf("GetEventByID before update: %v", err)
 	}
@@ -340,7 +340,7 @@ func TestUpdateEvent_UpdatesTimestamp(t *testing.T) {
 		t.Fatalf("UpdateEvent: %v", err)
 	}
 
-	after, err := env.db.GetEventByID(context.Background(), created.Id)
+	after, err := env.db.GetEventByID(context.Background(), created.Event.Id)
 	if err != nil {
 		t.Fatalf("GetEventByID after update: %v", err)
 	}
@@ -418,11 +418,11 @@ func TestAddPhoto_AppearsInEvent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AddPhoto: %v", err)
 	}
-	if resp.Id == "" {
+	if resp.Photo.Id == "" {
 		t.Error("expected non-empty photo id")
 	}
-	if resp.SortOrder != 0 {
-		t.Errorf("sort_order: got %d, want 0", resp.SortOrder)
+	if resp.Photo.SortOrder != 0 {
+		t.Errorf("sort_order: got %d, want 0", resp.Photo.SortOrder)
 	}
 }
 
@@ -433,8 +433,8 @@ func TestAddPhoto_AppendedAtEnd(t *testing.T) {
 	})
 	env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-p2", S3Url: "https://s3/a.jpg", Variant: pb.PhotoVariant_PHOTO_VARIANT_ORIGINAL})
 	resp, _ := env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-p2", S3Url: "https://s3/b.jpg", Variant: pb.PhotoVariant_PHOTO_VARIANT_ORIGINAL})
-	if resp.SortOrder != 1 {
-		t.Errorf("second photo sort_order: got %d, want 1", resp.SortOrder)
+	if resp.Photo.SortOrder != 1 {
+		t.Errorf("second photo sort_order: got %d, want 1", resp.Photo.SortOrder)
 	}
 }
 
@@ -454,7 +454,7 @@ func TestRemovePhoto_NoLongerListed(t *testing.T) {
 		Id: "evt-rm", FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "x",
 	})
 	p, _ := env.client.AddPhoto(authCtx(t), &pb.AddPhotoRequest{EventId: "evt-rm", S3Url: "https://s3/x.jpg", Variant: pb.PhotoVariant_PHOTO_VARIANT_ORIGINAL})
-	_, err := env.client.RemovePhoto(authCtx(t), &pb.RemovePhotoRequest{Id: p.Id})
+	_, err := env.client.RemovePhoto(authCtx(t), &pb.RemovePhotoRequest{Id: p.Photo.Id})
 	if err != nil {
 		t.Fatalf("RemovePhoto: %v", err)
 	}
@@ -483,13 +483,13 @@ func TestReorderPhotos_UpdatesOrder(t *testing.T) {
 
 	resp, err := env.client.ReorderPhotos(authCtx(t), &pb.ReorderPhotosRequest{
 		EventId:  "evt-reorder",
-		PhotoIds: []string{p3.Id, p1.Id, p2.Id},
+		PhotoIds: []string{p3.Photo.Id, p1.Photo.Id, p2.Photo.Id},
 	})
 	if err != nil {
 		t.Fatalf("ReorderPhotos: %v", err)
 	}
-	want := []string{p3.Id, p1.Id, p2.Id}
-	for i, p := range resp.Photos {
+	want := []string{p3.Photo.Id, p1.Photo.Id, p2.Photo.Id}
+	for i, p := range resp.Event.Photos {
 		if p.Id != want[i] {
 			t.Errorf("photos[%d]: got %q, want %q", i, p.Id, want[i])
 		}
@@ -505,7 +505,7 @@ func TestReorderPhotos_IDNotBelongingToEvent_ReturnsInvalidArgument(t *testing.T
 
 	_, err := env.client.ReorderPhotos(authCtx(t), &pb.ReorderPhotosRequest{
 		EventId:  "evt-ro-bad",
-		PhotoIds: []string{p1.Id, "foreign-photo-id"},
+		PhotoIds: []string{p1.Photo.Id, "foreign-photo-id"},
 	})
 	assertCode(t, err, codes.InvalidArgument)
 }
@@ -521,7 +521,7 @@ func TestReorderPhotos_MissingPhotoIDs_ReturnsInvalidArgument(t *testing.T) {
 	// Only submitting one of two photos
 	_, err := env.client.ReorderPhotos(authCtx(t), &pb.ReorderPhotosRequest{
 		EventId:  "evt-ro-inc",
-		PhotoIds: []string{p1.Id},
+		PhotoIds: []string{p1.Photo.Id},
 	})
 	assertCode(t, err, codes.InvalidArgument)
 }
@@ -941,7 +941,7 @@ func TestCreateEvent_Books_CallsEnricher(t *testing.T) {
 	if !enricher.called {
 		t.Error("expected book enricher to be called")
 	}
-	if resp.Metadata == "" {
+	if resp.Event.Metadata == "" {
 		t.Error("expected enriched metadata in response")
 	}
 }
@@ -965,7 +965,7 @@ func TestCreateEvent_FilmTV_CallsEnricher(t *testing.T) {
 	if !enricher.called {
 		t.Error("expected film_tv enricher to be called")
 	}
-	if resp.Metadata == "" {
+	if resp.Event.Metadata == "" {
 		t.Error("expected enriched metadata in response")
 	}
 }

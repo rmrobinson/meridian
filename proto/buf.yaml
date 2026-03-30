@@ -7,3 +7,6 @@ lint:
 breaking:
   use:
     - FILE
+  ignore_unstable_packages: false
+  except:
+    - FILE_NO_DELETE

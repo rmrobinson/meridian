@@ -13,7 +13,7 @@ import (
 	"github.com/rmrobinson/meridian/backend/internal/domain"
 )
 
-func (s *Server) AddPhoto(ctx context.Context, req *pb.AddPhotoRequest) (*pb.Photo, error) {
+func (s *Server) AddPhoto(ctx context.Context, req *pb.AddPhotoRequest) (*pb.AddPhotoResponse, error) {
 	// Determine the next sort_order by counting existing photos.
 	existing, err := s.db.ListPhotosForEvent(ctx, req.EventId)
 	if err != nil {
@@ -41,7 +41,7 @@ func (s *Server) AddPhoto(ctx context.Context, req *pb.AddPhotoRequest) (*pb.Pho
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 
-	return photoToProto(p), nil
+	return &pb.AddPhotoResponse{Photo: photoToProto(p)}, nil
 }
 
 func (s *Server) RemovePhoto(ctx context.Context, req *pb.RemovePhotoRequest) (*pb.RemovePhotoResponse, error) {
@@ -55,7 +55,7 @@ func (s *Server) RemovePhoto(ctx context.Context, req *pb.RemovePhotoRequest) (*
 	return &pb.RemovePhotoResponse{}, nil
 }
 
-func (s *Server) ReorderPhotos(ctx context.Context, req *pb.ReorderPhotosRequest) (*pb.Event, error) {
+func (s *Server) ReorderPhotos(ctx context.Context, req *pb.ReorderPhotosRequest) (*pb.ReorderPhotosResponse, error) {
 	// Validate that all submitted IDs belong to the event and are complete.
 	existing, err := s.db.ListPhotosForEvent(ctx, req.EventId)
 	if err != nil {
@@ -96,7 +96,7 @@ func (s *Server) ReorderPhotos(ctx context.Context, req *pb.ReorderPhotosRequest
 		s.logger.Error("listing photos after reorder", zap.String("event_id", req.EventId), zap.Error(err))
 		return nil, status.Error(codes.Internal, "internal error")
 	}
-	return eventToProto(event, photos), nil
+	return &pb.ReorderPhotosResponse{Event: eventToProto(event, photos)}, nil
 }
 
 func isForeignKeyViolation(err error) bool {

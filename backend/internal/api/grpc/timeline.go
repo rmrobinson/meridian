@@ -31,7 +31,7 @@ var validFamilyIDs = map[string]bool{
 	"travel": true, "flights": true, "books": true, "film_tv": true, "fitness": true,
 }
 
-func (s *Server) CreateEvent(ctx context.Context, req *pb.CreateEventRequest) (*pb.Event, error) {
+func (s *Server) CreateEvent(ctx context.Context, req *pb.CreateEventRequest) (*pb.CreateEventResponse, error) {
 	if req.Title == "" {
 		return nil, status.Error(codes.InvalidArgument, "title is required")
 	}
@@ -95,10 +95,10 @@ func (s *Server) CreateEvent(ctx context.Context, req *pb.CreateEventRequest) (*
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 
-	return eventToProto(e, nil), nil
+	return &pb.CreateEventResponse{Event: eventToProto(e, nil)}, nil
 }
 
-func (s *Server) UpdateEvent(ctx context.Context, req *pb.UpdateEventRequest) (*pb.Event, error) {
+func (s *Server) UpdateEvent(ctx context.Context, req *pb.UpdateEventRequest) (*pb.UpdateEventResponse, error) {
 	if req.Title == "" {
 		return nil, status.Error(codes.InvalidArgument, "title is required")
 	}
@@ -154,7 +154,7 @@ func (s *Server) UpdateEvent(ctx context.Context, req *pb.UpdateEventRequest) (*
 		s.logger.Error("listing photos for updated event", zap.String("id", req.Id), zap.Error(err))
 		return nil, status.Error(codes.Internal, "internal error")
 	}
-	return eventToProto(updated, photos), nil
+	return &pb.UpdateEventResponse{Event: eventToProto(updated, photos)}, nil
 }
 
 func (s *Server) ListEvents(ctx context.Context, req *pb.ListEventsRequest) (*pb.ListEventsResponse, error) {

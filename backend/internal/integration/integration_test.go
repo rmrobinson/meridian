@@ -180,10 +180,10 @@ func TestCreateViaGRPC_RetrieveViaREST(t *testing.T) {
 	}
 
 	// Retrieve via REST.
-	resp := env.restGet(t, "/api/events/"+created.Id, "")
+	resp := env.restGet(t, "/api/events/"+created.Event.Id, "")
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		t.Errorf("GET /api/events/%s: got %d, want 200", created.Id, resp.StatusCode)
+		t.Errorf("GET /api/events/%s: got %d, want 200", created.Event.Id, resp.StatusCode)
 	}
 
 	var body map[string]any
@@ -358,7 +358,7 @@ func TestAddAndReorderPhotos_RESTReturnsCorrectOrder(t *testing.T) {
 	// Reorder: put photo2 first.
 	_, err = env.grpcClient.ReorderPhotos(authCtx(t), &pb.ReorderPhotosRequest{
 		EventId:  "photo-evt",
-		PhotoIds: []string{r2.Id, r1.Id},
+		PhotoIds: []string{r2.Photo.Id, r1.Photo.Id},
 	})
 	if err != nil {
 		t.Fatalf("ReorderPhotos: %v", err)

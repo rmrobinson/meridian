@@ -12,7 +12,7 @@ import (
 	"github.com/rmrobinson/meridian/backend/internal/db"
 )
 
-func (s *Server) MergeEvents(ctx context.Context, req *pb.MergeEventsRequest) (*pb.Event, error) {
+func (s *Server) MergeEvents(ctx context.Context, req *pb.MergeEventsRequest) (*pb.MergeEventsResponse, error) {
 	// Verify the canonical event exists.
 	canonical, err := s.db.GetEventByID(ctx, req.CanonicalId)
 	if err != nil {
@@ -47,10 +47,10 @@ func (s *Server) MergeEvents(ctx context.Context, req *pb.MergeEventsRequest) (*
 		s.logger.Error("listing photos for canonical event", zap.String("id", canonical.ID), zap.Error(err))
 		return nil, status.Error(codes.Internal, "internal error")
 	}
-	return eventToProto(canonical, photos), nil
+	return &pb.MergeEventsResponse{Event: eventToProto(canonical, photos)}, nil
 }
 
-func (s *Server) UnmergeEvent(ctx context.Context, req *pb.UnmergeEventRequest) (*pb.Event, error) {
+func (s *Server) UnmergeEvent(ctx context.Context, req *pb.UnmergeEventRequest) (*pb.UnmergeEventResponse, error) {
 	if err := s.db.ClearCanonicalID(ctx, req.Id); err != nil {
 		if errors.Is(err, db.ErrNotFound) {
 			return nil, status.Errorf(codes.NotFound, "event %q not found", req.Id)
@@ -70,5 +70,5 @@ func (s *Server) UnmergeEvent(ctx context.Context, req *pb.UnmergeEventRequest) 
 		s.logger.Error("listing photos for unmerged event", zap.String("id", req.Id), zap.Error(err))
 		return nil, status.Error(codes.Internal, "internal error")
 	}
-	return eventToProto(event, photos), nil
+	return &pb.UnmergeEventResponse{Event: eventToProto(event, photos)}, nil
 }

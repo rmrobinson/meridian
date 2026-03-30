@@ -20,7 +20,7 @@ jobs:
           go-version: '1.23'
       - uses: bufbuild/buf-action@v1
         with:
-          working-directory: proto
+          input: proto
           push: false
       - name: Generate proto
         run: ./generate.sh

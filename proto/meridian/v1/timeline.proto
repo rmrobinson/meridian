@@ -5,18 +5,18 @@ package meridian.v1;
 option go_package = "github.com/rmrobinson/meridian/backend/gen/go/meridian/v1;meridianv1";
 
 service TimelineService {
-    rpc CreateEvent(CreateEventRequest) returns (Event);
-    rpc UpdateEvent(UpdateEventRequest) returns (Event);
+    rpc CreateEvent(CreateEventRequest) returns (CreateEventResponse);
+    rpc UpdateEvent(UpdateEventRequest) returns (UpdateEventResponse);
     rpc DeleteEvent(DeleteEventRequest) returns (DeleteEventResponse);
     rpc ListEvents(ListEventsRequest) returns (ListEventsResponse);
     rpc ImportEvents(ImportEventsRequest) returns (ImportEventsResponse);
 
-    rpc AddPhoto(AddPhotoRequest) returns (Photo);
+    rpc AddPhoto(AddPhotoRequest) returns (AddPhotoResponse);
     rpc RemovePhoto(RemovePhotoRequest) returns (RemovePhotoResponse);
-    rpc ReorderPhotos(ReorderPhotosRequest) returns (Event);
+    rpc ReorderPhotos(ReorderPhotosRequest) returns (ReorderPhotosResponse);
 
-    rpc MergeEvents(MergeEventsRequest) returns (Event);
-    rpc UnmergeEvent(UnmergeEventRequest) returns (Event);
+    rpc MergeEvents(MergeEventsRequest) returns (MergeEventsResponse);
+    rpc UnmergeEvent(UnmergeEventRequest) returns (UnmergeEventResponse);
 }
 
 enum ConflictStrategy {
@@ -203,4 +203,28 @@ message MergeEventsRequest {
 
 message UnmergeEventRequest {
     string id = 1;
+}
+
+message CreateEventResponse {
+    Event event = 1;
+}
+
+message UpdateEventResponse {
+    Event event = 1;
+}
+
+message AddPhotoResponse {
+    Photo photo = 1;
+}
+
+message ReorderPhotosResponse {
+    Event event = 1;
+}
+
+message MergeEventsResponse {
+    Event event = 1;
+}
+
+message UnmergeEventResponse {
+    Event event = 1;
 }
