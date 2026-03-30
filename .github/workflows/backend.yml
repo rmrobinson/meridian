@@ -20,8 +20,11 @@ jobs:
           go-version: '1.23'
       - uses: bufbuild/buf-action@v1
         with:
-          input: proto
-          push: false
+          setup_only: true
+      - name: Lint proto
+        run: cd proto && buf lint --error-format github-actions
+      - name: Check breaking changes
+        run: cd proto && buf breaking --error-format github-actions --against "https://github.com/rmrobinson/meridian.git#branch=main,subdir=proto"
       - name: Generate proto
         run: ./generate.sh
       - name: Build
