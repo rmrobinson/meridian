@@ -6,6 +6,9 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -86,14 +89,44 @@ func main() {
 		}
 	}()
 
-	// Start REST server (blocks).
-	restServer := rest.NewServer(cfg, database, logger)
-	restAddr := restServer.Addr()
-	logger.Info("starting REST server", zap.String("addr", restAddr))
-	if err := http.ListenAndServe(restAddr, restServer); err != nil {
-		logger.Fatal("REST server failed", zap.Error(err))
-		os.Exit(1)
+	// Build REST server.
+	restHandler := rest.NewServer(cfg, database, logger)
+	restAddr := restHandler.Addr()
+	httpServer := &http.Server{
+		Addr:    restAddr,
+		Handler: restHandler,
 	}
+
+	// Catch shutdown signals.
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
+
+	go func() {
+		logger.Info("starting REST server", zap.String("addr", restAddr))
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Fatal("REST server failed", zap.Error(err))
+		}
+	}()
+
+	<-quit
+	logger.Info("shutdown signal received")
+
+	timeout := 30 * time.Second
+	if cfg.Server.ShutdownTimeoutSec > 0 {
+		timeout = time.Duration(cfg.Server.ShutdownTimeoutSec) * time.Second
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	// Graceful shutdown: drain in-flight requests then stop.
+	if err := httpServer.Shutdown(shutdownCtx); err != nil {
+		logger.Error("REST server shutdown error", zap.Error(err))
+	}
+	grpcServer.GracefulStop()
+
+	logger.Info("server stopped")
+	os.Exit(0)
 }
 
 // buildEnrichers constructs ISBNdb and TMDB enrichers when API keys are present.

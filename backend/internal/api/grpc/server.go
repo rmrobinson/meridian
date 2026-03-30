@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -40,11 +41,14 @@ func NewServer(cfg *config.Config, database *db.DB, logger *zap.Logger, bookEnri
 	}
 }
 
-// NewGRPCServer creates a grpc.Server with the bearer token auth interceptor
+// NewGRPCServer creates a grpc.Server with auth and logging interceptors
 // registered and the TimelineService implementation bound.
 func NewGRPCServer(cfg *config.Config, database *db.DB, logger *zap.Logger, bookEnricher, filmTVEnricher domain.Enricher) *grpc.Server {
 	s := NewServer(cfg, database, logger, bookEnricher, filmTVEnricher)
-	gs := grpc.NewServer(grpc.UnaryInterceptor(s.authInterceptor))
+	gs := grpc.NewServer(grpc.ChainUnaryInterceptor(
+		s.authInterceptor,
+		s.loggingInterceptor,
+	))
 	pb.RegisterTimelineServiceServer(gs, s)
 	return gs
 }
@@ -52,6 +56,19 @@ func NewGRPCServer(cfg *config.Config, database *db.DB, logger *zap.Logger, book
 // Addr returns the listen address for the gRPC server.
 func Addr(cfg *config.Config) string {
 	return fmt.Sprintf(":%d", cfg.Server.GRPCPort)
+}
+
+// loggingInterceptor logs the RPC method, response code, and latency.
+func (s *Server) loggingInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+	start := time.Now()
+	resp, err := handler(ctx, req)
+	code := status.Code(err)
+	s.logger.Info("grpc request",
+		zap.String("method", info.FullMethod),
+		zap.String("code", code.String()),
+		zap.Duration("latency", time.Since(start)),
+	)
+	return resp, err
 }
 
 // authInterceptor extracts the Bearer token from incoming metadata and

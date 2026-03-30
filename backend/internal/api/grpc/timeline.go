@@ -79,6 +79,10 @@ func (s *Server) CreateEvent(ctx context.Context, req *pb.CreateEventRequest) (*
 		}
 	}
 
+	if err := domain.ValidateMetadata(e.FamilyID, e); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid metadata: %v", err)
+	}
+
 	// Enrich before insert — fail fast if enrichment errors.
 	if enrichErr := s.enrich(ctx, e); enrichErr != nil {
 		s.logger.Error("enriching event", zap.String("family_id", e.FamilyID), zap.Error(enrichErr))
@@ -130,6 +134,10 @@ func (s *Server) UpdateEvent(ctx context.Context, req *pb.UpdateEventRequest) (*
 			e.LocationLat = float64Ptr(req.Location.Lat)
 			e.LocationLng = float64Ptr(req.Location.Lng)
 		}
+	}
+
+	if err := domain.ValidateMetadata(e.FamilyID, e); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid metadata: %v", err)
 	}
 
 	if err := s.db.UpdateEvent(ctx, e); err != nil {
