@@ -45,10 +45,40 @@ func TestValidateMetadata_Climbing_SportMissingRouteName(t *testing.T) {
 	}
 }
 
+func TestValidateMetadata_Climbing_ValidBoulderingWithProblemName(t *testing.T) {
+	e := &Event{
+		FamilyID: "fitness",
+		Metadata: metaPtr(FitnessMetadata{Activity: "climb", ClimbingType: "bouldering", ProblemName: "La Marie Rose"}),
+	}
+	if err := ValidateMetadata("fitness", e); err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+}
+
+func TestValidateMetadata_Climbing_BoulderingMissingProblemName(t *testing.T) {
+	e := &Event{
+		FamilyID: "fitness",
+		Metadata: metaPtr(FitnessMetadata{Activity: "climb", ClimbingType: "bouldering"}),
+	}
+	if err := ValidateMetadata("fitness", e); err == nil {
+		t.Error("expected error for bouldering missing problem_name, got nil")
+	}
+}
+
+func TestValidateMetadata_Climbing_ValidGym(t *testing.T) {
+	e := &Event{
+		FamilyID: "fitness",
+		Metadata: metaPtr(FitnessMetadata{Activity: "climb", ClimbingType: "gym"}),
+	}
+	if err := ValidateMetadata("fitness", e); err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+}
+
 func TestValidateMetadata_Climbing_UnknownClimbingType(t *testing.T) {
 	e := &Event{
 		FamilyID: "fitness",
-		Metadata: metaPtr(FitnessMetadata{Activity: "climb", ClimbingType: "free-solo"}),
+		Metadata: metaPtr(FitnessMetadata{Activity: "climb", ClimbingType: "trad"}),
 	}
 	if err := ValidateMetadata("fitness", e); err == nil {
 		t.Error("expected error for unknown climbing_type, got nil")

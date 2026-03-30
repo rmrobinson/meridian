@@ -153,13 +153,21 @@ func buildEnrichers(cfg *config.Config, logger *zap.Logger) (book domain.Enriche
 		uploader = enrichment.NewS3Uploader(s3Client, e.S3Bucket, e.S3Region)
 	}
 
-	if e.ISBNdbAPIKey != "" && uploader != nil {
-		book = enrichment.NewISBNdbEnricher(e.ISBNdbAPIKey, uploader)
-		logger.Info("ISBNdb enricher enabled")
+	if e.ISBNdbAPIKey != "" {
+		if uploader == nil {
+			logger.Warn("ISBNdb API key configured but S3 bucket not configured; book enrichment disabled")
+		} else {
+			book = enrichment.NewISBNdbEnricher(e.ISBNdbAPIKey, uploader)
+			logger.Info("ISBNdb enricher enabled")
+		}
 	}
-	if e.TMDBAPIKey != "" && uploader != nil {
-		filmTV = enrichment.NewTMDBEnricher(e.TMDBAPIKey, uploader)
-		logger.Info("TMDB enricher enabled")
+	if e.TMDBAPIKey != "" {
+		if uploader == nil {
+			logger.Warn("TMDB API key configured but S3 bucket not configured; film/TV enrichment disabled")
+		} else {
+			filmTV = enrichment.NewTMDBEnricher(e.TMDBAPIKey, uploader)
+			logger.Info("TMDB enricher enabled")
+		}
 	}
 
 	return book, filmTV

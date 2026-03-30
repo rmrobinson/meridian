@@ -91,7 +91,11 @@ func (s *Server) ReorderPhotos(ctx context.Context, req *pb.ReorderPhotosRequest
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 
-	photos, _ := s.db.ListPhotosForEvent(ctx, req.EventId)
+	photos, err := s.db.ListPhotosForEvent(ctx, req.EventId)
+	if err != nil {
+		s.logger.Error("listing photos after reorder", zap.String("event_id", req.EventId), zap.Error(err))
+		return nil, status.Error(codes.Internal, "internal error")
+	}
 	return eventToProto(event, photos), nil
 }
 

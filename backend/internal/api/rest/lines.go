@@ -25,5 +25,5 @@ func (s *Server) handleGetLines(w http.ResponseWriter, r *http.Request) {
 			SpawnBehavior: f.SpawnBehavior,
 		}
 	}
-	writeJSON(w, http.StatusOK, families)
+	s.writeJSON(w, http.StatusOK, families)
 }

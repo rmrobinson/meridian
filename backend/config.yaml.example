@@ -1,9 +1,135 @@
 # Meridian backend configuration example
-# Copy to config.yaml and fill in values
+# Copy to config.yaml and fill in real values before starting the server.
 
 server:
-  grpc_port: 9090
   rest_port: 8080
+  grpc_port: 9090
+  # Optional: seconds to wait for in-flight requests to finish on shutdown (default: 30)
+  shutdown_timeout_sec: 30
 
 database:
-  dsn: "postgres://user:password@localhost:5432/meridian?sslmode=disable"
+  # Path to the SQLite database file. Created automatically on first run.
+  path: ./timeline.db
+
+auth:
+  # Secret used to sign and verify read-side JWTs issued to the web app.
+  # Generate with: openssl rand -base64 32
+  jwt_secret: "replace-with-a-long-random-secret"
+
+  # One or more named bearer tokens used to authenticate gRPC write calls.
+  # Each entry stores a bcrypt hash of the raw token — the raw token is never
+  # stored on disk. See the README for how to generate a token and its hash.
+  write_tokens:
+    - name: "cli"
+      token_hash: "$2a$10$REPLACE_WITH_REAL_BCRYPT_HASH_FOR_CLI_TOKEN_AAAAAAAAAAAAA"
+    - name: "ios-app"
+      token_hash: "$2a$10$REPLACE_WITH_REAL_BCRYPT_HASH_FOR_IOS_TOKEN_BBBBBBBBBBBBB"
+
+person:
+  name: "Your Name"
+  # ISO 8601 date (YYYY-MM-DD). Used to anchor the timeline origin.
+  birth_date: "1990-01-01"
+
+# Each family defines one line on the timeline. The nine built-in families are
+# shown below. Remove or adjust base_color_hsl to change the rendered colour.
+#
+# side: "left" | "right" | "center"
+# on_end: "merge" | "terminate" | "never"
+# spawn_behavior: "single_line" | "per_event"
+line_families:
+  - id: spine
+    label: Life Spine
+    base_color_hsl: [0, 0, 80]
+    side: center
+    on_end: never
+    spawn_behavior: single_line
+
+  - id: employment
+    label: Employment
+    base_color_hsl: [210, 70, 50]
+    side: left
+    on_end: merge
+    spawn_behavior: per_event
+
+  - id: education
+    label: Education
+    base_color_hsl: [270, 60, 55]
+    side: left
+    on_end: merge
+    spawn_behavior: per_event
+
+  - id: hobbies
+    label: Hobbies
+    base_color_hsl: [180, 55, 45]
+    side: left
+    on_end: terminate
+    spawn_behavior: per_event
+
+  - id: travel
+    label: Travel
+    base_color_hsl: [50, 85, 50]
+    side: right
+    on_end: merge
+    spawn_behavior: per_event
+
+  - id: flights
+    label: Flights
+    base_color_hsl: [200, 75, 50]
+    side: right
+    on_end: terminate
+    spawn_behavior: per_event
+
+  - id: books
+    label: Books
+    base_color_hsl: [30, 70, 50]
+    side: right
+    on_end: terminate
+    spawn_behavior: per_event
+
+  - id: film_tv
+    label: Film & TV
+    base_color_hsl: [300, 60, 55]
+    side: right
+    on_end: terminate
+    spawn_behavior: per_event
+
+  - id: fitness
+    label: Fitness & Health
+    base_color_hsl: [140, 65, 45]
+    side: right
+    on_end: terminate
+    spawn_behavior: single_line
+
+# When events from multiple sources describe the same activity, source_priority
+# determines which source wins each field during auto-merge. "manual" should
+# always be first so hand-edited values are never overwritten.
+source_priority:
+  sources:
+    - manual
+    - garmin
+    - alltrails
+    - strava
+    - google_fit
+
+# Optional: external enrichment services. All fields in this section are
+# optional — omit (or leave blank) any key whose service you do not use.
+# Both ISBNdb and TMDB require an S3 bucket to store downloaded cover/poster
+# images. If an API key is set but s3_bucket is empty the enricher is disabled
+# at startup and a warning is logged.
+enrichment:
+  # ISBNdb (https://isbndb.com) — enriches "books" family events.
+  # Populates author, cover image, and preview URL from the book's ISBN.
+  # Obtain an API key at https://isbndb.com/isbn-database
+  isbndb_api_key: ""
+
+  # TMDB (https://www.themoviedb.org) — enriches "film_tv" family events.
+  # Populates director/network, release year, and poster image from the TMDB ID.
+  # Obtain an API key at https://www.themoviedb.org/settings/api
+  tmdb_api_key: ""
+
+  # AWS S3 bucket where downloaded cover/poster images are stored.
+  # The bucket must already exist; the server never creates it.
+  # AWS credentials are loaded from the standard chain (env vars, ~/.aws/credentials,
+  # EC2 instance role, etc.) — no credentials are stored in this file.
+  s3_bucket: ""
+  s3_region: "us-east-1"

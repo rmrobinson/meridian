@@ -42,7 +42,11 @@ func (s *Server) MergeEvents(ctx context.Context, req *pb.MergeEventsRequest) (*
 		}
 	}
 
-	photos, _ := s.db.ListPhotosForEvent(ctx, canonical.ID)
+	photos, err := s.db.ListPhotosForEvent(ctx, canonical.ID)
+	if err != nil {
+		s.logger.Error("listing photos for canonical event", zap.String("id", canonical.ID), zap.Error(err))
+		return nil, status.Error(codes.Internal, "internal error")
+	}
 	return eventToProto(canonical, photos), nil
 }
 
@@ -61,6 +65,10 @@ func (s *Server) UnmergeEvent(ctx context.Context, req *pb.UnmergeEventRequest) 
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 
-	photos, _ := s.db.ListPhotosForEvent(ctx, req.Id)
+	photos, err := s.db.ListPhotosForEvent(ctx, req.Id)
+	if err != nil {
+		s.logger.Error("listing photos for unmerged event", zap.String("id", req.Id), zap.Error(err))
+		return nil, status.Error(codes.Internal, "internal error")
+	}
 	return eventToProto(event, photos), nil
 }

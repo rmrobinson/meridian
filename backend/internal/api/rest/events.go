@@ -54,7 +54,7 @@ func (s *Server) handleGetEvents(w http.ResponseWriter, r *http.Request) {
 	events, err := s.db.ListEvents(r.Context(), filter)
 	if err != nil {
 		s.logger.Error("listing events", zap.Error(err))
-		writeError(w, http.StatusInternalServerError, "internal error")
+		s.writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 
@@ -63,13 +63,13 @@ func (s *Server) handleGetEvents(w http.ResponseWriter, r *http.Request) {
 		photos, err := s.db.ListPhotosForEvent(r.Context(), e.ID)
 		if err != nil {
 			s.logger.Error("listing photos", zap.String("event_id", e.ID), zap.Error(err))
-			writeError(w, http.StatusInternalServerError, "internal error")
+			s.writeError(w, http.StatusInternalServerError, "internal error")
 			return
 		}
 		resp = append(resp, toEventResponse(e, photos))
 	}
 
-	writeJSON(w, http.StatusOK, resp)
+	s.writeJSON(w, http.StatusOK, resp)
 }
 
 func (s *Server) handleGetEventByID(w http.ResponseWriter, r *http.Request) {
@@ -79,27 +79,27 @@ func (s *Server) handleGetEventByID(w http.ResponseWriter, r *http.Request) {
 	e, err := s.db.GetEventByID(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, db.ErrNotFound) {
-			writeError(w, http.StatusNotFound, "not found")
+			s.writeError(w, http.StatusNotFound, "not found")
 			return
 		}
 		s.logger.Error("getting event", zap.String("id", id), zap.Error(err))
-		writeError(w, http.StatusInternalServerError, "internal error")
+		s.writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 
 	if !visibilityAllowed(e.Visibility, visibilities) {
-		writeError(w, http.StatusForbidden, "forbidden")
+		s.writeError(w, http.StatusForbidden, "forbidden")
 		return
 	}
 
 	photos, err := s.db.ListPhotosForEvent(r.Context(), e.ID)
 	if err != nil {
 		s.logger.Error("listing photos", zap.String("event_id", e.ID), zap.Error(err))
-		writeError(w, http.StatusInternalServerError, "internal error")
+		s.writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 
-	writeJSON(w, http.StatusOK, toEventResponse(e, photos))
+	s.writeJSON(w, http.StatusOK, toEventResponse(e, photos))
 }
 
 // callerVisibilities returns the visibility levels permitted by the JWT in the

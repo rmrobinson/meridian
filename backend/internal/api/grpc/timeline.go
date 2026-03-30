@@ -73,10 +73,8 @@ func (s *Server) CreateEvent(ctx context.Context, req *pb.CreateEventRequest) (*
 	}
 	if req.Location != nil {
 		e.LocationLabel = strPtr(req.Location.Label)
-		if req.Location.Lat != 0 || req.Location.Lng != 0 {
-			e.LocationLat = float64Ptr(req.Location.Lat)
-			e.LocationLng = float64Ptr(req.Location.Lng)
-		}
+		e.LocationLat = float64Ptr(req.Location.Lat)
+		e.LocationLng = float64Ptr(req.Location.Lng)
 	}
 
 	if err := domain.ValidateMetadata(e.FamilyID, e); err != nil {
@@ -130,10 +128,8 @@ func (s *Server) UpdateEvent(ctx context.Context, req *pb.UpdateEventRequest) (*
 	}
 	if req.Location != nil {
 		e.LocationLabel = strPtr(req.Location.Label)
-		if req.Location.Lat != 0 || req.Location.Lng != 0 {
-			e.LocationLat = float64Ptr(req.Location.Lat)
-			e.LocationLng = float64Ptr(req.Location.Lng)
-		}
+		e.LocationLat = float64Ptr(req.Location.Lat)
+		e.LocationLng = float64Ptr(req.Location.Lng)
 	}
 
 	if err := domain.ValidateMetadata(e.FamilyID, e); err != nil {
@@ -153,7 +149,11 @@ func (s *Server) UpdateEvent(ctx context.Context, req *pb.UpdateEventRequest) (*
 		s.logger.Error("fetching updated event", zap.String("id", req.Id), zap.Error(err))
 		return nil, status.Error(codes.Internal, "internal error")
 	}
-	photos, _ := s.db.ListPhotosForEvent(ctx, req.Id)
+	photos, err := s.db.ListPhotosForEvent(ctx, req.Id)
+	if err != nil {
+		s.logger.Error("listing photos for updated event", zap.String("id", req.Id), zap.Error(err))
+		return nil, status.Error(codes.Internal, "internal error")
+	}
 	return eventToProto(updated, photos), nil
 }
 
@@ -177,7 +177,11 @@ func (s *Server) ListEvents(ctx context.Context, req *pb.ListEventsRequest) (*pb
 		Events: make([]*pb.Event, 0, len(events)),
 	}
 	for _, e := range events {
-		photos, _ := s.db.ListPhotosForEvent(ctx, e.ID)
+		photos, err := s.db.ListPhotosForEvent(ctx, e.ID)
+		if err != nil {
+			s.logger.Error("listing photos for event", zap.String("id", e.ID), zap.Error(err))
+			return nil, status.Error(codes.Internal, "internal error")
+		}
 		resp.Events = append(resp.Events, eventToProto(e, photos))
 	}
 	return resp, nil
@@ -231,10 +235,8 @@ func (s *Server) ImportEvents(ctx context.Context, req *pb.ImportEventsRequest) 
 					}
 					if evtReq.Location != nil {
 						updated.LocationLabel = strPtr(evtReq.Location.Label)
-						if evtReq.Location.Lat != 0 || evtReq.Location.Lng != 0 {
-							updated.LocationLat = float64Ptr(evtReq.Location.Lat)
-							updated.LocationLng = float64Ptr(evtReq.Location.Lng)
-						}
+						updated.LocationLat = float64Ptr(evtReq.Location.Lat)
+						updated.LocationLng = float64Ptr(evtReq.Location.Lng)
 					}
 					if dbErr := s.db.UpdateEvent(ctx, updated); dbErr != nil {
 						resp.Failed++
@@ -290,10 +292,8 @@ func (s *Server) ImportEvents(ctx context.Context, req *pb.ImportEventsRequest) 
 		}
 		if evtReq.Location != nil {
 			e.LocationLabel = strPtr(evtReq.Location.Label)
-			if evtReq.Location.Lat != 0 || evtReq.Location.Lng != 0 {
-				e.LocationLat = float64Ptr(evtReq.Location.Lat)
-				e.LocationLng = float64Ptr(evtReq.Location.Lng)
-			}
+			e.LocationLat = float64Ptr(evtReq.Location.Lat)
+			e.LocationLng = float64Ptr(evtReq.Location.Lng)
 		}
 
 		// Auto-merge: find a canonical event matching date + activity_type.

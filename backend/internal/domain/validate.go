@@ -6,7 +6,7 @@ import (
 )
 
 var validClimbingTypes = map[string]bool{
-	"sport": true, "trad": true, "bouldering": true, "aid": true, "alpine": true,
+	"sport": true, "bouldering": true, "gym": true,
 }
 
 var validSpineMilestoneTypes = map[string]bool{
@@ -107,6 +107,9 @@ func validateFitnessMetadata(event *Event) error {
 		}
 		if m.ClimbingType == "sport" && m.RouteName == "" {
 			return errors.New("fitness metadata: route_name is required for sport climbing")
+		}
+		if m.ClimbingType == "bouldering" && m.ProblemName == "" {
+			return errors.New("fitness metadata: problem_name is required for bouldering")
 		}
 	}
 	return nil

@@ -88,3 +88,10 @@ source_priority:
     - alltrails
     - strava
     - google_fit
+
+# Leave API keys empty to disable enrichment.
+enrichment:
+  isbndb_api_key: ""
+  tmdb_api_key: ""
+  s3_bucket: ""
+  s3_region: "us-east-1"

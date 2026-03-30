@@ -27,7 +27,7 @@ func (s *Server) handleGetTimeline(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		s.logger.Error("listing events for timeline", zap.Error(err))
-		writeError(w, http.StatusInternalServerError, "internal error")
+		s.writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 
@@ -36,7 +36,7 @@ func (s *Server) handleGetTimeline(w http.ResponseWriter, r *http.Request) {
 		photos, err := s.db.ListPhotosForEvent(r.Context(), e.ID)
 		if err != nil {
 			s.logger.Error("listing photos for timeline", zap.String("event_id", e.ID), zap.Error(err))
-			writeError(w, http.StatusInternalServerError, "internal error")
+			s.writeError(w, http.StatusInternalServerError, "internal error")
 			return
 		}
 		eventResps = append(eventResps, toEventResponse(e, photos))
@@ -63,5 +63,5 @@ func (s *Server) handleGetTimeline(w http.ResponseWriter, r *http.Request) {
 		Events:   eventResps,
 	}
 
-	writeJSON(w, http.StatusOK, resp)
+	s.writeJSON(w, http.StatusOK, resp)
 }
