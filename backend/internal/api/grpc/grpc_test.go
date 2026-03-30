@@ -20,10 +20,74 @@ import (
 	grpcapi "github.com/rmrobinson/meridian/backend/internal/api/grpc"
 	"github.com/rmrobinson/meridian/backend/internal/config"
 	"github.com/rmrobinson/meridian/backend/internal/db"
+	"github.com/rmrobinson/meridian/backend/internal/domain"
 	"go.uber.org/zap"
 )
 
+// mockEnricher is a configurable domain.Enricher for tests.
+type mockEnricher struct {
+	called bool
+	err    error
+	enrich func(event *domain.Event)
+}
+
+func (m *mockEnricher) Enrich(_ context.Context, event *domain.Event) error {
+	m.called = true
+	if m.enrich != nil {
+		m.enrich(event)
+	}
+	return m.err
+}
+
 const testRawToken = "test-raw-token-for-grpc"
+
+func newTestEnvWithEnrichers(t *testing.T, bookEnricher, filmTVEnricher domain.Enricher) *testEnv {
+	t.Helper()
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(testRawToken), bcrypt.MinCost)
+	if err != nil {
+		t.Fatalf("hashing token: %v", err)
+	}
+
+	name := strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
+	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", name)
+	database, err := db.Open(dsn)
+	if err != nil {
+		t.Fatalf("opening test db: %v", err)
+	}
+
+	cfg := &config.Config{
+		Server: config.Server{GRPCPort: 9090},
+		Auth: config.Auth{
+			WriteTokens: []config.WriteToken{
+				{Name: "test", TokenHash: string(hash)},
+			},
+		},
+	}
+
+	gs := grpcapi.NewGRPCServer(cfg, database, zap.NewNop(), bookEnricher, filmTVEnricher)
+
+	lis := bufconn.Listen(1024 * 1024)
+	go gs.Serve(lis)
+
+	conn, err := grpc.NewClient("passthrough://bufnet",
+		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+			return lis.DialContext(ctx)
+		}),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		t.Fatalf("dialing bufconn: %v", err)
+	}
+
+	t.Cleanup(func() {
+		conn.Close()
+		gs.Stop()
+		database.Close()
+	})
+
+	return &testEnv{client: pb.NewTimelineServiceClient(conn), db: database}
+}
 
 type testEnv struct {
 	client pb.TimelineServiceClient
@@ -54,7 +118,7 @@ func newTestEnv(t *testing.T) *testEnv {
 		},
 	}
 
-	gs := grpcapi.NewGRPCServer(cfg, database, zap.NewNop())
+	gs := grpcapi.NewGRPCServer(cfg, database, zap.NewNop(), nil, nil)
 
 	lis := bufconn.Listen(1024 * 1024)
 	go gs.Serve(lis)
@@ -853,5 +917,90 @@ func TestImportEvents_SourceEventIDUsedForDedup(t *testing.T) {
 	}
 	if len(list.Events) != 1 {
 		t.Errorf("expected 1 event after re-import, got %d", len(list.Events))
+	}
+}
+
+// --- Enrichment ---
+
+func TestCreateEvent_Books_CallsEnricher(t *testing.T) {
+	enricher := &mockEnricher{
+		enrich: func(event *domain.Event) {
+			meta := `{"isbn":"9780441013593","author":"Frank Herbert","cover_image_url":"https://s3/cover.jpg"}`
+			event.Metadata = &meta
+		},
+	}
+	env := newTestEnvWithEnrichers(t, enricher, nil)
+
+	resp, err := env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		FamilyId: "books", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT,
+		Title: "Dune", Metadata: `{"isbn":"9780441013593"}`,
+	})
+	if err != nil {
+		t.Fatalf("CreateEvent: %v", err)
+	}
+	if !enricher.called {
+		t.Error("expected book enricher to be called")
+	}
+	if resp.Metadata == "" {
+		t.Error("expected enriched metadata in response")
+	}
+}
+
+func TestCreateEvent_FilmTV_CallsEnricher(t *testing.T) {
+	enricher := &mockEnricher{
+		enrich: func(event *domain.Event) {
+			meta := `{"tmdb_id":"238","type":"movie","director":"Francis Ford Coppola","year":1972,"poster_url":"https://s3/poster.jpg"}`
+			event.Metadata = &meta
+		},
+	}
+	env := newTestEnvWithEnrichers(t, nil, enricher)
+
+	resp, err := env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		FamilyId: "film_tv", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT,
+		Title: "The Godfather", Metadata: `{"tmdb_id":"238","type":"movie"}`,
+	})
+	if err != nil {
+		t.Fatalf("CreateEvent: %v", err)
+	}
+	if !enricher.called {
+		t.Error("expected film_tv enricher to be called")
+	}
+	if resp.Metadata == "" {
+		t.Error("expected enriched metadata in response")
+	}
+}
+
+func TestCreateEvent_OtherFamily_DoesNotCallEnricher(t *testing.T) {
+	bookEnricher := &mockEnricher{}
+	filmEnricher := &mockEnricher{}
+	env := newTestEnvWithEnrichers(t, bookEnricher, filmEnricher)
+
+	_, err := env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		FamilyId: "travel", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT, Title: "Japan Trip",
+	})
+	if err != nil {
+		t.Fatalf("CreateEvent: %v", err)
+	}
+	if bookEnricher.called || filmEnricher.called {
+		t.Error("expected no enricher to be called for travel family")
+	}
+}
+
+func TestCreateEvent_EnricherFailure_ReturnsInternal(t *testing.T) {
+	enricher := &mockEnricher{err: fmt.Errorf("isbndb unreachable")}
+	env := newTestEnvWithEnrichers(t, enricher, nil)
+
+	_, err := env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+		FamilyId: "books", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT,
+		Title: "Dune", Metadata: `{"isbn":"9780441013593"}`,
+	})
+	if status.Code(err) != codes.Internal {
+		t.Errorf("expected codes.Internal, got %v", err)
+	}
+
+	// Event must not have been stored.
+	list, _ := env.client.ListEvents(authCtx(t), &pb.ListEventsRequest{})
+	if len(list.GetEvents()) != 0 {
+		t.Errorf("expected no events stored after enrichment failure, got %d", len(list.GetEvents()))
 	}
 }

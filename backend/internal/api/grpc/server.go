@@ -11,29 +11,39 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
+	pb "github.com/rmrobinson/meridian/backend/gen/go/meridian/v1"
 	"github.com/rmrobinson/meridian/backend/internal/auth"
 	"github.com/rmrobinson/meridian/backend/internal/config"
 	"github.com/rmrobinson/meridian/backend/internal/db"
-	pb "github.com/rmrobinson/meridian/backend/gen/go/meridian/v1"
+	"github.com/rmrobinson/meridian/backend/internal/domain"
 )
 
 // Server is the gRPC API server.
 type Server struct {
 	pb.UnimplementedTimelineServiceServer
-	cfg    *config.Config
-	db     *db.DB
-	logger *zap.Logger
+	cfg            *config.Config
+	db             *db.DB
+	logger         *zap.Logger
+	bookEnricher   domain.Enricher
+	filmTVEnricher domain.Enricher
 }
 
-// NewServer constructs a Server.
-func NewServer(cfg *config.Config, database *db.DB, logger *zap.Logger) *Server {
-	return &Server{cfg: cfg, db: database, logger: logger}
+// NewServer constructs a Server with optional enrichers.
+// Pass nil for an enricher to disable enrichment for that family.
+func NewServer(cfg *config.Config, database *db.DB, logger *zap.Logger, bookEnricher, filmTVEnricher domain.Enricher) *Server {
+	return &Server{
+		cfg:            cfg,
+		db:             database,
+		logger:         logger,
+		bookEnricher:   bookEnricher,
+		filmTVEnricher: filmTVEnricher,
+	}
 }
 
 // NewGRPCServer creates a grpc.Server with the bearer token auth interceptor
 // registered and the TimelineService implementation bound.
-func NewGRPCServer(cfg *config.Config, database *db.DB, logger *zap.Logger) *grpc.Server {
-	s := NewServer(cfg, database, logger)
+func NewGRPCServer(cfg *config.Config, database *db.DB, logger *zap.Logger, bookEnricher, filmTVEnricher domain.Enricher) *grpc.Server {
+	s := NewServer(cfg, database, logger, bookEnricher, filmTVEnricher)
 	gs := grpc.NewServer(grpc.UnaryInterceptor(s.authInterceptor))
 	pb.RegisterTimelineServiceServer(gs, s)
 	return gs

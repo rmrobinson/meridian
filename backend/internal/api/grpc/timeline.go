@@ -79,6 +79,12 @@ func (s *Server) CreateEvent(ctx context.Context, req *pb.CreateEventRequest) (*
 		}
 	}
 
+	// Enrich before insert — fail fast if enrichment errors.
+	if enrichErr := s.enrich(ctx, e); enrichErr != nil {
+		s.logger.Error("enriching event", zap.String("family_id", e.FamilyID), zap.Error(enrichErr))
+		return nil, status.Errorf(codes.Internal, "enrichment failed: %v", enrichErr)
+	}
+
 	if err := s.db.CreateEvent(ctx, e); err != nil {
 		if isUniqueConstraint(err) {
 			return nil, status.Errorf(codes.AlreadyExists, "event with id %q already exists", id)
@@ -308,6 +314,21 @@ func (s *Server) DeleteEvent(ctx context.Context, req *pb.DeleteEventRequest) (*
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 	return &pb.DeleteEventResponse{}, nil
+}
+
+// enrich calls the appropriate enricher for the event's family, if one is configured.
+func (s *Server) enrich(ctx context.Context, e *domain.Event) error {
+	switch e.FamilyID {
+	case "books":
+		if s.bookEnricher != nil {
+			return s.bookEnricher.Enrich(ctx, e)
+		}
+	case "film_tv":
+		if s.filmTVEnricher != nil {
+			return s.filmTVEnricher.Enrich(ctx, e)
+		}
+	}
+	return nil
 }
 
 // isUniqueConstraint returns true if err is a SQLite UNIQUE constraint violation.

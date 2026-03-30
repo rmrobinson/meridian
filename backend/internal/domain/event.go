@@ -1,6 +1,15 @@
 package domain
 
-import "time"
+import (
+	"context"
+	"time"
+)
+
+// Enricher populates additional fields on an Event (e.g. fetching metadata
+// from an external API and uploading images to S3).
+type Enricher interface {
+	Enrich(ctx context.Context, event *Event) error
+}
 
 type EventType string
 

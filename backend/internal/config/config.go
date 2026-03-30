@@ -14,6 +14,14 @@ type Config struct {
 	Person         Person         `mapstructure:"person"`
 	LineFamilies   []LineFamily   `mapstructure:"line_families"`
 	SourcePriority SourcePriority `mapstructure:"source_priority"`
+	Enrichment     Enrichment     `mapstructure:"enrichment"`
+}
+
+type Enrichment struct {
+	ISBNdbAPIKey string `mapstructure:"isbndb_api_key"`
+	TMDBAPIKey   string `mapstructure:"tmdb_api_key"`
+	S3Bucket     string `mapstructure:"s3_bucket"`
+	S3Region     string `mapstructure:"s3_region"`
 }
 
 type Server struct {
