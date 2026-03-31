@@ -25,9 +25,10 @@ type Enrichment struct {
 }
 
 type Server struct {
-	RESTPort            int `mapstructure:"rest_port"`
-	GRPCPort            int `mapstructure:"grpc_port"`
-	ShutdownTimeoutSec  int `mapstructure:"shutdown_timeout_sec"`
+	RESTPort           int      `mapstructure:"rest_port"`
+	GRPCPort           int      `mapstructure:"grpc_port"`
+	ShutdownTimeoutSec int      `mapstructure:"shutdown_timeout_sec"`
+	CORSAllowedOrigins []string `mapstructure:"cors_allowed_origins"`
 }
 
 type Database struct {

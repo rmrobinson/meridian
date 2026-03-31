@@ -57,7 +57,9 @@ func timeoutMiddleware(d time.Duration, next http.Handler) http.Handler {
 // ServeHTTP implements http.Handler so Server can be passed directly to
 // httptest.NewServer in tests. All requests pass through the logging middleware.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	loggingMiddleware(s.logger, s.mux).ServeHTTP(w, r)
+	corsMiddleware(s.cfg.Server.CORSAllowedOrigins,
+		loggingMiddleware(s.logger, s.mux),
+	).ServeHTTP(w, r)
 }
 
 // Addr returns the address string for use with http.ListenAndServe.

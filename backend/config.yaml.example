@@ -6,6 +6,10 @@ server:
   grpc_port: 9090
   # Optional: seconds to wait for in-flight requests to finish on shutdown (default: 30)
   shutdown_timeout_sec: 30
+  # Optional: origins permitted to make cross-origin requests (CORS).
+  # Leave empty (or omit) in production. Add your dev server origin(s) for local development.
+  # Example: ["http://localhost:3000", "http://localhost:5173"]
+  cors_allowed_origins: []
 
 database:
   # Path to the SQLite database file. Created automatically on first run.
