@@ -15,7 +15,7 @@ type personResponse struct {
 
 type timelineResponse struct {
 	Person   personResponse       `json:"person"`
-	Families []lineFamilyResponse `json:"families"`
+	Families []lineFamilyResponse `json:"line_families"`
 	Events   []eventResponse      `json:"events"`
 }
 

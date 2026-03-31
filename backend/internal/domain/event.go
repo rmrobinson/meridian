@@ -75,6 +75,8 @@ type Event struct {
 	Title         string
 	Label         *string
 	Icon          *string
+	EndIcon       *string
+	Description   *string
 	Date          *string
 	StartDate     *string
 	EndDate       *string

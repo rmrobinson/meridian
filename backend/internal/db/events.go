@@ -25,13 +25,13 @@ type ListEventsFilter struct {
 func (d *DB) CreateEvent(ctx context.Context, e *domain.Event) error {
 	_, err := d.db.ExecContext(ctx, `
 		INSERT INTO events (
-			id, family_id, line_key, parent_line_key, type, activity_type, title, label, icon,
-			date, start_date, end_date, location_label, location_lat, location_lng,
+			id, family_id, line_key, parent_line_key, type, activity_type, title, label, icon, end_icon,
+			description, date, start_date, end_date, location_label, location_lat, location_lng,
 			external_url, hero_image_url, metadata, visibility,
 			source_service, source_event_id, canonical_id, created_at, updated_at
-		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		e.ID, e.FamilyID, e.LineKey, e.ParentLineKey, string(e.Type), activityTypePtr(e.ActivityType), e.Title,
-		e.Label, e.Icon, e.Date, e.StartDate, e.EndDate,
+		e.Label, e.Icon, e.EndIcon, e.Description, e.Date, e.StartDate, e.EndDate,
 		e.LocationLabel, e.LocationLat, e.LocationLng,
 		e.ExternalURL, e.HeroImageURL, e.Metadata, string(e.Visibility),
 		e.SourceService, e.SourceEventID, e.CanonicalID,
@@ -47,8 +47,8 @@ func (d *DB) CreateEvent(ctx context.Context, e *domain.Event) error {
 // GetEventByID returns the event with the given ID, excluding soft-deleted rows.
 func (d *DB) GetEventByID(ctx context.Context, id string) (*domain.Event, error) {
 	row := d.db.QueryRowContext(ctx, `
-		SELECT id, family_id, line_key, parent_line_key, type, activity_type, title, label, icon,
-		       date, start_date, end_date, location_label, location_lat, location_lng,
+		SELECT id, family_id, line_key, parent_line_key, type, activity_type, title, label, icon, end_icon,
+		       description, date, start_date, end_date, location_label, location_lat, location_lng,
 		       external_url, hero_image_url, metadata, visibility,
 		       source_service, source_event_id, canonical_id, created_at, updated_at, deleted_at
 		FROM events
@@ -64,8 +64,8 @@ func (d *DB) GetEventByID(ctx context.Context, id string) (*domain.Event, error)
 // ListEvents returns canonical, non-deleted events matching the filter.
 func (d *DB) ListEvents(ctx context.Context, f ListEventsFilter) ([]*domain.Event, error) {
 	query := `
-		SELECT id, family_id, line_key, parent_line_key, type, activity_type, title, label, icon,
-		       date, start_date, end_date, location_label, location_lat, location_lng,
+		SELECT id, family_id, line_key, parent_line_key, type, activity_type, title, label, icon, end_icon,
+		       description, date, start_date, end_date, location_label, location_lat, location_lng,
 		       external_url, hero_image_url, metadata, visibility,
 		       source_service, source_event_id, canonical_id, created_at, updated_at, deleted_at
 		FROM events
@@ -118,14 +118,14 @@ func (d *DB) UpdateEvent(ctx context.Context, e *domain.Event) error {
 	res, err := d.db.ExecContext(ctx, `
 		UPDATE events SET
 			family_id = ?, line_key = ?, parent_line_key = ?, type = ?, activity_type = ?, title = ?,
-			label = ?, icon = ?, date = ?, start_date = ?, end_date = ?,
+			label = ?, icon = ?, end_icon = ?, description = ?, date = ?, start_date = ?, end_date = ?,
 			location_label = ?, location_lat = ?, location_lng = ?,
 			external_url = ?, hero_image_url = ?, metadata = ?, visibility = ?,
 			source_service = ?, source_event_id = ?, canonical_id = ?,
 			updated_at = ?
 		WHERE id = ? AND deleted_at IS NULL`,
 		e.FamilyID, e.LineKey, e.ParentLineKey, string(e.Type), activityTypePtr(e.ActivityType), e.Title,
-		e.Label, e.Icon, e.Date, e.StartDate, e.EndDate,
+		e.Label, e.Icon, e.EndIcon, e.Description, e.Date, e.StartDate, e.EndDate,
 		e.LocationLabel, e.LocationLat, e.LocationLng,
 		e.ExternalURL, e.HeroImageURL, e.Metadata, string(e.Visibility),
 		e.SourceService, e.SourceEventID, e.CanonicalID,
@@ -168,8 +168,8 @@ func (d *DB) SoftDeleteEvent(ctx context.Context, id string) error {
 // source event ID, excluding soft-deleted rows.
 func (d *DB) GetEventBySourceID(ctx context.Context, sourceService, sourceEventID string) (*domain.Event, error) {
 	row := d.db.QueryRowContext(ctx, `
-		SELECT id, family_id, line_key, parent_line_key, type, activity_type, title, label, icon,
-		       date, start_date, end_date, location_label, location_lat, location_lng,
+		SELECT id, family_id, line_key, parent_line_key, type, activity_type, title, label, icon, end_icon,
+		       description, date, start_date, end_date, location_label, location_lat, location_lng,
 		       external_url, hero_image_url, metadata, visibility,
 		       source_service, source_event_id, canonical_id, created_at, updated_at, deleted_at
 		FROM events
@@ -228,8 +228,8 @@ func (d *DB) GetEventWithLinked(ctx context.Context, id string) (*domain.Event, 
 	}
 
 	rows, err := d.db.QueryContext(ctx, `
-		SELECT id, family_id, line_key, parent_line_key, type, activity_type, title, label, icon,
-		       date, start_date, end_date, location_label, location_lat, location_lng,
+		SELECT id, family_id, line_key, parent_line_key, type, activity_type, title, label, icon, end_icon,
+		       description, date, start_date, end_date, location_label, location_lat, location_lng,
 		       external_url, hero_image_url, metadata, visibility,
 		       source_service, source_event_id, canonical_id, created_at, updated_at, deleted_at
 		FROM events
@@ -272,6 +272,8 @@ func scanEvent(s scanner) (*domain.Event, error) {
 		activityType  sql.NullString
 		label         sql.NullString
 		icon          sql.NullString
+		endIcon       sql.NullString
+		description   sql.NullString
 		date          sql.NullString
 		startDate     sql.NullString
 		endDate       sql.NullString
@@ -293,7 +295,7 @@ func scanEvent(s scanner) (*domain.Event, error) {
 
 	err := s.Scan(
 		&e.ID, &e.FamilyID, &e.LineKey, &parentLineKey, &eventType, &activityType, &e.Title,
-		&label, &icon, &date, &startDate, &endDate,
+		&label, &icon, &endIcon, &description, &date, &startDate, &endDate,
 		&locationLabel, &locationLat, &locationLng,
 		&externalURL, &heroImageURL, &metadata, &visibility,
 		&sourceService, &sourceEventID, &canonicalID,
@@ -317,6 +319,12 @@ func scanEvent(s scanner) (*domain.Event, error) {
 	}
 	if icon.Valid {
 		e.Icon = &icon.String
+	}
+	if endIcon.Valid {
+		e.EndIcon = &endIcon.String
+	}
+	if description.Valid {
+		e.Description = &description.String
 	}
 	if date.Valid {
 		e.Date = &date.String

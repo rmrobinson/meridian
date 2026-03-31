@@ -407,7 +407,7 @@ func TestGetTimeline_ReturnsAllNineFamilies(t *testing.T) {
 	resp := get(t, env.server, "/api/timeline", "")
 	var tl map[string]any
 	decodeJSON(t, resp.Body, &tl)
-	families, _ := tl["families"].([]any)
+	families, _ := tl["line_families"].([]any)
 	if len(families) != 9 {
 		t.Errorf("families: got %d, want 9", len(families))
 	}

@@ -103,6 +103,8 @@ message Event {
     string canonical_id = 19;
     repeated Photo photos = 20;
     ActivityType activity_type = 21;
+    string description = 22;
+    string end_icon = 23;
 }
 
 message CreateEventRequest {
@@ -124,6 +126,8 @@ message CreateEventRequest {
     Visibility visibility = 16;
     string source_event_id = 17;
     ActivityType activity_type = 18;
+    string description = 19;
+    string end_icon = 20;
 }
 
 message UpdateEventRequest {
@@ -144,6 +148,8 @@ message UpdateEventRequest {
     string metadata = 15;
     Visibility visibility = 16;
     ActivityType activity_type = 17;
+    string description = 18;
+    string end_icon = 19;
 }
 
 message DeleteEventRequest {

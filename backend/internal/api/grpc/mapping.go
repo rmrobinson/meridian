@@ -24,6 +24,12 @@ func eventToProto(e *domain.Event, photos []*domain.Photo) *pb.Event {
 	if e.Icon != nil {
 		out.Icon = *e.Icon
 	}
+	if e.EndIcon != nil {
+		out.EndIcon = *e.EndIcon
+	}
+	if e.Description != nil {
+		out.Description = *e.Description
+	}
 	if e.Date != nil {
 		out.Date = *e.Date
 	}
