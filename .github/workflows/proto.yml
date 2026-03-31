@@ -15,7 +15,5 @@ jobs:
       - uses: actions/checkout@v4
       - uses: bufbuild/buf-action@v1
         with:
-          working-directory: proto
-          lint: true
-          breaking: true
+          input: proto
           breaking_against: "https://github.com/rmrobinson/meridian.git#branch=main,subdir=proto"
