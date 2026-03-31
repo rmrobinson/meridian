@@ -22,6 +22,7 @@ jobs:
         with:
           input: proto
           breaking_against: "https://github.com/rmrobinson/meridian.git#branch=main,subdir=proto"
+          pr_comment: false
       - name: Generate proto
         run: ./generate.sh
       - name: Build
