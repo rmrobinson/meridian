@@ -1,0 +1,19 @@
+server:
+  rest_port: 8080
+  grpc_port: 9090
+
+database:
+  path: ./timeline.db
+
+auth:
+  jwt_secret: "test-secret"
+  write_tokens: []
+
+person:
+  name: "Test User"
+  birth_date: "1990-04-12"
+
+line_families: []
+
+source_priority:
+  sources: []

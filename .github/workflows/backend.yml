@@ -20,8 +20,9 @@ jobs:
           go-version: '1.23'
       - uses: bufbuild/buf-action@v1
         with:
-          working-directory: proto
-          push: false
+          input: proto
+          breaking_against: "https://github.com/rmrobinson/meridian.git#branch=main,subdir=proto"
+          pr_comment: false
       - name: Generate proto
         run: ./generate.sh
       - name: Build

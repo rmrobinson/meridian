@@ -1,0 +1,98 @@
+server:
+  rest_port: 8080
+  grpc_port: 9090
+  cors_allowed_origins: []
+
+database:
+  path: ./timeline.db
+
+auth:
+  jwt_secret: "change-me-to-a-long-random-secret"
+  write_tokens:
+    - name: "cli"
+      token_hash: "$2a$10$replacethiswitharealbcrypthashAAAAAAAAAAAAAAAAAAAAAAAAA"
+    - name: "ios-app"
+      token_hash: "$2a$10$replacethiswitharealbcrypthashBBBBBBBBBBBBBBBBBBBBBBBBB"
+
+person:
+  name: "Your Name"
+  birth_date: "1990-04-12"
+
+line_families:
+  - id: spine
+    label: Life Spine
+    base_color_hsl: [0, 0, 80]
+    side: center
+    on_end: never
+    spawn_behavior: single_line
+
+  - id: employment
+    label: Employment
+    base_color_hsl: [210, 70, 50]
+    side: left
+    on_end: merge
+    spawn_behavior: per_event
+
+  - id: education
+    label: Education
+    base_color_hsl: [270, 60, 55]
+    side: left
+    on_end: merge
+    spawn_behavior: per_event
+
+  - id: hobbies
+    label: Hobbies
+    base_color_hsl: [180, 55, 45]
+    side: left
+    on_end: terminate
+    spawn_behavior: per_event
+
+  - id: travel
+    label: Travel
+    base_color_hsl: [50, 85, 50]
+    side: right
+    on_end: merge
+    spawn_behavior: per_event
+
+  - id: flights
+    label: Flights
+    base_color_hsl: [200, 75, 50]
+    side: right
+    on_end: terminate
+    spawn_behavior: per_event
+
+  - id: books
+    label: Books
+    base_color_hsl: [30, 70, 50]
+    side: right
+    on_end: terminate
+    spawn_behavior: per_event
+
+  - id: film_tv
+    label: Film & TV
+    base_color_hsl: [300, 60, 55]
+    side: right
+    on_end: terminate
+    spawn_behavior: per_event
+
+  - id: fitness
+    label: Fitness & Health
+    base_color_hsl: [140, 65, 45]
+    side: right
+    on_end: terminate
+    spawn_behavior: single_line
+
+source_priority:
+  sources:
+    - manual
+    - garmin
+    - alltrails
+    - strava
+    - google_fit
+
+# Leave API keys empty to disable enrichment.
+enrichment:
+  isbndb_api_key: ""
+  tmdb_api_key: ""
+  s3_bucket: ""
+  s3_region: "us-east-1"

@@ -3,7 +3,10 @@ modules:
   - path: .
 lint:
   use:
-    - DEFAULT
+    - STANDARD
 breaking:
   use:
     - FILE
+  ignore_unstable_packages: false
+  except:
+    - FILE_NO_DELETE

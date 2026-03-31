@@ -1,5 +1,0 @@
-syntax = "proto3";
-
-package meridian.v1;
-
-option go_package = "github.com/rmrobinson/meridian/backend/internal/grpc/gen/meridian/v1;meridianv1";

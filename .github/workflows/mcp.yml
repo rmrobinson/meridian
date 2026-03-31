@@ -20,8 +20,9 @@ jobs:
           node-version: '20'
       - uses: bufbuild/buf-action@v1
         with:
-          working-directory: proto
+          input: proto
           push: false
+          pr_comment: false
       - name: Generate proto
         run: ./generate.sh
       - run: cd mcp && npm ci
