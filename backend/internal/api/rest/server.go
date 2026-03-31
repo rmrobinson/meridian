@@ -58,7 +58,9 @@ func timeoutMiddleware(d time.Duration, next http.Handler) http.Handler {
 // httptest.NewServer in tests. All requests pass through the logging middleware.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	corsMiddleware(s.cfg.Server.CORSAllowedOrigins,
-		loggingMiddleware(s.logger, s.mux),
+		requestIDMiddleware(
+			loggingMiddleware(s.logger, s.mux),
+		),
 	).ServeHTTP(w, r)
 }
 
