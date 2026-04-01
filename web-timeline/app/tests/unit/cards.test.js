@@ -60,7 +60,7 @@ describe('card type dispatch', () => {
   });
 
   it('returns a show card for tv family', () => {
-    const frag = buildCardContent(base({ family_id: 'tv' }));
+    const frag = buildCardContent(base({ family_id: 'film_tv' }));
     expect(getRoot(frag).classList.contains('card--tv')).toBe(true);
   });
 
@@ -251,22 +251,22 @@ describe('book card', () => {
 
 describe('show card', () => {
   it('renders the network', () => {
-    const frag = buildCardContent(base({ family_id: 'tv', metadata: { network: 'HBO' } }));
+    const frag = buildCardContent(base({ family_id: 'film_tv', metadata: { network: 'HBO' } }));
     expect(getRoot(frag).querySelector('.card-network').textContent).toBe('HBO');
   });
 
   it('renders seasons watched', () => {
-    const frag = buildCardContent(base({ family_id: 'tv', metadata: { seasons_watched: 3 } }));
+    const frag = buildCardContent(base({ family_id: 'film_tv', metadata: { seasons_watched: 3 } }));
     expect(getRoot(frag).querySelector('.card-seasons').textContent).toBe('3 seasons');
   });
 
   it('uses singular "season" for 1 season', () => {
-    const frag = buildCardContent(base({ family_id: 'tv', metadata: { seasons_watched: 1 } }));
+    const frag = buildCardContent(base({ family_id: 'film_tv', metadata: { seasons_watched: 1 } }));
     expect(getRoot(frag).querySelector('.card-seasons').textContent).toBe('1 season');
   });
 
   it('renders a rating', () => {
-    const frag = buildCardContent(base({ family_id: 'tv', metadata: { rating: 4 } }));
+    const frag = buildCardContent(base({ family_id: 'film_tv', metadata: { rating: 4 } }));
     expect(getRoot(frag).querySelector('.card-rating').textContent).toBe('★★★★☆');
   });
 });

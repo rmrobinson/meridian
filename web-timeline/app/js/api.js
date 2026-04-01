@@ -90,9 +90,30 @@ function normalizeEvent(evt) {
     description: evt.description ?? null,
     external_url: evt.external_url ?? null,
     hero_image_url: evt.hero_image_url ?? null,
-    photos: evt.photos ?? [],
+    photos: normalizePhotos(evt.photos),
     metadata: evt.metadata ?? {},
   };
+}
+
+/**
+ * Normalize photos from either format:
+ *   - Mock fixture: plain URL strings  ["https://..."]
+ *   - Backend API:  photo objects      [{ id, s3_url, variant, sort_order }]
+ *
+ * The gallery card renders thumbnails, so prefer the 'thumb' variant when
+ * backend photo objects are present. Falls back to all photos if none are
+ * tagged 'thumb'.
+ *
+ * @param {Array} photos
+ * @returns {string[]}
+ */
+function normalizePhotos(photos) {
+  if (!photos || photos.length === 0) return [];
+  // Mock fixture: already URL strings.
+  if (typeof photos[0] === 'string') return photos;
+  // Backend API: objects with s3_url + variant.
+  const thumbs = photos.filter((p) => p.variant === 'thumb');
+  return (thumbs.length > 0 ? thumbs : photos).map((p) => p.s3_url);
 }
 
 /**

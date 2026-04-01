@@ -7,7 +7,7 @@
  *   external_url is set          → trip card
  *   photos.length > 0            → gallery card
  *   family_id === 'books'        → book card
- *   family_id === 'tv'           → show card
+ *   family_id === 'film_tv'       → show card
  *   default                      → standard card
  *
  * Cards are HTML <div> overlays shown on station click. On desktop they float
@@ -31,7 +31,7 @@ export function buildCardContent(event) {
   if (event.external_url)              return tripCard(event);
   if (event.photos?.length > 0)        return galleryCard(event);
   if (event.family_id === 'books')     return bookCard(event);
-  if (event.family_id === 'tv')        return showCard(event);
+  if (event.family_id === 'film_tv')   return showCard(event);
   return standardCard(event);
 }
 

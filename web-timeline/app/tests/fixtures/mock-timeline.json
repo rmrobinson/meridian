@@ -13,8 +13,8 @@
       "spawn_behavior": "per_event"
     },
     {
-      "id": "tv",
-      "label": "TV Shows",
+      "id": "film_tv",
+      "label": "Film & TV",
       "base_color_hsl": [300, 60, 55],
       "side": "right",
       "on_end": "terminate",

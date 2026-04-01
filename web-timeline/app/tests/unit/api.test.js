@@ -48,6 +48,64 @@ describe('generateBirthdays()', () => {
   });
 });
 
+describe('photo normalization', () => {
+  function rawWithPhotos(photos) {
+    return {
+      person: { name: 'Test', birth_date: BIRTH },
+      line_families: [],
+      events: [
+        {
+          id: 'e1',
+          family_id: 'travel',
+          line_key: 'trip-a',
+          type: 'span',
+          title: 'Trip A',
+          start_date: '2020-01-01',
+          end_date: '2020-01-10',
+          photos,
+        },
+      ],
+    };
+  }
+
+  it('passes through plain URL strings unchanged (mock fixture format)', () => {
+    const urls = ['https://cdn.example.com/photo1.jpg', 'https://cdn.example.com/photo2.jpg'];
+    const result = normalize(rawWithPhotos(urls));
+    const evt = result.events.find((e) => e.id === 'e1');
+    expect(evt.photos).toEqual(urls);
+  });
+
+  it('extracts s3_url from backend photo objects', () => {
+    const photos = [
+      { id: 'p1', s3_url: 'https://s3.example.com/photo1.jpg', variant: 'original', sort_order: 0 },
+      { id: 'p2', s3_url: 'https://s3.example.com/photo1-thumb.jpg', variant: 'thumb', sort_order: 1 },
+    ];
+    const result = normalize(rawWithPhotos(photos));
+    const evt = result.events.find((e) => e.id === 'e1');
+    // Prefers thumb variant
+    expect(evt.photos).toEqual(['https://s3.example.com/photo1-thumb.jpg']);
+  });
+
+  it('falls back to all photos when no thumb variant is present', () => {
+    const photos = [
+      { id: 'p1', s3_url: 'https://s3.example.com/photo1.jpg', variant: 'original', sort_order: 0 },
+      { id: 'p2', s3_url: 'https://s3.example.com/photo1-hero.jpg', variant: 'hero', sort_order: 1 },
+    ];
+    const result = normalize(rawWithPhotos(photos));
+    const evt = result.events.find((e) => e.id === 'e1');
+    expect(evt.photos).toEqual([
+      'https://s3.example.com/photo1.jpg',
+      'https://s3.example.com/photo1-hero.jpg',
+    ]);
+  });
+
+  it('returns an empty array when photos is null or absent', () => {
+    const result = normalize(rawWithPhotos(null));
+    const evt = result.events.find((e) => e.id === 'e1');
+    expect(evt.photos).toEqual([]);
+  });
+});
+
 describe('normalize()', () => {
   it('fills in null for missing optional event fields', () => {
     const raw = {

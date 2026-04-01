@@ -327,7 +327,13 @@ html, body {
   padding: 4px;
 }
 
-/* ── Error state ──────────────────────────────────────────────────────────── */
+/* ── Loading / error states ───────────────────────────────────────────────── */
+
+.timeline-loading {
+  padding: 2rem;
+  text-align: center;
+  color: var(--color-label-secondary);
+}
 
 .timeline-error {
   padding: 2rem;

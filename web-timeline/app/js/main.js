@@ -28,9 +28,6 @@ import {
 
 const MS_PER_DAY = 86_400_000;
 
-/** In Phase 1 serve the mock fixture. Phase 4 replaces with the real endpoint. */
-const DATA_URL = '/tests/fixtures/mock-timeline.json';
-
 /** Cached API response — populated once, reused on zoom changes. */
 let _data       = null;
 
@@ -51,7 +48,15 @@ let _eventById     = new Map();
 let _aggregateById = new Map();
 
 async function init() {
-  _data = await fetchTimeline(DATA_URL);
+  const container = document.getElementById('timeline-container');
+
+  const loadingEl = document.createElement('p');
+  loadingEl.className = 'timeline-loading';
+  loadingEl.textContent = 'Loading timeline…';
+  container.appendChild(loadingEl);
+
+  _data = await fetchTimeline();
+  loadingEl.remove();
 
   // Pre-load all icon files into the cache before any rendering begins.
   // getIconPath() is called synchronously during scroll; the cache must be
@@ -671,6 +676,8 @@ init().catch((err) => {
   console.error('Timeline failed to initialize:', err);
   const container = document.getElementById('timeline-container');
   if (container) {
+    // Remove loading indicator if still present (fetch failed before it was cleared).
+    container.querySelector('.timeline-loading')?.remove();
     const msg = document.createElement('p');
     msg.className = 'timeline-error';
     msg.textContent = 'Failed to load timeline data. Please refresh the page.';
