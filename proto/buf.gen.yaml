@@ -16,3 +16,4 @@ plugins:
       - outputServices=generic-definitions
       - useDate=string
       - env=node
+      - useExactTypes=false
