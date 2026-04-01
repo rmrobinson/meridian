@@ -6,7 +6,12 @@
  * milestone_type: "birthday" on the same date replace the auto-generated entry.
  */
 
-const TIMELINE_URL = '/api/timeline';
+// Can be overridden at runtime by setting window.TIMELINE_API_URL before the
+// module loads — useful for pointing at a backend on a different origin during
+// local development without changing source code.
+const TIMELINE_URL = (typeof window !== 'undefined' && window.TIMELINE_API_URL)
+  ? window.TIMELINE_API_URL
+  : '/api/timeline';
 
 /**
  * Fetch and normalize the full timeline payload.
