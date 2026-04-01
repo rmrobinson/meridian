@@ -29,17 +29,11 @@ API URL at runtime:
 
 Remove that line before committing — it is for local development only.
 
-### Option 2 — Use the mock fixture
+### Option 2 — Use the mock fixture (default with `npm run serve`)
 
-Edit `app/js/main.js` and pass the fixture path to `fetchTimeline()`:
-
-```js
-// In init():
-_data = await fetchTimeline('/tests/fixtures/mock-timeline.json');
-```
-
-This loads `app/tests/fixtures/mock-timeline.json` directly — no backend
-required. Revert to `fetchTimeline()` (no argument) before committing.
+`app/serve.json` rewrites `GET /api/timeline` to the mock fixture, so
+`npm run serve` works out of the box with no backend running. No code
+changes needed.
 
 ## Tests
 

@@ -19,7 +19,11 @@ const root = resolve(__dirname, '..');
 
 const DATA_FILES = [
   'app/tests/fixtures/mock-timeline.json',
-];
+  // perf-timeline.json is gitignored (generated); skip if not present.
+  'app/tests/fixtures/perf-timeline.json',
+].filter((f) => {
+  try { readFileSync(resolve(root, f)); return true; } catch { return false; }
+});
 
 const missing = [];
 

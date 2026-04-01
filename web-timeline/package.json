@@ -8,6 +8,7 @@
     "test:e2e": "playwright test",
     "test:e2e:update": "playwright test --update-snapshots",
     "serve": "npx serve app -p 3000",
+    "gen-perf-fixture": "node scripts/gen-perf-fixture.js",
     "check-icons": "node scripts/check-icons.js"
   },
   "devDependencies": {

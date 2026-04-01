@@ -83,12 +83,24 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
   spineLayer.appendChild(spineLine);
 
   // ── Mutable render state (swapped by loadContent) ─────────────────────────
-  let spanObjects    = [];
-  let stationObjects = [];
-  const liveSpans    = new Map(); // id → SVGElement
-  const liveStations = new Map(); // id → SVGElement
+  let spanObjects       = [];
+  let stationObjects    = [];
+  let spanObjectById    = new Map(); // id → render object (for O(1) eviction lookup)
+  let stationObjectById = new Map();
+  const liveSpans       = new Map(); // id → SVGElement
+  const liveStations    = new Map(); // id → SVGElement
 
   // ── Virtualized sync loop ─────────────────────────────────────────────────
+  //
+  // Two-pass design:
+  //   Pass 1 — evict: walk liveSpans/liveStations (O(k), k = live count)
+  //            and remove elements that have scrolled out of range.
+  //   Pass 2 — add: walk sorted arrays with early-exit (O(k') until first
+  //            element provably below window) and mount newly in-range elements.
+  //
+  // Splitting eviction from addition avoids a bug in single-pass early-exit:
+  // when scrolling UP, elements now below yMax sit at the END of the sorted
+  // arrays and would never be reached before the break, leaking DOM nodes.
 
   function sync() {
     const scrollTop = scrollContainer.scrollTop;
@@ -97,29 +109,53 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
     const yMin      = scrollTop - buffer;
     const yMax      = scrollTop + vh + buffer;
 
-    // Span lines: in range when any part of their Y extent overlaps the window.
-    // yEnd < yStart (yEnd is more recent / top of span, yStart is older / bottom).
-    // Branch extends curveHeight below yStart; merge extends curveHeight above yEnd.
-    // Full visual extent: [yEnd - curveHeight, yStart + curveHeight].
-    for (const obj of spanObjects) {
-      const inRange = (obj.yStart + obj.curveHeight) >= yMin && (obj.yEnd - obj.curveHeight) <= yMax;
-      if (inRange && !liveSpans.has(obj.id)) {
-        liveSpans.set(obj.id, linesLayer.appendChild(buildSpanLine(obj, spineX)));
-      } else if (!inRange && liveSpans.has(obj.id)) {
-        liveSpans.get(obj.id).remove();
-        liveSpans.delete(obj.id);
+    const t0 = performance.now();
+
+    // ── Pass 1: evict elements that have left the render window ───────────────
+    // Iterating a Map and deleting entries during iteration is safe in JS —
+    // the iterator skips entries that were deleted before being visited.
+    for (const [id, el] of liveSpans) {
+      const obj = spanObjectById.get(id);
+      if (!obj ||
+          (obj.yEnd   - obj.curveHeight) > yMax ||
+          (obj.yStart + obj.curveHeight) < yMin) {
+        el.remove();
+        liveSpans.delete(id);
+      }
+    }
+    for (const [id, el] of liveStations) {
+      const obj = stationObjectById.get(id);
+      if (!obj || obj.y < yMin || obj.y > yMax) {
+        el.remove();
+        liveStations.delete(id);
       }
     }
 
-    // Station dots.
-    for (const obj of stationObjects) {
-      const inRange = obj.y >= yMin && obj.y <= yMax;
-      if (inRange && !liveStations.has(obj.id)) {
-        liveStations.set(obj.id, stationsLayer.appendChild(buildStation(obj, spineX)));
-      } else if (!inRange && liveStations.has(obj.id)) {
-        liveStations.get(obj.id).remove();
-        liveStations.delete(obj.id);
+    // ── Pass 2: mount newly in-range elements, early-exit once below window ───
+    // spanObjects sorted by yEnd asc (top of span first).
+    // Once yEnd - curveHeight > yMax the span's top is below the window and all
+    // subsequent spans are also below — safe to stop.
+    for (const obj of spanObjects) {
+      if ((obj.yEnd - obj.curveHeight) > yMax) break;
+      if ((obj.yStart + obj.curveHeight) >= yMin && !liveSpans.has(obj.id)) {
+        liveSpans.set(obj.id, linesLayer.appendChild(buildSpanLine(obj, spineX)));
       }
+    }
+    // stationObjects sorted by y asc.
+    for (const obj of stationObjects) {
+      if (obj.y > yMax) break;
+      if (obj.y >= yMin && !liveStations.has(obj.id)) {
+        liveStations.set(obj.id, stationsLayer.appendChild(buildStation(obj, spineX)));
+      }
+    }
+
+    // Performance logging — enabled via window.__timeline_perf = true.
+    if (window.__timeline_perf) {
+      const ms = (performance.now() - t0).toFixed(2);
+      console.log(
+        `[perf] sync ${ms}ms | live: ${liveSpans.size} spans, ${liveStations.size} stations` +
+        ` | total: ${spanObjects.length} spans, ${stationObjects.length} stations`,
+      );
     }
   }
 
@@ -146,9 +182,15 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
     liveStations.clear();
 
     // Swap the render-object arrays and re-sync the viewport.
+    // Sort both arrays by their top Y coordinate (ascending = top of canvas first)
+    // so the addition pass in sync() can early-exit once objects are provably
+    // below the visible window. Lookup maps enable O(1) eviction in pass 1.
     spanObjects    = newRenderObjects.filter((o) => o.type === 'span-line');
+    spanObjects.sort((a, b) => a.yEnd - b.yEnd);       // yEnd is the top (smaller Y)
     stationObjects = newRenderObjects.filter((o) => o.type === 'station');
     stationObjects.sort((a, b) => a.y - b.y);
+    spanObjectById    = new Map(spanObjects.map((o) => [o.id, o]));
+    stationObjectById = new Map(stationObjects.map((o) => [o.id, o]));
 
     sync();
   }

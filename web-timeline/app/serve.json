@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/timeline",
+      "destination": "/tests/fixtures/mock-timeline.json"
+    }
+  ]
+}
