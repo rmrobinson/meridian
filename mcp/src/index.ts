@@ -1,5 +1,7 @@
+import "dotenv/config";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import "./client.js"; // validates BACKEND_GRPC_URL and BEARER_TOKEN at startup
 
 const server = new McpServer({
   name: "meridian",
