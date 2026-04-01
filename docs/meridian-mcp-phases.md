@@ -37,14 +37,15 @@ The backend gRPC server runs on port 9090 by default and requires a `Authorizati
 
 - Update `tsconfig.json` if needed:
   - Set `"module": "NodeNext"` and `"moduleResolution": "NodeNext"` for ESM compatibility
-  - Set `"outDir": "dist"` and `"rootDir": "src"`
+  - Set `"outDir": "dist"` and `"rootDir": "."` (project root, not `src/` — importing from `proto-gen/` requires a common root)
+  - Add `proto-gen/**/*` to `include`; remove `proto-gen` from `exclude`
 
 - Implement `src/client.ts`:
   - Read `BACKEND_GRPC_URL` and `BEARER_TOKEN` from `process.env`; throw at startup if either is missing
   - Create a `nice-grpc` channel using `createChannel(BACKEND_GRPC_URL)`
   - Create a `ClientMiddleware` that injects `Authorization: Bearer <BEARER_TOKEN>` into every call's metadata using `nice-grpc-common`'s `Metadata`
   - Create a `TimelineServiceClient` using `createClient(TimelineServiceDefinition, channel, { '*': [authMiddleware] })`
-  - Export the client as the default export
+  - Export the client as a named export (`export const client`)
 
 - Update `src/index.ts`:
   - Import `dotenv/config` at the top so env vars are populated before anything else runs
@@ -53,7 +54,7 @@ The backend gRPC server runs on port 9090 by default and requires a `Authorizati
 ### Acceptance Criteria
 
 - `npm run build` compiles without errors
-- Running `BACKEND_GRPC_URL=localhost:9090 BEARER_TOKEN=x node dist/index.js` starts without crashing (MCP server connects to stdio transport and waits)
+- Running `BACKEND_GRPC_URL=localhost:9090 BEARER_TOKEN=x node dist/src/index.js` starts without crashing (MCP server connects to stdio transport and waits)
 - Missing `BACKEND_GRPC_URL` or `BEARER_TOKEN` causes a clear error at startup
 
 ---
