@@ -14,16 +14,16 @@
  * beside the station; on mobile they slide up as a bottom sheet.
  *
  * Public API:
- *   buildCardContent(event) → DocumentFragment
- *     Returns a fragment ready to be appended into #card-content.
- *     The card type class (e.g. card--trip) is set on the fragment's first child.
+ *   buildCardContent(event) → HTMLElement
+ *     Returns a div ready to be appended into #card-content.
+ *     The card type class (e.g. card--trip) is set on the returned element.
  */
 
 /**
- * Build the content fragment for the given event.
+ * Build the content element for the given event.
  *
  * @param {object} event - Normalized event from api.js (or aggregate from zoom.js).
- * @returns {DocumentFragment}
+ * @returns {HTMLElement}
  */
 export function buildCardContent(event) {
   if (event.type === 'aggregate')      return aggregateCard(event);
@@ -38,7 +38,6 @@ export function buildCardContent(event) {
 // ── Card builders ─────────────────────────────────────────────────────────────
 
 function milestoneCard(event) {
-  const frag = document.createDocumentFragment();
   const wrap = el('div', 'card--milestone');
 
   const icon = MILESTONE_ICONS[event.metadata?.milestone_type] ?? '⭐';
@@ -53,12 +52,10 @@ function milestoneCard(event) {
   }
 
   appendShared(wrap, event, { skipTitle: true, skipDates: true });
-  frag.appendChild(wrap);
-  return frag;
+  return wrap;
 }
 
 function tripCard(event) {
-  const frag = document.createDocumentFragment();
   const wrap = el('div', 'card--trip');
 
   if (event.hero_image_url) {
@@ -80,12 +77,10 @@ function tripCard(event) {
   link.textContent = 'Read post →';
   wrap.appendChild(link);
 
-  frag.appendChild(wrap);
-  return frag;
+  return wrap;
 }
 
 function galleryCard(event) {
-  const frag = document.createDocumentFragment();
   const wrap = el('div', 'card--gallery');
 
   appendShared(wrap, event);
@@ -100,12 +95,10 @@ function galleryCard(event) {
   }
   wrap.appendChild(grid);
 
-  frag.appendChild(wrap);
-  return frag;
+  return wrap;
 }
 
 function bookCard(event) {
-  const frag = document.createDocumentFragment();
   const wrap = el('div', 'card--book');
 
   appendShared(wrap, event);
@@ -117,12 +110,10 @@ function bookCard(event) {
   }
   if (review) wrap.appendChild(el('p', 'card-review', review));
 
-  frag.appendChild(wrap);
-  return frag;
+  return wrap;
 }
 
 function showCard(event) {
-  const frag = document.createDocumentFragment();
   const wrap = el('div', 'card--tv');
 
   appendShared(wrap, event);
@@ -137,20 +128,16 @@ function showCard(event) {
     wrap.appendChild(el('p', 'card-rating', starsFor(rating)));
   }
 
-  frag.appendChild(wrap);
-  return frag;
+  return wrap;
 }
 
 function standardCard(event) {
-  const frag = document.createDocumentFragment();
   const wrap = el('div', 'card--standard');
   appendShared(wrap, event);
-  frag.appendChild(wrap);
-  return frag;
+  return wrap;
 }
 
 function aggregateCard(event) {
-  const frag = document.createDocumentFragment();
   const wrap = el('div', 'card--aggregate');
 
   wrap.appendChild(el('p', 'card-title', event.title));
@@ -165,8 +152,7 @@ function aggregateCard(event) {
   }
   wrap.appendChild(list);
 
-  frag.appendChild(wrap);
-  return frag;
+  return wrap;
 }
 
 // ── Shared elements ───────────────────────────────────────────────────────────

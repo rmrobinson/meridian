@@ -31,9 +31,8 @@ function base(overrides = {}) {
   };
 }
 
-function getRoot(frag) {
-  // buildCardContent returns a DocumentFragment whose first child is the card div.
-  return frag.firstChild;
+function getRoot(el) {
+  return el;
 }
 
 // ── Card type dispatch ────────────────────────────────────────────────────────

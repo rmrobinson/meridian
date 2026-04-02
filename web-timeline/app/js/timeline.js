@@ -170,7 +170,7 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
     spineLine.setAttribute('y2', newHeight);
 
     // Rebuild year markers (always non-virtualized).
-    while (markersLayer.firstChild) markersLayer.removeChild(markersLayer.firstChild);
+    markersLayer.replaceChildren();
     for (const marker of newRenderObjects.filter((o) => o.type === 'year-marker')) {
       markersLayer.appendChild(buildYearMarker(marker));
     }
