@@ -180,7 +180,135 @@ Create this file (no placeholder exists). Implement a `list_events` tool:
 
 ---
 
-## Phase 4 — Performance: Pagination
+## Phase 4 — Test Suite
+
+**Goal:** All logic layers have automated unit tests. Regressions in enum mapping, error handling, output formatting, or startup validation are caught by CI before they reach a running backend.
+
+### Framework
+
+Use **Vitest** — first-class ESM support, built-in TypeScript transform, and `vi.mock` hoisting that works reliably with NodeNext module resolution. Tests live in `src/__tests__/` and `src/__tests__/tools/`.
+
+### Test files and cases
+
+#### `src/__tests__/errors.test.ts`
+
+Tests `mapGrpcError` in isolation (no mocking required):
+
+| Case | Expected |
+|---|---|
+| `ClientError` `NOT_FOUND` | `"Not found: <details>"` |
+| `ClientError` `INVALID_ARGUMENT` | `err.details` verbatim |
+| `ClientError` `UNAUTHENTICATED` | auth failure string |
+| `ClientError` `PERMISSION_DENIED` | same auth failure string |
+| `ClientError` any other code | `"Backend error (<STATUS>): <details>"` |
+| Unmapped code | `console.error` called exactly once |
+| Mapped codes | `console.error` not called |
+| Non-`ClientError` | re-thrown, not swallowed |
+
+#### `src/__tests__/client.test.ts`
+
+Mocks `nice-grpc` to prevent real connections; uses `vi.resetModules()` + dynamic `import()` to re-evaluate module-level startup code with different env vars:
+
+| Case | Expected |
+|---|---|
+| `BACKEND_GRPC_URL` missing / empty | throws containing `"BACKEND_GRPC_URL"` |
+| `BEARER_TOKEN` missing / empty | throws containing `"BEARER_TOKEN"` |
+| `BACKEND_GRPC_URL` has no port (e.g. `"localhost"`) | throws with format message |
+| `BACKEND_GRPC_URL` has no host (e.g. `":9090"`) | throws with format message |
+| Both vars valid | resolves; exports a `client` object |
+
+#### `src/__tests__/tools/listEvents.test.ts`
+
+Mocks `client.listEvents`; tests request mapping, output formatting, and error handling:
+
+| Case | Expected |
+|---|---|
+| No filters | sends `familyId: ""`, `from: ""`, `to: ""`, `visibilities: []` |
+| `family_id` provided | populates `familyId` |
+| `from` / `to` provided | passed through |
+| Each visibility string | maps to correct `Visibility` enum |
+| Empty response | `"No events found matching the given filters."` |
+| Event with `date` | shows single date |
+| Event with `startDate` + `endDate` | shows `start – end` range |
+| All date fields empty | shows `"no date"` |
+| `activityType` non-unspecified | shows activity type label |
+| `activityType` unspecified | shows event type label |
+| Description > 80 chars | truncated with `…` |
+| Description exactly 80 chars | not truncated |
+| Empty description | line ends at visibility bracket; no trailing spaces |
+| gRPC error | returns mapped error string; does not throw |
+
+#### `src/__tests__/tools/createEvent.test.ts`
+
+Mocks `client.createEvent`:
+
+| Case | Expected |
+|---|---|
+| `type: "span"` / `"point"` | maps to correct `EventType` |
+| Each `activity_type` string (all 13) | maps to correct `ActivityType` |
+| No `activity_type` | sends `ACTIVITY_TYPE_UNSPECIFIED` |
+| Each `visibility` string | maps to correct `Visibility` |
+| No `visibility` | defaults to `VISIBILITY_PERSONAL` |
+| All three location fields | location object included |
+| Only `location_label` (partial) | location included; lat/lng default to `0` |
+| No location fields | `location: undefined` |
+| Successful response | `"Created event: [<id>] <title>"` |
+| Response with no `event` | fallback message |
+| gRPC error | returns mapped error string |
+
+#### `src/__tests__/tools/updateEvent.test.ts`
+
+Mocks `client.updateEvent`:
+
+| Case | Expected |
+|---|---|
+| Only `id` provided | all optional fields sent as `""` / `0` / unspecified |
+| `type` and `familyId` | always `EVENT_TYPE_UNSPECIFIED` / `""` |
+| Location fields present | location object included |
+| No location fields | `location: undefined` |
+| Successful response | `"Updated event: [<id>] <title>"` |
+| Response with no `event` | fallback message |
+| gRPC error | returns mapped error string |
+
+#### `src/__tests__/tools/deleteEvent.test.ts`
+
+Mocks `client.deleteEvent`:
+
+| Case | Expected |
+|---|---|
+| Valid `id` | calls `client.deleteEvent({ id })` with that exact id |
+| Successful response | confirmation string containing the id |
+| Confirmation string | mentions soft delete |
+| gRPC `NOT_FOUND` | `"Not found: ..."` |
+| gRPC `UNAUTHENTICATED` | auth failure string |
+
+#### `src/__tests__/tools/importEvents.test.ts`
+
+Mocks `client.importEvents`:
+
+| Case | Expected |
+|---|---|
+| `conflict_strategy: "upsert"` | `CONFLICT_STRATEGY_UPSERT` |
+| `conflict_strategy: "skip"` | `CONFLICT_STRATEGY_SKIP` |
+| `conflict_strategy` omitted | defaults to `CONFLICT_STRATEGY_SKIP` |
+| `type: "span"` in event array | `EVENT_TYPE_SPAN` |
+| `activity_type` in event | correct `ActivityType` |
+| `visibility` in event | correct `Visibility` |
+| Location fields in event | location object included |
+| `source_service` | passed as `sourceService` on request |
+| Response counts | created/updated/skipped/failed shown |
+| Non-empty `errors` | error list included in output |
+| Empty `errors` | no "Errors:" section |
+| gRPC error | returns mapped error string |
+
+### Acceptance Criteria
+
+- `npm test` runs all tests and passes with zero failures
+- `npm run build` is unaffected (test files excluded from `tsconfig.json`)
+
+---
+
+## Phase 5 — Performance: Pagination
 
 **Goal:** `list_events` supports pagination so agents can work with large datasets without receiving oversized responses.
 
@@ -216,3 +344,5 @@ The `ListEventsRequest` proto has `page_token` (string) and `page_size` (int32) 
 - **Merge tools** — `merge_events`, `unmerge_event` for agent-assisted deduplication
 - **Read-only mode** — configurable flag to disable write tools (for agents with read-only access)
 - **Streaming** — if the backend adds server-streaming RPCs, expose them as MCP resources rather than tools
+
+> **Note:** Phase 5 (Pagination) cannot be implemented until the backend proto adds `page_token` and `page_size` fields to `ListEventsRequest`. The current proto does not include these fields.

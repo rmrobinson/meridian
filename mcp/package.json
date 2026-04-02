@@ -6,7 +6,8 @@
     "proto": "cd ../proto && buf generate",
     "build": "npm run proto && tsc",
     "start": "node dist/src/index.js",
-    "dev": "node --import dotenv/config --import tsx/esm src/index.ts"
+    "dev": "node --import dotenv/config --import tsx/esm src/index.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@bufbuild/protobuf": "^2.11.0",
@@ -19,6 +20,7 @@
   "devDependencies": {
     "@types/node": "^20.0.0",
     "tsx": "^4.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^3.2.4"
   }
 }
