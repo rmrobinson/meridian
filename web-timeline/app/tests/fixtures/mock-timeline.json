@@ -1,0 +1,318 @@
+{
+  "person": {
+    "name": "Your Name",
+    "birth_date": "1990-04-12"
+  },
+  "line_families": [
+    {
+      "id": "books",
+      "label": "Books",
+      "base_color_hsl": [30, 70, 50],
+      "side": "right",
+      "on_end": "terminate",
+      "spawn_behavior": "per_event"
+    },
+    {
+      "id": "film_tv",
+      "label": "Film & TV",
+      "base_color_hsl": [300, 60, 55],
+      "side": "right",
+      "on_end": "terminate",
+      "spawn_behavior": "per_event"
+    },
+    {
+      "id": "employment",
+      "label": "Employment",
+      "base_color_hsl": [210, 70, 50],
+      "side": "left",
+      "on_end": "merge",
+      "spawn_behavior": "per_event"
+    },
+    {
+      "id": "travel",
+      "label": "Travel",
+      "base_color_hsl": [50, 85, 50],
+      "side": "right",
+      "on_end": "merge",
+      "spawn_behavior": "per_event"
+    },
+    {
+      "id": "fitness",
+      "label": "Fitness & Health",
+      "base_color_hsl": [140, 65, 45],
+      "side": "right",
+      "on_end": "terminate",
+      "spawn_behavior": "single_line"
+    },
+    {
+      "id": "education",
+      "label": "Education",
+      "base_color_hsl": [270, 60, 55],
+      "side": "left",
+      "on_end": "merge",
+      "spawn_behavior": "per_event"
+    },
+    {
+      "id": "hobbies",
+      "label": "Hobbies",
+      "base_color_hsl": [180, 55, 45],
+      "side": "left",
+      "on_end": "terminate",
+      "spawn_behavior": "per_event"
+    }
+  ],
+  "events": [
+    {
+      "id": "evt_birthday_30",
+      "family_id": "spine",
+      "line_key": "spine",
+      "type": "point",
+      "title": "Turning 30",
+      "icon": "mdi:cake-variant",
+      "date": "2020-04-12",
+      "location": null,
+      "description": "The big three-oh.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": {
+        "milestone_type": "birthday"
+      }
+    },
+    {
+      "id": "evt_000",
+      "family_id": "spine",
+      "line_key": "spine",
+      "type": "point",
+      "title": "Moved to London",
+      "icon": "mdi:map-marker",
+      "date": "2019-09-01",
+      "location": {
+        "label": "London, UK",
+        "lat": 51.5074,
+        "lng": -0.1278
+      },
+      "description": "Relocated from Edinburgh.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": {
+        "milestone_type": "relocation"
+      }
+    },
+    {
+      "id": "evt_001",
+      "family_id": "employment",
+      "line_key": "acme-corp",
+      "parent_line_key": null,
+      "type": "span",
+      "title": "Acme Corp",
+      "icon": "mdi:briefcase",
+      "start_date": "2015-06-01",
+      "end_date": "2018-11-30",
+      "location": {
+        "label": "San Francisco, CA",
+        "lat": 37.7749,
+        "lng": -122.4194
+      },
+      "description": "Software engineer, worked on payments infra.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": {
+        "role": "Senior Engineer"
+      }
+    },
+    {
+      "id": "evt_001b",
+      "family_id": "employment",
+      "line_key": "uni-placement-2012",
+      "parent_line_key": "university-2010",
+      "type": "span",
+      "title": "Summer Placement — CERN",
+      "label": "CERN",
+      "icon": "mdi:briefcase",
+      "start_date": "2012-06-01",
+      "end_date": "2012-08-31",
+      "location": {
+        "label": "Geneva, Switzerland",
+        "lat": 46.2044,
+        "lng": 6.1432
+      },
+      "description": "Summer research placement during second year.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": {
+        "role": "Research Intern"
+      }
+    },
+    {
+      "id": "evt_002",
+      "family_id": "travel",
+      "line_key": "japan-2023",
+      "parent_line_key": null,
+      "type": "span",
+      "title": "Japan Trip",
+      "icon": "mdi:airplane-takeoff",
+      "end_icon": "mdi:airplane-landing",
+      "start_date": "2023-03-10",
+      "end_date": "2023-03-24",
+      "location": {
+        "label": "Japan",
+        "lat": 36.2048,
+        "lng": 138.2529
+      },
+      "description": "Two weeks in Tokyo and Kyoto.",
+      "external_url": "https://yourblog.netlify.app/japan-2023",
+      "hero_image_url": "https://yourblog.netlify.app/images/japan-hero.jpg",
+      "photos": [],
+      "metadata": {
+        "countries": ["Japan"],
+        "cities": ["Tokyo", "Kyoto"]
+      }
+    },
+    {
+      "id": "evt_002b",
+      "family_id": "travel",
+      "line_key": "scotland-2024",
+      "parent_line_key": null,
+      "type": "span",
+      "title": "Scotland Road Trip",
+      "label": "Scotland",
+      "icon": "mdi:tent",
+      "start_date": "2024-07-14",
+      "end_date": "2024-07-28",
+      "location": {
+        "label": "Scottish Highlands, UK",
+        "lat": 57.1200,
+        "lng": -4.7130
+      },
+      "description": "Two weeks driving the NC500 through the Highlands.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": {
+        "countries": ["United Kingdom"],
+        "cities": ["Inverness", "Ullapool", "Thurso"]
+      }
+    },
+    {
+      "id": "evt_002c",
+      "family_id": "travel",
+      "line_key": "lisbon-2025",
+      "parent_line_key": null,
+      "type": "span",
+      "title": "Lisbon",
+      "icon": "mdi:airplane-takeoff",
+      "end_icon": "mdi:airplane-landing",
+      "start_date": "2025-10-03",
+      "end_date": "2025-10-10",
+      "location": {
+        "label": "Lisbon, Portugal",
+        "lat": 38.7223,
+        "lng": -9.1393
+      },
+      "description": "Long weekend in Lisbon — Alfama, pastéis de nata, Sintra day trip.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": {
+        "countries": ["Portugal"],
+        "cities": ["Lisbon", "Sintra"]
+      }
+    },
+    {
+      "id": "evt_003",
+      "family_id": "books",
+      "line_key": "dune-2022",
+      "parent_line_key": null,
+      "type": "span",
+      "title": "Dune",
+      "icon": "mdi:book-open-variant",
+      "start_date": "2022-07-20",
+      "end_date": "2022-08-14",
+      "location": null,
+      "description": "Frank Herbert's masterpiece.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": {
+        "author": "Frank Herbert",
+        "rating": 5,
+        "review": "Incredible world-building and political depth."
+      }
+    },
+    {
+      "id": "evt_004",
+      "family_id": "hobbies",
+      "line_key": "glastonbury-2023",
+      "parent_line_key": null,
+      "type": "point",
+      "title": "Glastonbury Festival",
+      "label": "Glastonbury",
+      "icon": "mdi:music",
+      "date": "2023-06-23",
+      "location": {
+        "label": "Glastonbury, UK",
+        "lat": 51.1444,
+        "lng": -2.7150
+      },
+      "description": "Weekend at Glastonbury.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [
+        "https://your-cdn.com/glastonbury-1.jpg",
+        "https://your-cdn.com/glastonbury-2.jpg"
+      ],
+      "metadata": {
+        "activity": "concert"
+      }
+    },
+    {
+      "id": "evt_005",
+      "family_id": "education",
+      "line_key": "university-2010",
+      "parent_line_key": null,
+      "type": "span",
+      "title": "University of Edinburgh",
+      "label": "Edinburgh",
+      "icon": "mdi:school",
+      "start_date": "2010-09-01",
+      "end_date": "2014-05-30",
+      "location": {
+        "label": "Edinburgh, UK",
+        "lat": 55.9533,
+        "lng": -3.1883
+      },
+      "description": "BSc Computer Science.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": {
+        "degree": "BSc Computer Science"
+      }
+    },
+    {
+      "id": "evt_006",
+      "family_id": "books",
+      "line_key": "midnight-library-2022",
+      "parent_line_key": null,
+      "type": "span",
+      "title": "The Midnight Library",
+      "label": "Midnight Library",
+      "icon": "mdi:book-open-variant",
+      "start_date": "2022-07-25",
+      "end_date": "2022-09-10",
+      "location": null,
+      "description": "Matt Haig's novel about infinite possibility.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": {
+        "author": "Matt Haig",
+        "rating": 4
+      }
+    }
+  ]
+}

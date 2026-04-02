@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Life Timeline</title>
+    <link rel="icon" type="image/svg+xml" href="icon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+    <link rel="icon" href="favicon.ico" sizes="any" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="manifest" href="site.webmanifest" />
+    <link rel="stylesheet" href="css/main.css" />
+    <link rel="stylesheet" href="css/timeline.css" />
+    <link rel="stylesheet" href="css/cards.css" />
+    <!-- Apply stored theme before first paint to prevent flash of wrong theme.
+         Runs synchronously (no defer/async) so data-theme is set before CSS renders. -->
+    <script>
+      (function () {
+        var t = localStorage.getItem('theme');
+        if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      })();
+    </script>
+  </head>
+  <body>
+    <!-- Hidden SVG defs — span-line filter only; icons are loaded from /assets/icons/ -->
+    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg"
+         style="position:absolute;width:0;height:0;overflow:hidden">
+      <defs>
+
+        <!--
+          Span line filter — applied to every .span-line group.
+          Layers (bottom → top):
+            1. Drop shadow  — blurred alpha of the source, offset down
+            2. Dark border  — dilated source masked with semi-transparent black
+            3. Source       — the colored stroke at full brightness
+        -->
+        <filter id="span-line-style" x="-10%" y="-10%" width="120%" height="120%">
+          <!-- Drop shadow — flood-color references the theme token so the
+               shadow is strong in dark mode and subtle in light mode. -->
+          <feGaussianBlur in="SourceAlpha" stdDeviation="2.5" result="blur"/>
+          <feOffset in="blur" dy="2" result="offset-blur"/>
+          <feFlood flood-color="var(--color-shadow)" result="shadow-flood"/>
+          <feComposite in="shadow-flood" in2="offset-blur" operator="in" result="drop-shadow"/>
+
+          <!-- Dark border: dilate source, then mask with semi-transparent black -->
+          <feMorphology operator="dilate" radius="2" in="SourceGraphic" result="border-shape"/>
+          <feFlood flood-color="black" flood-opacity="0.45" result="dark"/>
+          <feComposite in="dark" in2="border-shape" operator="in" result="border"/>
+
+          <!-- Composite: shadow → border → original -->
+          <feMerge>
+            <feMergeNode in="drop-shadow"/>
+            <feMergeNode in="border"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+
+      </defs>
+    </svg>
+
+    <!-- Zoom control + theme toggle -->
+    <header class="zoom-bar" role="toolbar" aria-label="Timeline controls">
+      <div class="zoom-controls">
+        <button class="zoom-btn zoom-btn--active" data-zoom="day">Day</button>
+        <button class="zoom-btn" data-zoom="month">Month</button>
+        <button class="zoom-btn" data-zoom="year">Year</button>
+      </div>
+      <button class="theme-toggle" id="theme-toggle" aria-label="Toggle light/dark mode">
+        <span class="theme-toggle__icon theme-toggle__icon--dark" aria-hidden="true">☀</span>
+        <span class="theme-toggle__icon theme-toggle__icon--light" aria-hidden="true">☾</span>
+      </button>
+    </header>
+
+    <!-- Timeline scroll container -->
+    <main class="timeline-container" id="timeline-container">
+      <svg
+        class="timeline-svg"
+        id="timeline-svg"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-label="Life timeline"
+        role="img"
+      >
+        <!-- Rendered by timeline.js -->
+      </svg>
+    </main>
+
+    <!-- Detail card overlay (desktop: floating, mobile: bottom sheet) -->
+    <aside class="card-overlay" id="card-overlay" hidden aria-live="polite">
+      <div class="card-sheet" id="card-sheet">
+        <button class="card-close" id="card-close" aria-label="Close">✕</button>
+        <div class="card-content" id="card-content"></div>
+      </div>
+    </aside>
+
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>

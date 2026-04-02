@@ -1,15 +1,20 @@
 {
   "name": "@meridian/web-timeline",
   "version": "0.1.0",
-  "private": true,
+  "type": "module",
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:update": "playwright test --update-snapshots",
+    "serve": "npx serve app -p 3000",
+    "gen-perf-fixture": "node scripts/gen-perf-fixture.js",
     "check-icons": "node scripts/check-icons.js"
   },
   "devDependencies": {
-    "vitest": "^1.0.0",
-    "@playwright/test": "^1.40.0"
+    "@mdi/svg": "^7.4.47",
+    "@playwright/test": "^1.48.0",
+    "happy-dom": "^20.8.9",
+    "vitest": "^2.1.0"
   }
 }

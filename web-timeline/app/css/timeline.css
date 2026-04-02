@@ -1,0 +1,214 @@
+/* timeline.css — station labels, year markers, zoom state classes */
+
+/* ── Zoom state ───────────────────────────────────────────────────────────── */
+
+/* Icons always appear beside the dot at all zoom levels.
+   The dot is always visible — the icon complements it, does not replace it. */
+.station-icon {
+  fill: currentColor;
+  pointer-events: none;
+}
+
+/* Icons: hover/tap only at ZOOM_MONTH, hidden at ZOOM_YEAR (matches label behaviour). */
+body.zoom-month .station-icon {
+  display: none;
+}
+
+body.zoom-month .station:hover .station-icon,
+body.zoom-month .station:focus-within .station-icon {
+  display: block;
+}
+
+body.zoom-year .station-icon {
+  display: none;
+}
+
+/* Hovering the span line bridge: reveal label + icon on both departure and
+   arrival stations. Applies at zoom-month (where direct station hover already
+   works) and zoom-year (which otherwise has no hover reveal). */
+body.zoom-month .station--span-hover .station-icon,
+body.zoom-year  .station--span-hover .station-icon {
+  display: block;
+}
+
+/* Labels: always visible at ZOOM_DAY; hover/tap-only at ZOOM_MONTH; hidden at ZOOM_YEAR. */
+body.zoom-month .station-label {
+  display: none;
+}
+
+body.zoom-month .station:hover .station-label,
+body.zoom-month .station:focus-within .station-label {
+  display: block;
+}
+
+body.zoom-year .station-label {
+  display: none;
+}
+
+body.zoom-month .station--span-hover .station-label,
+body.zoom-year  .station--span-hover .station-label {
+  display: block;
+}
+
+/* ── Spine ────────────────────────────────────────────────────────────────── */
+
+/* Border line sits behind the main spine at a wider stroke-width. */
+.spine-border {
+  stroke: var(--color-spine-border);
+  stroke-width: 11;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+/* CSS drop-shadow adapts to light/dark via --color-shadow; avoids the SVG
+   filter whose objectBoundingBox percentages collapse on zero-width lines. */
+.spine-path {
+  stroke: var(--color-spine);
+  stroke-width: 7;
+  stroke-linecap: round;
+  filter: drop-shadow(0 2px 3px var(--color-shadow));
+}
+
+/* ── Year markers ─────────────────────────────────────────────────────────── */
+
+.year-tick {
+  stroke: var(--color-border);
+  stroke-width: 1;
+  pointer-events: none;
+}
+
+.year-label {
+  font-size: 11px;
+  fill: var(--color-year-label);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  user-select: none;
+  /* Nudge the baseline so the label sits just above the tick line. */
+  dominant-baseline: auto;
+}
+
+/* Today + birth markers are visually distinct. */
+.year-marker--today .year-tick {
+  stroke: var(--color-today-tick);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
+.year-label--today {
+  fill: var(--color-today-label);
+  font-size: 11px;
+}
+
+/* ── Span lines ───────────────────────────────────────────────────────────── */
+
+/* Color is set via the stroke attribute in JS (from base_color_hsl). */
+.span-line {
+  filter: url(#span-line-style);
+}
+
+.span-branch,
+.span-segment,
+.span-merge {
+  fill: none;
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ── Span line hit area ───────────────────────────────────────────────────── */
+
+/* Wide transparent stroke over the segment path — makes the 7px visual line
+   much easier to click/tap without altering the appearance. */
+.span-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 20;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* Brighten the visual paths on hover/focus so the interaction is discoverable. */
+.span-line:hover .span-branch,
+.span-line:hover .span-segment,
+.span-line:hover .span-merge,
+.span-line:focus-within .span-branch,
+.span-line:focus-within .span-segment,
+.span-line:focus-within .span-merge {
+  filter: brightness(1.4);
+}
+
+/* ── Station modifier class hooks ────────────────────────────────────────── */
+
+/* station--has-icon: added when a rendered icon is present beside the dot.
+   Reserved for future use (e.g. nudging label offset to clear the icon). */
+
+/* station--departure / station--arrival: added to the start/end stations of
+   span events. Reserved for future use (e.g. distinct dot styling or
+   departure-specific icon rules). */
+
+/* ── Station dots ─────────────────────────────────────────────────────────── */
+
+.station-dot {
+  fill: var(--color-spine);        /* spine color by default */
+  stroke: var(--color-station-ring); /* ring so dots show against the spine line */
+  stroke-width: 1.5;
+  cursor: pointer;
+  transition: r 0.12s ease, fill 0.12s ease;
+}
+
+/* All spine stations get the major (brighter amber) fill.
+   Non-birthday milestones are additionally distinguished by a larger dot radius
+   (isMajor=true in JS → r=7 vs r=4 for birthdays). */
+.station--spine .station-dot {
+  fill: var(--color-station-major);
+}
+
+.station-hit {
+  fill: transparent;
+  cursor: pointer;
+  touch-action: manipulation; /* prevents 300ms tap delay on iOS */
+}
+
+/* Hover / focus — expand the dot slightly. */
+/* SVG r transitions work in modern browsers. */
+.station:hover .station-dot,
+.station:focus-within .station-dot {
+  fill: var(--color-station-hover);
+}
+
+/* ── Mobile: concurrent sibling collapse ──────────────────────────────────── */
+
+@media (max-width: 480px) {
+  /* Hide all but the innermost sibling (index 0) — it represents the group. */
+  [data-sibling-index]:not([data-sibling-index="0"]) {
+    display: none;
+  }
+
+  /* Bold the primary sibling's stroke to signal multiplicity. */
+  [data-sibling-count="2"] .span-branch,
+  [data-sibling-count="2"] .span-segment,
+  [data-sibling-count="2"] .span-merge {
+    stroke-width: 11;
+  }
+
+  [data-sibling-count="3"] .span-branch,
+  [data-sibling-count="3"] .span-segment,
+  [data-sibling-count="3"] .span-merge {
+    stroke-width: 15;
+  }
+}
+
+/* ── Station labels (Phase 3) ─────────────────────────────────────────────── */
+
+.station-label {
+  font-size: 11px;
+  fill: var(--color-label-secondary);
+  pointer-events: none;
+  user-select: none;
+}
+
+.station-label--major {
+  font-size: 13px;
+  fill: var(--color-label);
+  font-weight: 600;
+}

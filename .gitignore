@@ -24,3 +24,13 @@ android/app/build/
 
 # OS
 .DS_Store
+
+# Test output
+test-results/
+playwright-report/
+
+# Generated performance fixture — run `npm run gen-perf-fixture` to recreate
+web-timeline/app/tests/fixtures/perf-timeline.json
+
+# Claude local config
+.claude/

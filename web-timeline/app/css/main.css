@@ -1,0 +1,342 @@
+/* main.css — page layout, UI chrome, fonts */
+
+/* ── Design tokens ────────────────────────────────────────────────────────── */
+/*
+ * Dark mode is the default. Light mode overrides via prefers-color-scheme.
+ * A data-theme attribute on <html> provides an explicit user override that
+ * beats the media query regardless of system preference.
+ *
+ * Usage in SVG: set fill/stroke to var(--color-spine) etc. in CSS classes.
+ * Family colors (computed from data) are set as attributes in JS and are
+ * intentionally not tokenised — they come from the API, not from the theme.
+ */
+
+:root {
+  /* Layout */
+  --zoom-bar-height: 48px;
+
+  /* Backgrounds */
+  --color-bg:      #0d0d0d;
+  --color-surface: #1a1a1a;
+  --color-overlay: rgba(13, 13, 13, 0.85);   /* frosted-glass zoom bar */
+
+  /* Text */
+  --color-label:           #e8e8e8;
+  --color-label-secondary: #cccccc;
+  --color-label-tertiary:  #aaaaaa;
+
+  /* Borders & separators */
+  --color-border:        rgba(255, 255, 255, 0.08);  /* subtle dividers, year ticks */
+  --color-border-strong: rgba(255, 255, 255, 0.20);  /* zoom-btn inactive border */
+
+  /* Shadows */
+  --color-shadow: rgba(0, 0, 0, 0.60);
+
+  /* Spine & structural SVG */
+  --color-spine:          hsl(45, 50%, 60%);  /* warm amber — echoes trip/rating accents */
+  --color-spine-border:   hsl(45, 55%, 36%);  /* darker amber for the border line */
+  --color-station-ring:   hsl(0, 0%, 20%);    /* dot outline so it shows against spine */
+  --color-station-major:  hsl(45, 70%, 78%);  /* milestone dot fill — brighter amber */
+  --color-station-hover:  #ffffff;
+
+  /* Year / today markers */
+  --color-year-label:   rgba(255, 255, 255, 0.35);
+  --color-today-tick:   rgba(255, 255, 255, 0.25);
+  --color-today-label:  rgba(255, 255, 255, 0.65);
+
+  /* Zoom-bar buttons */
+  --color-btn-active-bg:     rgba(255, 255, 255, 0.15);
+  --color-btn-active-border: rgba(255, 255, 255, 0.50);
+
+  /* Card accents */
+  --color-link-trip:     hsl(50, 85%, 65%);
+  --color-rating:        hsl(50, 100%, 60%);
+  --color-review-border: rgba(255, 255, 255, 0.15);
+}
+
+/* Light mode — system preference */
+@media (prefers-color-scheme: light) {
+  :root {
+    --color-bg:      #f5f5f5;
+    --color-surface: #ffffff;
+    --color-overlay: rgba(245, 245, 245, 0.90);
+
+    --color-label:           #111111;
+    --color-label-secondary: #555555;
+    --color-label-tertiary:  #777777;
+
+    --color-border:        rgba(0, 0, 0, 0.08);
+    --color-border-strong: rgba(0, 0, 0, 0.20);
+
+    --color-shadow: rgba(0, 0, 0, 0.15);
+
+    --color-spine:         hsl(45, 50%, 33%);  /* warm amber, darkened for light bg */
+    --color-spine-border:  hsl(45, 55%, 20%);  /* darker amber border for light bg */
+    --color-station-ring:  hsl(0, 0%, 92%);
+    --color-station-major: hsl(45, 60%, 28%);  /* milestone dot fill — deeper amber */
+    --color-station-hover: #000000;
+
+    --color-year-label:  rgba(0, 0, 0, 0.40);
+    --color-today-tick:  rgba(0, 0, 0, 0.30);
+    --color-today-label: rgba(0, 0, 0, 0.70);
+
+    --color-btn-active-bg:     rgba(0, 0, 0, 0.10);
+    --color-btn-active-border: rgba(0, 0, 0, 0.50);
+
+    --color-link-trip:     hsl(50, 85%, 35%);
+    --color-rating:        hsl(50, 100%, 35%);
+    --color-review-border: rgba(0, 0, 0, 0.15);
+  }
+}
+
+/* Manual override — dark (beats prefers-color-scheme: light) */
+:root[data-theme="dark"] {
+  --color-bg:      #0d0d0d;
+  --color-surface: #1a1a1a;
+  --color-overlay: rgba(13, 13, 13, 0.85);
+
+  --color-label:           #e8e8e8;
+  --color-label-secondary: #cccccc;
+  --color-label-tertiary:  #aaaaaa;
+
+  --color-border:        rgba(255, 255, 255, 0.08);
+  --color-border-strong: rgba(255, 255, 255, 0.20);
+
+  --color-shadow: rgba(0, 0, 0, 0.60);
+
+  --color-spine:         hsl(45, 50%, 60%);
+  --color-spine-border:  hsl(45, 55%, 36%);
+  --color-station-ring:  hsl(0, 0%, 20%);
+  --color-station-major: hsl(45, 70%, 78%);
+  --color-station-hover: #ffffff;
+
+  --color-year-label:  rgba(255, 255, 255, 0.35);
+  --color-today-tick:  rgba(255, 255, 255, 0.25);
+  --color-today-label: rgba(255, 255, 255, 0.65);
+
+  --color-btn-active-bg:     rgba(255, 255, 255, 0.15);
+  --color-btn-active-border: rgba(255, 255, 255, 0.50);
+
+  --color-link-trip:     hsl(50, 85%, 65%);
+  --color-rating:        hsl(50, 100%, 60%);
+  --color-review-border: rgba(255, 255, 255, 0.15);
+}
+
+/* Manual override — light (beats prefers-color-scheme: dark default) */
+:root[data-theme="light"] {
+  --color-bg:      #f5f5f5;
+  --color-surface: #ffffff;
+  --color-overlay: rgba(245, 245, 245, 0.90);
+
+  --color-label:           #111111;
+  --color-label-secondary: #555555;
+  --color-label-tertiary:  #777777;
+
+  --color-border:        rgba(0, 0, 0, 0.08);
+  --color-border-strong: rgba(0, 0, 0, 0.20);
+
+  --color-shadow: rgba(0, 0, 0, 0.15);
+
+  --color-spine:         hsl(45, 50%, 33%);
+  --color-spine-border:  hsl(45, 55%, 20%);
+  --color-station-ring:  hsl(0, 0%, 92%);
+  --color-station-major: hsl(45, 60%, 28%);
+  --color-station-hover: #000000;
+
+  --color-year-label:  rgba(0, 0, 0, 0.40);
+  --color-today-tick:  rgba(0, 0, 0, 0.30);
+  --color-today-label: rgba(0, 0, 0, 0.70);
+
+  --color-btn-active-bg:     rgba(0, 0, 0, 0.10);
+  --color-btn-active-border: rgba(0, 0, 0, 0.50);
+
+  --color-link-trip:     hsl(50, 85%, 35%);
+  --color-rating:        hsl(50, 100%, 35%);
+  --color-review-border: rgba(0, 0, 0, 0.15);
+}
+
+/* ── Reset ────────────────────────────────────────────────────────────────── */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Base ─────────────────────────────────────────────────────────────────── */
+
+html, body {
+  height: 100%;
+  overflow: hidden; /* timeline-container handles scroll */
+  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-label);
+}
+
+/* ── Zoom bar ─────────────────────────────────────────────────────────────── */
+
+.zoom-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--zoom-bar-height);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-overlay);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.zoom-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.theme-toggle {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: inherit;
+  font-size: 0.875rem;
+  transition: background 0.15s;
+}
+
+.theme-toggle:hover {
+  background: var(--color-btn-active-bg);
+}
+
+/* Show sun (☀) in dark mode (to switch to light), moon (☾) in light mode. */
+.theme-toggle__icon--light { display: none; }
+.theme-toggle__icon--dark  { display: block; }
+
+:root[data-theme="light"]  .theme-toggle__icon--light { display: block; }
+:root[data-theme="light"]  .theme-toggle__icon--dark  { display: none; }
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .theme-toggle__icon--light { display: block; }
+  :root:not([data-theme="dark"]) .theme-toggle__icon--dark  { display: none; }
+}
+
+.zoom-btn {
+  padding: 6px 16px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 20px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background 0.15s, color 0.15s;
+}
+
+.zoom-btn--active {
+  background: var(--color-btn-active-bg);
+  border-color: var(--color-btn-active-border);
+}
+
+/* ── Timeline scroll container ───────────────────────────────────────────── */
+
+.timeline-container {
+  position: fixed;
+  top: var(--zoom-bar-height);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.timeline-svg {
+  display: block;
+  width: 100%;
+  /* Height set dynamically by timeline.js based on zoom level */
+}
+
+/* ── Card overlay ─────────────────────────────────────────────────────────── */
+
+.card-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+}
+
+.card-overlay:not([hidden]) {
+  pointer-events: auto;
+}
+
+/* Breakpoints */
+
+@media (max-width: 480px) {
+  /* Mobile: bottom sheet */
+  .card-overlay {
+    display: flex;
+    align-items: flex-end;
+  }
+
+  .card-sheet {
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    background: var(--color-surface);
+    border-radius: 16px 16px 0 0;
+    padding: 20px;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+  }
+
+  .card-overlay:not([hidden]) .card-sheet {
+    transform: translateY(0);
+  }
+}
+
+@media (min-width: 480px) {
+  /* Tablet / desktop: floating card */
+  .card-sheet {
+    position: absolute;
+    min-width: 320px;
+    max-width: 400px;
+    background: var(--color-surface);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 8px 32px var(--color-shadow);
+  }
+}
+
+.card-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 4px;
+}
+
+/* ── Loading / error states ───────────────────────────────────────────────── */
+
+.timeline-loading {
+  padding: 2rem;
+  text-align: center;
+  color: var(--color-label-secondary);
+}
+
+.timeline-error {
+  padding: 2rem;
+  text-align: center;
+  color: var(--color-label-secondary);
+}

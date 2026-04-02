@@ -1,0 +1,144 @@
+/* cards.css — detail card styles (standard, trip, gallery, book) */
+
+.card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Shared card elements ─────────────────────────────────────────────────── */
+
+.card-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-right: 24px; /* room for close button */
+}
+
+.card-dates {
+  font-size: 0.8rem;
+  color: var(--color-label-tertiary);
+}
+
+.card-description {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--color-label-secondary);
+}
+
+.card-location {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--color-label-tertiary);
+}
+
+.card-location::before {
+  content: '📍';
+  font-size: 0.75rem;
+}
+
+/* ── Trip card ─────────────────────────────────────────────────────────────── */
+
+.card--trip .card-hero {
+  width: 100%;
+  aspect-ratio: 16/9;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.card--trip .card-read-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.875rem;
+  color: var(--color-link-trip);
+  text-decoration: none;
+}
+
+/* ── Gallery card ─────────────────────────────────────────────────────────── */
+
+.card--gallery .card-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 6px;
+}
+
+.card--gallery .card-gallery img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 4px;
+  cursor: zoom-in;
+  /* loading="lazy" is an HTML attribute set when <img> elements are created in cards.js */
+}
+
+/* ── Book card ─────────────────────────────────────────────────────────────── */
+
+.card--book .card-rating {
+  color: var(--color-rating);
+  letter-spacing: 2px;
+}
+
+.card--book .card-review {
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--color-label-secondary);
+  border-left: 3px solid var(--color-review-border);
+  padding-left: 10px;
+}
+
+/* ── TV / show card ─────────────────────────────────────────────────────────── */
+
+.card--tv .card-rating {
+  color: var(--color-rating);
+  letter-spacing: 2px;
+}
+
+.card--tv .card-network {
+  font-size: 0.8rem;
+  color: var(--color-label-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.card--tv .card-seasons {
+  font-size: 0.8rem;
+  color: var(--color-label-secondary);
+}
+
+/* ── Standard card ───────────────────────────────────────────────────────────── */
+
+/* .card--standard has no type-specific rules — the shared elements
+   (.card-title, .card-dates, .card-description, .card-location) are sufficient. */
+
+/* ── Milestone card ──────────────────────────────────────────────────────────── */
+
+.card--milestone .card-icon {
+  font-size: 2rem;
+  text-align: center;
+}
+
+/* ── Aggregate card ──────────────────────────────────────────────────────────── */
+
+.card--aggregate .card-aggregate-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.card--aggregate .card-aggregate-list li {
+  font-size: 0.875rem;
+  color: var(--color-label-secondary);
+  padding-left: 12px;
+  position: relative;
+}
+
+.card--aggregate .card-aggregate-list li::before {
+  content: '·';
+  position: absolute;
+  left: 0;
+  color: var(--color-label-tertiary);
+}
