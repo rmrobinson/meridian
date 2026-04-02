@@ -1,5 +1,5 @@
 {
-  "name": "life-timeline",
+  "name": "@meridian/web-timeline",
   "version": "0.1.0",
   "type": "module",
   "scripts": {
