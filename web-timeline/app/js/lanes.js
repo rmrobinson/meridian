@@ -17,7 +17,6 @@
  */
 
 export const LANE_WIDTH = 80; // px between adjacent lanes
-export const SPINE_X    = 0;  // logical center; SVG translates to canvas midpoint
 
 /**
  * @typedef {object} LaneInfo
