@@ -13,4 +13,7 @@ plugins:
     opt:
       - esModuleInterop=true
       - outputServices=nice-grpc
+      - outputServices=generic-definitions
       - useDate=string
+      - env=node
+      - useExactTypes=false
