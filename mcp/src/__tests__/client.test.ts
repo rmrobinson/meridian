@@ -2,7 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 vi.mock("nice-grpc", () => ({
   createChannel: vi.fn(() => ({})),
-  createClient: vi.fn(() => ({})),
+  createClientFactory: vi.fn(() => ({
+    use: vi.fn().mockReturnThis(),
+    create: vi.fn(() => ({})),
+  })),
   Metadata: vi.fn(() => ({ set: vi.fn() })),
 }));
 

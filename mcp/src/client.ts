@@ -1,6 +1,6 @@
 import {
   createChannel,
-  createClient,
+  createClientFactory,
   Metadata,
   ClientMiddlewareCall,
   CallOptions,
@@ -33,6 +33,6 @@ async function* authMiddleware<Request, Response>(
 
 const channel = createChannel(grpcUrl);
 
-export const client = createClient(TimelineServiceDefinition, channel, {
-  "*": authMiddleware,
-});
+export const client = createClientFactory()
+  .use(authMiddleware)
+  .create(TimelineServiceDefinition, channel);
