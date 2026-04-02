@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { client } from "../client.js";
+import { mapGrpcError } from "../errors.js";
 import {
   EventType,
   ActivityType,
@@ -117,19 +118,23 @@ export async function importEvents(args: {
       ? ConflictStrategy.CONFLICT_STRATEGY_UPSERT
       : ConflictStrategy.CONFLICT_STRATEGY_SKIP;
 
-  const response = await client.importEvents({
-    events: args.events.map(toCreateEventRequest),
-    sourceService: args.source_service,
-    conflictStrategy: strategy,
-  });
+  try {
+    const response = await client.importEvents({
+      events: args.events.map(toCreateEventRequest),
+      sourceService: args.source_service,
+      conflictStrategy: strategy,
+    });
 
-  const parts = [`Imported ${args.events.length} event(s):`];
-  parts.push(`  created: ${response.created}`);
-  parts.push(`  updated: ${response.updated}`);
-  parts.push(`  skipped: ${response.skipped}`);
-  parts.push(`  failed:  ${response.failed}`);
-  if (response.errors.length > 0) {
-    parts.push(`Errors:\n${response.errors.map((e) => `  - ${e}`).join("\n")}`);
+    const parts = [`Imported ${args.events.length} event(s):`];
+    parts.push(`  created: ${response.created}`);
+    parts.push(`  updated: ${response.updated}`);
+    parts.push(`  skipped: ${response.skipped}`);
+    parts.push(`  failed:  ${response.failed}`);
+    if (response.errors.length > 0) {
+      parts.push(`Errors:\n${response.errors.map((e) => `  - ${e}`).join("\n")}`);
+    }
+    return parts.join("\n");
+  } catch (err) {
+    return mapGrpcError(err);
   }
-  return parts.join("\n");
 }

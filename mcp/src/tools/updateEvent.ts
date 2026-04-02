@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { client } from "../client.js";
+import { mapGrpcError } from "../errors.js";
 import {
   EventType,
   ActivityType,
@@ -79,37 +80,41 @@ export async function updateEvent(args: {
     args.location_lat !== undefined ||
     args.location_lng !== undefined;
 
-  const response = await client.updateEvent({
-    id: args.id,
-    title: args.title ?? "",
-    date: args.date ?? "",
-    startDate: args.start_date ?? "",
-    endDate: args.end_date ?? "",
-    description: args.description ?? "",
-    activityType: args.activity_type
-      ? (activityTypeMap[args.activity_type] ?? ActivityType.ACTIVITY_TYPE_UNSPECIFIED)
-      : ActivityType.ACTIVITY_TYPE_UNSPECIFIED,
-    visibility: args.visibility
-      ? (visibilityMap[args.visibility] ?? Visibility.VISIBILITY_UNSPECIFIED)
-      : Visibility.VISIBILITY_UNSPECIFIED,
-    lineKey: args.line_key ?? "",
-    parentLineKey: args.parent_line_key ?? "",
-    location: hasLocation
-      ? { label: args.location_label ?? "", lat: args.location_lat ?? 0, lng: args.location_lng ?? 0 }
-      : undefined,
-    externalUrl: args.external_url ?? "",
-    metadata: args.metadata ?? "",
-    label: args.label ?? "",
-    icon: args.icon ?? "",
-    // type and familyId intentionally omitted — backend treats zero-value as "no change"
-    type: EventType.EVENT_TYPE_UNSPECIFIED,
-    familyId: "",
-    endIcon: "",
-  });
+  try {
+    const response = await client.updateEvent({
+      id: args.id,
+      title: args.title ?? "",
+      date: args.date ?? "",
+      startDate: args.start_date ?? "",
+      endDate: args.end_date ?? "",
+      description: args.description ?? "",
+      activityType: args.activity_type
+        ? (activityTypeMap[args.activity_type] ?? ActivityType.ACTIVITY_TYPE_UNSPECIFIED)
+        : ActivityType.ACTIVITY_TYPE_UNSPECIFIED,
+      visibility: args.visibility
+        ? (visibilityMap[args.visibility] ?? Visibility.VISIBILITY_UNSPECIFIED)
+        : Visibility.VISIBILITY_UNSPECIFIED,
+      lineKey: args.line_key ?? "",
+      parentLineKey: args.parent_line_key ?? "",
+      location: hasLocation
+        ? { label: args.location_label ?? "", lat: args.location_lat ?? 0, lng: args.location_lng ?? 0 }
+        : undefined,
+      externalUrl: args.external_url ?? "",
+      metadata: args.metadata ?? "",
+      label: args.label ?? "",
+      icon: args.icon ?? "",
+      // type and familyId intentionally omitted — backend treats zero-value as "no change"
+      type: EventType.EVENT_TYPE_UNSPECIFIED,
+      familyId: "",
+      endIcon: "",
+    });
 
-  const event = response.event;
-  if (!event) {
-    return "Event updated but no event data returned.";
+    const event = response.event;
+    if (!event) {
+      return "Event updated but no event data returned.";
+    }
+    return `Updated event: [${event.id}] ${event.title}`;
+  } catch (err) {
+    return mapGrpcError(err);
   }
-  return `Updated event: [${event.id}] ${event.title}`;
 }

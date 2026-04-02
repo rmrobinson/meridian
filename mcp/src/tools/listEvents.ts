@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { client } from "../client.js";
+import { mapGrpcError } from "../errors.js";
 import {
   Visibility,
   visibilityFromJSON,
@@ -61,17 +62,21 @@ export async function listEvents(args: {
     personal: Visibility.VISIBILITY_PERSONAL,
   };
 
-  const response = await client.listEvents({
-    familyId: args.family_id ?? "",
-    from: args.from ?? "",
-    to: args.to ?? "",
-    visibilities: args.visibilities?.map((v) => visibilityMap[v]) ?? [],
-  });
+  try {
+    const response = await client.listEvents({
+      familyId: args.family_id ?? "",
+      from: args.from ?? "",
+      to: args.to ?? "",
+      visibilities: args.visibilities?.map((v) => visibilityMap[v]) ?? [],
+    });
 
-  if (response.events.length === 0) {
-    return "No events found matching the given filters.";
+    if (response.events.length === 0) {
+      return "No events found matching the given filters.";
+    }
+
+    const lines = response.events.map(formatEvent);
+    return `${response.events.length} event(s):\n\n${lines.join("\n")}`;
+  } catch (err) {
+    return mapGrpcError(err);
   }
-
-  const lines = response.events.map(formatEvent);
-  return `${response.events.length} event(s):\n\n${lines.join("\n")}`;
 }

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { client } from "../client.js";
+import { mapGrpcError } from "../errors.js";
 import {
   EventType,
   ActivityType,
@@ -87,35 +88,39 @@ export async function createEvent(args: {
     args.location_lat !== undefined ||
     args.location_lng !== undefined;
 
-  const response = await client.createEvent({
-    title: args.title,
-    familyId: args.family_id,
-    type: args.type === "span" ? EventType.EVENT_TYPE_SPAN : EventType.EVENT_TYPE_POINT,
-    date: args.date ?? "",
-    startDate: args.start_date ?? "",
-    endDate: args.end_date ?? "",
-    description: args.description ?? "",
-    activityType: args.activity_type
-      ? (activityTypeMap[args.activity_type] ?? ActivityType.ACTIVITY_TYPE_UNSPECIFIED)
-      : ActivityType.ACTIVITY_TYPE_UNSPECIFIED,
-    visibility: args.visibility
-      ? (visibilityMap[args.visibility] ?? Visibility.VISIBILITY_PERSONAL)
-      : Visibility.VISIBILITY_PERSONAL,
-    lineKey: args.line_key ?? "",
-    parentLineKey: args.parent_line_key ?? "",
-    location: hasLocation
-      ? { label: args.location_label ?? "", lat: args.location_lat ?? 0, lng: args.location_lng ?? 0 }
-      : undefined,
-    externalUrl: args.external_url ?? "",
-    metadata: args.metadata ?? "",
-    label: args.label ?? "",
-    icon: args.icon ?? "",
-    sourceEventId: args.source_event_id ?? "",
-  });
+  try {
+    const response = await client.createEvent({
+      title: args.title,
+      familyId: args.family_id,
+      type: args.type === "span" ? EventType.EVENT_TYPE_SPAN : EventType.EVENT_TYPE_POINT,
+      date: args.date ?? "",
+      startDate: args.start_date ?? "",
+      endDate: args.end_date ?? "",
+      description: args.description ?? "",
+      activityType: args.activity_type
+        ? (activityTypeMap[args.activity_type] ?? ActivityType.ACTIVITY_TYPE_UNSPECIFIED)
+        : ActivityType.ACTIVITY_TYPE_UNSPECIFIED,
+      visibility: args.visibility
+        ? (visibilityMap[args.visibility] ?? Visibility.VISIBILITY_PERSONAL)
+        : Visibility.VISIBILITY_PERSONAL,
+      lineKey: args.line_key ?? "",
+      parentLineKey: args.parent_line_key ?? "",
+      location: hasLocation
+        ? { label: args.location_label ?? "", lat: args.location_lat ?? 0, lng: args.location_lng ?? 0 }
+        : undefined,
+      externalUrl: args.external_url ?? "",
+      metadata: args.metadata ?? "",
+      label: args.label ?? "",
+      icon: args.icon ?? "",
+      sourceEventId: args.source_event_id ?? "",
+    });
 
-  const event = response.event;
-  if (!event) {
-    return "Event created but no event data returned.";
+    const event = response.event;
+    if (!event) {
+      return "Event created but no event data returned.";
+    }
+    return `Created event: [${event.id}] ${event.title}`;
+  } catch (err) {
+    return mapGrpcError(err);
   }
-  return `Created event: [${event.id}] ${event.title}`;
 }
