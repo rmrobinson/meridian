@@ -45,14 +45,6 @@
       "spawn_behavior": "secondary_spine"
     },
     {
-      "id": "flights",
-      "label": "Flights",
-      "base_color_hsl": [200, 70, 55],
-      "side": "right",
-      "on_end": "terminate",
-      "spawn_behavior": "per_event"
-    },
-    {
       "id": "education",
       "label": "Education",
       "base_color_hsl": [270, 60, 55],

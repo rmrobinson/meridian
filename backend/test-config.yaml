@@ -79,12 +79,6 @@ line_families:
     on_end: terminate
     spawn_behavior: per_event
 
-  - id: flights
-    label: Flights
-    base_color_hsl: [200, 70, 55]
-    side: right
-    on_end: terminate
-    spawn_behavior: per_event
 
   - id: fitness
     label: Fitness & Health

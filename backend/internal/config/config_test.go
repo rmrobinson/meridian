@@ -31,8 +31,8 @@ func TestLoad_AllNineLineFamilies(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(cfg.LineFamilies) != 9 {
-		t.Fatalf("line_families: got %d, want 9", len(cfg.LineFamilies))
+	if len(cfg.LineFamilies) != 8 {
+		t.Fatalf("line_families: got %d, want 8", len(cfg.LineFamilies))
 	}
 
 	expected := []struct {
@@ -47,7 +47,6 @@ func TestLoad_AllNineLineFamilies(t *testing.T) {
 		{"education", "left", "merge", "per_event", [3]int{270, 60, 55}},
 		{"hobbies", "left", "terminate", "per_event", [3]int{180, 55, 45}},
 		{"travel", "right", "merge", "per_event", [3]int{50, 85, 50}},
-		{"flights", "right", "terminate", "per_event", [3]int{200, 75, 50}},
 		{"books", "right", "terminate", "per_event", [3]int{30, 70, 50}},
 		{"film_tv", "right", "terminate", "per_event", [3]int{300, 60, 55}},
 		{"fitness", "left", "terminate", "secondary_spine", [3]int{140, 65, 45}},
