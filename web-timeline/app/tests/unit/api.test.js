@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { generateBirthdays, normalize } from '../../js/api.js';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { generateBirthdays, normalize, getTokenFromSearch, fetchTimeline } from '../../js/api.js';
 
 const BIRTH = '1990-04-12';
 
@@ -188,5 +188,66 @@ describe('normalize()', () => {
     const result = normalize(raw);
     // Only auto-generated birthdays remain
     expect(result.events.every((e) => e.family_id === 'spine')).toBe(true);
+  });
+});
+
+describe('getTokenFromSearch()', () => {
+  it('returns null when no token param is present', () => {
+    expect(getTokenFromSearch('')).toBeNull();
+    expect(getTokenFromSearch('?foo=bar')).toBeNull();
+  });
+
+  it('returns null when token param is empty string', () => {
+    expect(getTokenFromSearch('?token=')).toBeNull();
+  });
+
+  it('returns the token value when present', () => {
+    expect(getTokenFromSearch('?token=abc123')).toBe('abc123');
+  });
+
+  it('handles token among other params', () => {
+    expect(getTokenFromSearch('?foo=bar&token=xyz&baz=1')).toBe('xyz');
+  });
+});
+
+describe('fetchTimeline() authorization', () => {
+  const MINIMAL_PAYLOAD = {
+    person: { name: 'Test', birth_date: BIRTH },
+    line_families: [],
+    events: [],
+  };
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function mockFetchOk(payload = MINIMAL_PAYLOAD) {
+    fetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(payload),
+    });
+  }
+
+  it('sends no Authorization header when token is null', async () => {
+    mockFetchOk();
+    await fetchTimeline('/api/timeline', null);
+    expect(fetch).toHaveBeenCalledWith('/api/timeline', { headers: {} });
+  });
+
+  it('sends Authorization: Bearer header when token is provided', async () => {
+    mockFetchOk();
+    await fetchTimeline('/api/timeline', 'mytoken');
+    expect(fetch).toHaveBeenCalledWith('/api/timeline', {
+      headers: { Authorization: 'Bearer mytoken' },
+    });
+  });
+
+  it('throws when the response is not ok', async () => {
+    fetch.mockResolvedValue({ ok: false, status: 401 });
+    await expect(fetchTimeline('/api/timeline', 'bad')).rejects.toThrow('401');
   });
 });

@@ -14,13 +14,31 @@ const TIMELINE_URL = (typeof window !== 'undefined' && window.TIMELINE_API_URL)
   : '/api/timeline';
 
 /**
+ * Extract the `token` query parameter from a URL search string.
+ *
+ * @param {string} search - e.g. window.location.search ("?token=abc123")
+ * @returns {string|null} The token value, or null if absent/empty.
+ */
+export function getTokenFromSearch(search) {
+  const token = new URLSearchParams(search).get('token');
+  return token || null;
+}
+
+/**
  * Fetch and normalize the full timeline payload.
  *
- * @param {string} [url] - Override endpoint (useful for testing with a fixture).
+ * @param {string} [url]   - Override endpoint (useful for testing with a fixture).
+ * @param {string} [token] - Bearer token for Authorization header. Defaults to
+ *                           the `token` query param from the current page URL.
  * @returns {Promise<NormalizedTimeline>}
  */
-export async function fetchTimeline(url = TIMELINE_URL) {
-  const res = await fetch(url);
+export async function fetchTimeline(
+  url = TIMELINE_URL,
+  token = (typeof window !== 'undefined' ? getTokenFromSearch(window.location.search) : null),
+) {
+  const headers = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(url, { headers });
   if (!res.ok) throw new Error(`Failed to fetch timeline: ${res.status}`);
   const raw = await res.json();
   return normalize(raw);
