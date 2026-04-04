@@ -40,9 +40,17 @@
       "id": "fitness",
       "label": "Fitness & Health",
       "base_color_hsl": [140, 65, 45],
+      "side": "left",
+      "on_end": "terminate",
+      "spawn_behavior": "secondary_spine"
+    },
+    {
+      "id": "flights",
+      "label": "Flights",
+      "base_color_hsl": [200, 70, 55],
       "side": "right",
       "on_end": "terminate",
-      "spawn_behavior": "single_line"
+      "spawn_behavior": "per_event"
     },
     {
       "id": "education",
@@ -313,6 +321,90 @@
         "author": "Matt Haig",
         "rating": 4
       }
+    },
+    {
+      "id": "evt_fit_001",
+      "family_id": "fitness",
+      "line_key": "fitness",
+      "type": "point",
+      "title": "First Triathlon",
+      "label": "Triathlon",
+      "icon": "mdi:bike",
+      "date": "2018-08-05",
+      "location": null,
+      "description": "Sprint triathlon — first ever.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": {}
+    },
+    {
+      "id": "evt_fit_002",
+      "family_id": "fitness",
+      "line_key": "fitness",
+      "type": "point",
+      "title": "Marathon — Edinburgh",
+      "label": "Marathon",
+      "icon": "mdi:run",
+      "date": "2021-05-23",
+      "location": {
+        "label": "Edinburgh, UK",
+        "lat": 55.9533,
+        "lng": -3.1883
+      },
+      "description": "First full marathon.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": { "distance_km": 42.2 }
+    },
+    {
+      "id": "evt_flight_001",
+      "family_id": "flights",
+      "line_key": "flight-lhr-nrt-2023",
+      "type": "point",
+      "title": "LHR → NRT",
+      "label": "LHR→NRT",
+      "icon": "mdi:airplane-takeoff",
+      "date": "2023-03-10",
+      "location": null,
+      "description": "Flight to Tokyo for Japan trip.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": { "origin": "LHR", "destination": "NRT" }
+    },
+    {
+      "id": "evt_flight_002",
+      "family_id": "flights",
+      "line_key": "flight-nrt-lhr-2023",
+      "type": "point",
+      "title": "NRT → LHR",
+      "label": "NRT→LHR",
+      "icon": "mdi:airplane-landing",
+      "date": "2023-03-24",
+      "location": null,
+      "description": "Return flight from Tokyo.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": { "origin": "NRT", "destination": "LHR" }
+    },
+    {
+      "id": "evt_flight_003",
+      "family_id": "flights",
+      "line_key": "flight-lhr-lhr-2021",
+      "type": "point",
+      "title": "LHR → DUB",
+      "label": "LHR→DUB",
+      "icon": "mdi:airplane-takeoff",
+      "date": "2021-03-15",
+      "location": null,
+      "description": "Standalone flight, not part of any recorded trip.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": { "origin": "LHR", "destination": "DUB" }
     }
   ]
 }

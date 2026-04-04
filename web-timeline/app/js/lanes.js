@@ -19,6 +19,13 @@
 export const LANE_WIDTH = 80; // px between adjacent lanes
 
 /**
+ * Number of LANE_WIDTH steps from the spine center reserved for secondary
+ * spines (families with spawn_behavior === 'secondary_spine').  Their slot is
+ * pre-occupied before the sweep so regular branches never land there.
+ */
+export const SECONDARY_SPINE_SLOTS = 4;
+
+/**
  * @typedef {object} LaneInfo
  * @property {number}          laneOffset   Signed px offset from spine center.
  * @property {number}          parentOffset Parent line's laneOffset (0 = spine).
@@ -45,6 +52,26 @@ export function assignLanes(events, line_families) {
 
   /** Next color-variant index per family (increments each time a new line_key is assigned). */
   const colorIndexByFamily = new Map();
+
+  // ── Pre-assign secondary_spine families ───────────────────────────────────
+  //
+  // Secondary spine families don't participate in the sweep — they hold a
+  // fixed, reserved lane slot so regular branches can never land there.
+  // The family's id is used as the map key (all events share that line_key).
+
+  for (const family of line_families) {
+    if (family.spawn_behavior !== 'secondary_spine') continue;
+    const direction    = family.side === 'right' ? 1 : -1;
+    const laneOffset   = direction * SECONDARY_SPINE_SLOTS * LANE_WIDTH;
+    result.set(family.id, {
+      laneOffset,
+      parentOffset: 0,
+      side:         family.side,
+      familyId:     family.id,
+      colorIndex:   0,
+    });
+    occupiedOffsets.add(laneOffset);
+  }
 
   // ── Build sweep-line events ────────────────────────────────────────────────
 

@@ -128,6 +128,24 @@ function buildRenderObjects(data, pxPerDay) {
 
   const renderObjects = [];
 
+  // ── Secondary spine lines ─────────────────────────────────────────────────
+  //
+  // Families with spawn_behavior === 'secondary_spine' render as a persistent
+  // vertical line (like the main spine) at their reserved lane offset.
+
+  for (const family of data.line_families) {
+    if (family.spawn_behavior !== 'secondary_spine') continue;
+    const info = laneMap.get(family.id);
+    if (!info) continue;
+    renderObjects.push({
+      type:       'secondary-spine-line',
+      id:         `secondary-spine-${family.id}`,
+      familyId:   family.id,
+      laneOffset: info.laneOffset,
+      color:      hslColor(family.base_color_hsl),
+    });
+  }
+
   // ── Year markers ──────────────────────────────────────────────────────────
 
   const birthYear   = birthDate.getUTCFullYear();

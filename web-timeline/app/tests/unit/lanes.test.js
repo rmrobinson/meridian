@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { assignLanes, LANE_WIDTH } from '../../js/lanes.js';
+import { assignLanes, LANE_WIDTH, SECONDARY_SPINE_SLOTS } from '../../js/lanes.js';
 
 // ── Fixture helpers ───────────────────────────────────────────────────────────
 
@@ -222,5 +222,47 @@ describe('assignLanes()', () => {
     expect(result.get('midnight-library-2022').laneOffset).toBe(2 * LANE_WIDTH);
     // Japan trip: non-concurrent with books → reuses right lane 1
     expect(result.get('japan-2023').laneOffset).toBe(LANE_WIDTH);
+  });
+
+  // ── secondary_spine family ──────────────────────────────────────────────────
+
+  it('secondary_spine left family is assigned a fixed negative laneOffset', () => {
+    const FITNESS = makeFamily('fitness', 'left', 'secondary_spine', 'terminate');
+    const result = assignLanes([], [FITNESS]);
+    expect(result.has('fitness')).toBe(true);
+    expect(result.get('fitness').laneOffset).toBe(-(SECONDARY_SPINE_SLOTS * LANE_WIDTH));
+  });
+
+  it('secondary_spine right family is assigned a fixed positive laneOffset', () => {
+    const SEC = makeFamily('sec-right', 'right', 'secondary_spine', 'terminate');
+    const result = assignLanes([], [SEC]);
+    expect(result.get('sec-right').laneOffset).toBe(SECONDARY_SPINE_SLOTS * LANE_WIDTH);
+  });
+
+  it('secondary_spine slot is pre-occupied — regular left spans skip it', () => {
+    const FITNESS = makeFamily('fitness', 'left', 'secondary_spine', 'terminate');
+    const LEFT    = makeFamily('left-fam', 'left');
+    const reserved = -(SECONDARY_SPINE_SLOTS * LANE_WIDTH);
+
+    // Pack enough concurrent left spans to reach the reserved slot.
+    const events = [];
+    for (let i = 0; i < SECONDARY_SPINE_SLOTS; i++) {
+      events.push(makeSpan(`e${i}`, `key${i}`, 'left-fam', '2020-01-01', '2021-01-01'));
+    }
+
+    const result = assignLanes(events, [FITNESS, LEFT]);
+    const regularOffsets = [...result.entries()]
+      .filter(([k]) => k !== 'fitness')
+      .map(([, v]) => v.laneOffset);
+
+    expect(regularOffsets).not.toContain(reserved);
+  });
+
+  it('secondary_spine entry has colorIndex 0 and parentOffset 0', () => {
+    const FITNESS = makeFamily('fitness', 'left', 'secondary_spine', 'terminate');
+    const result = assignLanes([], [FITNESS]);
+    const info = result.get('fitness');
+    expect(info.colorIndex).toBe(0);
+    expect(info.parentOffset).toBe(0);
   });
 });

@@ -69,6 +69,26 @@ body.zoom-year  .station--span-hover .station-label {
   filter: drop-shadow(0 2px 3px var(--color-shadow));
 }
 
+/* ── Secondary spines ─────────────────────────────────────────────────────── */
+
+/* Thinner than the main spine — secondary spines are supporting infrastructure,
+   not the primary visual axis. */
+.secondary-spine-border {
+  stroke: var(--color-spine-border);
+  stroke-width: 7;
+  stroke-linecap: round;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.secondary-spine-path {
+  stroke-width: 3;
+  stroke-linecap: round;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 2px var(--color-shadow));
+}
+
+
 /* ── Year markers ─────────────────────────────────────────────────────────── */
 
 .year-tick {

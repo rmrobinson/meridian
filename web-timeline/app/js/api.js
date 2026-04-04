@@ -57,7 +57,7 @@ export async function fetchTimeline(
 export function normalize(raw) {
   const person = raw.person;
   const line_families = raw.line_families ?? [];
-  const events = (raw.events ?? []).map(normalizeEvent);
+  const events = resolveFlights((raw.events ?? []).map(normalizeEvent));
 
   // Inject computed age into any explicit birthday spine events so cards.js
   // can always read event.metadata.age without needing person.birth_date.
@@ -87,6 +87,61 @@ function injectBirthdayAge(events, birthDateStr) {
     const evtDate = new Date(evt.date);
     evt.metadata.age = evtDate.getUTCFullYear() - birth.getUTCFullYear();
   }
+}
+
+// ---------------------------------------------------------------------------
+// Flight resolution
+// ---------------------------------------------------------------------------
+
+/**
+ * Reassign flight events (family_id === 'flights') to the appropriate line,
+ * and select the correct icon based on the flight's position relative to its
+ * containing travel span:
+ *
+ *   - start_date of the span → mdi:airplane-takeoff  (departure)
+ *   - end_date of the span   → mdi:airplane-landing  (arrival)
+ *   - mid-trip or standalone → mdi:airplane
+ *
+ * Flights that don't overlap any travel span are promoted to the main spine.
+ *
+ * The check is purely date-based — no explicit metadata link is required
+ * between flight events and travel spans.
+ *
+ * @param {object[]} events - Normalized events array.
+ * @returns {object[]}
+ */
+export function resolveFlights(events) {
+  const travelSpans = events.filter(
+    (e) => e.type === 'span' && e.family_id === 'travel',
+  );
+
+  return events.map((evt) => {
+    if (evt.family_id !== 'flights') return evt;
+
+    const flightDate = new Date(evt.date);
+    const containing = travelSpans.find((span) => {
+      const start = new Date(span.start_date);
+      const end   = new Date(span.end_date);
+      return flightDate >= start && flightDate <= end;
+    });
+
+    if (containing) {
+      const isStart = evt.date === containing.start_date;
+      const isEnd   = evt.date === containing.end_date;
+      const icon = isStart ? 'mdi:airplane-takeoff'
+                 : isEnd   ? 'mdi:airplane-landing'
+                 :           'mdi:airplane';
+      return {
+        ...evt,
+        family_id:       containing.family_id,
+        line_key:        containing.line_key,
+        parent_line_key: containing.parent_line_key ?? null,
+        icon,
+      };
+    }
+
+    return { ...evt, family_id: 'spine', line_key: 'spine', parent_line_key: null, icon: 'mdi:airplane' };
+  });
 }
 
 // ---------------------------------------------------------------------------
