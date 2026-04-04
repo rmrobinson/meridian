@@ -69,7 +69,7 @@ func testConfig() *config.Config {
 			{ID: "hobbies", Label: "Hobbies", BaseColorHSL: []int{180, 55, 45}, Side: "left", OnEnd: "terminate", SpawnBehavior: "per_event"},
 			{ID: "flights", Label: "Flights", BaseColorHSL: []int{200, 75, 50}, Side: "right", OnEnd: "terminate", SpawnBehavior: "per_event"},
 			{ID: "film_tv", Label: "Film & TV", BaseColorHSL: []int{300, 60, 55}, Side: "right", OnEnd: "terminate", SpawnBehavior: "per_event"},
-			{ID: "fitness", Label: "Fitness & Health", BaseColorHSL: []int{140, 65, 45}, Side: "right", OnEnd: "terminate", SpawnBehavior: "single_line"},
+			{ID: "fitness", Label: "Fitness & Health", BaseColorHSL: []int{140, 65, 45}, Side: "left", OnEnd: "terminate", SpawnBehavior: "secondary_spine"},
 		},
 	}
 }

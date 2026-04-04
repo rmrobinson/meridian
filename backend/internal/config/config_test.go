@@ -50,7 +50,7 @@ func TestLoad_AllNineLineFamilies(t *testing.T) {
 		{"flights", "right", "terminate", "per_event", [3]int{200, 75, 50}},
 		{"books", "right", "terminate", "per_event", [3]int{30, 70, 50}},
 		{"film_tv", "right", "terminate", "per_event", [3]int{300, 60, 55}},
-		{"fitness", "right", "terminate", "single_line", [3]int{140, 65, 45}},
+		{"fitness", "left", "terminate", "secondary_spine", [3]int{140, 65, 45}},
 	}
 
 	for i, want := range expected {

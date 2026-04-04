@@ -19,8 +19,9 @@ const (
 type SpawnBehavior string
 
 const (
-	SpawnBehaviorPerEvent    SpawnBehavior = "per_event"
-	SpawnBehaviorSingleLine  SpawnBehavior = "single_line"
+	SpawnBehaviorPerEvent       SpawnBehavior = "per_event"
+	SpawnBehaviorSingleLine     SpawnBehavior = "single_line"
+	SpawnBehaviorSecondarySpine SpawnBehavior = "secondary_spine"
 )
 
 type LineFamily struct {

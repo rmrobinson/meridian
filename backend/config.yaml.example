@@ -39,7 +39,13 @@ person:
 #
 # side: "left" | "right" | "center"
 # on_end: "merge" | "terminate" | "never"
-# spawn_behavior: "single_line" | "per_event"
+# spawn_behavior: "single_line" | "per_event" | "secondary_spine"
+#
+# secondary_spine: renders a full-height vertical line parallel to the main life
+# spine at a fixed reserved position. Use for families (e.g. fitness) that
+# produce only point events rather than multi-day spans. On viewports too narrow
+# to display the secondary spine, the web app automatically collapses its events
+# onto the main life spine.
 line_families:
   - id: spine
     label: Life Spine
@@ -100,9 +106,9 @@ line_families:
   - id: fitness
     label: Fitness & Health
     base_color_hsl: [140, 65, 45]
-    side: right
+    side: left
     on_end: terminate
-    spawn_behavior: single_line
+    spawn_behavior: secondary_spine
 
 # When events from multiple sources describe the same activity, source_priority
 # determines which source wins each field during auto-merge. "manual" should
