@@ -88,9 +88,12 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
   let stationObjects           = [];
   let secondarySpineObjs       = []; // secondary-spine-line render objects (rebuilt on resize)
   let currentTotalHeight       = totalHeight;
-  /** familyIds whose secondary spine x ≤ 0 at the current spineX — stations
-   *  for these families fall back to the main spine (laneOffset 0). */
+  /** familyIds whose secondary spine x ≤ 0 at the current spineX — point
+   *  event stations for these families fall back to the main spine. */
   let collapsedSecondarySpines = new Set();
+  /** laneOffset values of collapsed secondary spines — spans whose parentOffset
+   *  matches are also collapsed: both parentOffset and laneOffset remapped to 0. */
+  let collapsedLaneOffsets = new Set();
   let spanObjectById           = new Map(); // id → render object (for O(1) eviction lookup)
   let stationObjectById        = new Map();
   const liveSpans              = new Map(); // id → SVGElement
@@ -144,18 +147,28 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
     for (const obj of spanObjects) {
       if ((obj.yEnd - obj.curveHeight) > yMax) break;
       if ((obj.yStart + obj.curveHeight) >= yMin && !liveSpans.has(obj.id)) {
-        liveSpans.set(obj.id, linesLayer.appendChild(buildSpanLine(obj, spineX)));
+        // Collapse branches whose parent secondary spine is off-screen: remap
+        // both parentOffset and laneOffset to 0 so the bezier connects to the
+        // main spine and the branch line runs along it.
+        const spanObj = collapsedLaneOffsets.has(obj.parentOffset)
+          ? { ...obj, parentOffset: 0, laneOffset: 0 }
+          : obj;
+        liveSpans.set(obj.id, linesLayer.appendChild(buildSpanLine(spanObj, spineX)));
       }
     }
     // stationObjects sorted by y asc.
     for (const obj of stationObjects) {
       if (obj.y > yMax) break;
       if (obj.y >= yMin && !liveStations.has(obj.id)) {
-        // Collapse secondary-spine stations to the main spine when their line
-        // is off-screen at the current viewport width.
-        const stationObj = collapsedSecondarySpines.has(obj.event?.family_id)
-          ? { ...obj, laneOffset: 0 }
-          : obj;
+        // Collapse to the main spine when:
+        //   a) the station belongs to a secondary-spine family (point events), or
+        //   b) the station sits on a secondary-spine lane that has collapsed
+        //      (departure/arrival stations of child span branches).
+        const stationObj =
+          collapsedSecondarySpines.has(obj.event?.family_id) ||
+          collapsedLaneOffsets.has(obj.laneOffset)
+            ? { ...obj, laneOffset: 0 }
+            : obj;
         liveStations.set(obj.id, stationsLayer.appendChild(buildStation(stationObj, spineX)));
       }
     }
@@ -214,12 +227,14 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
   function rebuildSecondarySpines() {
     secondarySpinesLayer.replaceChildren();
     collapsedSecondarySpines = new Set();
+    collapsedLaneOffsets     = new Set();
     for (const obj of secondarySpineObjs) {
       const x = spineX + obj.laneOffset;
       if (x <= 0) {
-        // Not enough horizontal space — collapse this spine's stations to the
-        // main spine center instead of rendering the secondary spine line.
+        // Not enough horizontal space — collapse this spine's point event
+        // stations and any child span branches to the main spine center.
         collapsedSecondarySpines.add(obj.familyId);
+        collapsedLaneOffsets.add(obj.laneOffset);
       } else {
         secondarySpinesLayer.appendChild(buildSecondarySpineLine(obj, spineX, currentTotalHeight));
       }
