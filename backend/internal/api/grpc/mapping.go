@@ -166,11 +166,11 @@ func protoToPhotoVariant(v pb.PhotoVariant) domain.PhotoVariant {
 // extractCreateMetadata converts the oneof metadata in a CreateEventRequest to a JSON string.
 func extractCreateMetadata(req *pb.CreateEventRequest) *string {
 	switch v := req.Metadata.(type) {
-	case *pb.CreateEventRequest_SpineMetadata:
-		return marshalMetadata(&domain.SpineMetadata{
-			MilestoneType: spineMilestoneTypeFromProto(v.SpineMetadata.GetMilestoneType()),
-			From:          v.SpineMetadata.GetFrom(),
-			To:            v.SpineMetadata.GetTo(),
+	case *pb.CreateEventRequest_LifeMetadata:
+		return marshalMetadata(&domain.LifeMetadata{
+			MilestoneType: lifeMilestoneTypeFromProto(v.LifeMetadata.GetMilestoneType()),
+			From:          v.LifeMetadata.GetFrom(),
+			To:            v.LifeMetadata.GetTo(),
 		})
 	case *pb.CreateEventRequest_EmploymentMetadata:
 		return marshalMetadata(&domain.EmploymentMetadata{
@@ -205,11 +205,11 @@ func extractCreateMetadata(req *pb.CreateEventRequest) *string {
 // extractUpdateMetadata converts the oneof metadata in an UpdateEventRequest to a JSON string.
 func extractUpdateMetadata(req *pb.UpdateEventRequest) *string {
 	switch v := req.Metadata.(type) {
-	case *pb.UpdateEventRequest_SpineMetadata:
-		return marshalMetadata(&domain.SpineMetadata{
-			MilestoneType: spineMilestoneTypeFromProto(v.SpineMetadata.GetMilestoneType()),
-			From:          v.SpineMetadata.GetFrom(),
-			To:            v.SpineMetadata.GetTo(),
+	case *pb.UpdateEventRequest_LifeMetadata:
+		return marshalMetadata(&domain.LifeMetadata{
+			MilestoneType: lifeMilestoneTypeFromProto(v.LifeMetadata.GetMilestoneType()),
+			From:          v.LifeMetadata.GetFrom(),
+			To:            v.LifeMetadata.GetTo(),
 		})
 	case *pb.UpdateEventRequest_EmploymentMetadata:
 		return marshalMetadata(&domain.EmploymentMetadata{
@@ -248,12 +248,12 @@ func jsonToEventMetadata(e *domain.Event, out *pb.Event) {
 	}
 	switch e.FamilyID {
 	case "spine":
-		m, err := domain.ParseMetadata[domain.SpineMetadata](e)
+		m, err := domain.ParseMetadata[domain.LifeMetadata](e)
 		if err != nil {
 			return
 		}
-		out.Metadata = &pb.Event_SpineMetadata{SpineMetadata: &pb.SpineMetadata{
-			MilestoneType: spineMilestoneTypeToProto(m.MilestoneType),
+		out.Metadata = &pb.Event_LifeMetadata{LifeMetadata: &pb.LifeMetadata{
+			MilestoneType: lifeMilestoneTypeToProto(m.MilestoneType),
 			From:          m.From,
 			To:            m.To,
 		}}
@@ -559,38 +559,38 @@ func domainFitnessToProto(m *domain.FitnessMetadata) *pb.FitnessMetadata {
 	return p
 }
 
-func spineMilestoneTypeToProto(s string) pb.SpineMilestoneType {
+func lifeMilestoneTypeToProto(s string) pb.LifeMilestoneType {
 	switch s {
 	case "birth":
-		return pb.SpineMilestoneType_SPINE_MILESTONE_TYPE_BIRTH
+		return pb.LifeMilestoneType_LIFE_MILESTONE_TYPE_BIRTH
 	case "death":
-		return pb.SpineMilestoneType_SPINE_MILESTONE_TYPE_DEATH
+		return pb.LifeMilestoneType_LIFE_MILESTONE_TYPE_DEATH
 	case "marriage":
-		return pb.SpineMilestoneType_SPINE_MILESTONE_TYPE_MARRIAGE
+		return pb.LifeMilestoneType_LIFE_MILESTONE_TYPE_MARRIAGE
 	case "relocation":
-		return pb.SpineMilestoneType_SPINE_MILESTONE_TYPE_RELOCATION
+		return pb.LifeMilestoneType_LIFE_MILESTONE_TYPE_RELOCATION
 	case "graduation":
-		return pb.SpineMilestoneType_SPINE_MILESTONE_TYPE_GRADUATION
+		return pb.LifeMilestoneType_LIFE_MILESTONE_TYPE_GRADUATION
 	case "anniversary":
-		return pb.SpineMilestoneType_SPINE_MILESTONE_TYPE_ANNIVERSARY
+		return pb.LifeMilestoneType_LIFE_MILESTONE_TYPE_ANNIVERSARY
 	default:
-		return pb.SpineMilestoneType_SPINE_MILESTONE_TYPE_UNSPECIFIED
+		return pb.LifeMilestoneType_LIFE_MILESTONE_TYPE_UNSPECIFIED
 	}
 }
 
-func spineMilestoneTypeFromProto(t pb.SpineMilestoneType) string {
+func lifeMilestoneTypeFromProto(t pb.LifeMilestoneType) string {
 	switch t {
-	case pb.SpineMilestoneType_SPINE_MILESTONE_TYPE_BIRTH:
+	case pb.LifeMilestoneType_LIFE_MILESTONE_TYPE_BIRTH:
 		return "birth"
-	case pb.SpineMilestoneType_SPINE_MILESTONE_TYPE_DEATH:
+	case pb.LifeMilestoneType_LIFE_MILESTONE_TYPE_DEATH:
 		return "death"
-	case pb.SpineMilestoneType_SPINE_MILESTONE_TYPE_MARRIAGE:
+	case pb.LifeMilestoneType_LIFE_MILESTONE_TYPE_MARRIAGE:
 		return "marriage"
-	case pb.SpineMilestoneType_SPINE_MILESTONE_TYPE_RELOCATION:
+	case pb.LifeMilestoneType_LIFE_MILESTONE_TYPE_RELOCATION:
 		return "relocation"
-	case pb.SpineMilestoneType_SPINE_MILESTONE_TYPE_GRADUATION:
+	case pb.LifeMilestoneType_LIFE_MILESTONE_TYPE_GRADUATION:
 		return "graduation"
-	case pb.SpineMilestoneType_SPINE_MILESTONE_TYPE_ANNIVERSARY:
+	case pb.LifeMilestoneType_LIFE_MILESTONE_TYPE_ANNIVERSARY:
 		return "anniversary"
 	default:
 		return ""

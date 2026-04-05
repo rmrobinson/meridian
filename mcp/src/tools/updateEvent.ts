@@ -5,7 +5,7 @@ import {
   EventType,
   Visibility,
   FilmTVType,
-  SpineMilestoneType,
+  LifeMilestoneType,
   FitnessActivity,
   ClimbingType,
 } from "../../proto-gen/meridian/v1/timeline.js";
@@ -30,7 +30,7 @@ export const updateEventSchema = {
   label: z.string().optional().describe("Short display label"),
   icon: z.string().optional().describe("Icon identifier"),
   // Per-family typed metadata — provide the one matching the event's family
-  spine_metadata: z
+  life_metadata: z
     .object({
       milestone_type: z.enum(["birth", "death", "marriage", "relocation", "graduation", "anniversary"]),
       from: z.string().optional(),
@@ -123,7 +123,7 @@ type UpdateEventArgs = {
   external_url?: string;
   label?: string;
   icon?: string;
-  spine_metadata?: { milestone_type: string; from?: string; to?: string };
+  life_metadata?: { milestone_type: string; from?: string; to?: string };
   employment_metadata?: { role: string; company_name: string; company_url?: string };
   education_metadata?: { institution: string; degree?: string };
   travel_metadata?: { countries?: string[]; cities?: string[] };
@@ -134,13 +134,13 @@ type UpdateEventArgs = {
   fitness_metadata?: { activity: string; duration?: string; distance_km?: number; elevation_gain_m?: number; avg_heart_rate?: number; garmin_activity_url?: string; avg_pace_min_km?: number; bike?: string; avg_speed_kmh?: number; trail_name?: string; alltrails_url?: string; resort?: string; vertical_drop_m?: number; runs?: number; dive_site?: string; max_depth_m?: number; avg_depth_m?: number; climbing_type?: string; route_name?: string; problem_name?: string; grade?: string; course_name?: string; holes?: number; score?: number; opponent?: string; result?: string };
 };
 
-const spineMilestoneTypeMap: Record<string, SpineMilestoneType> = {
-  birth: SpineMilestoneType.SPINE_MILESTONE_TYPE_BIRTH,
-  death: SpineMilestoneType.SPINE_MILESTONE_TYPE_DEATH,
-  marriage: SpineMilestoneType.SPINE_MILESTONE_TYPE_MARRIAGE,
-  relocation: SpineMilestoneType.SPINE_MILESTONE_TYPE_RELOCATION,
-  graduation: SpineMilestoneType.SPINE_MILESTONE_TYPE_GRADUATION,
-  anniversary: SpineMilestoneType.SPINE_MILESTONE_TYPE_ANNIVERSARY,
+const lifeMilestoneTypeMap: Record<string, LifeMilestoneType> = {
+  birth: LifeMilestoneType.LIFE_MILESTONE_TYPE_BIRTH,
+  death: LifeMilestoneType.LIFE_MILESTONE_TYPE_DEATH,
+  marriage: LifeMilestoneType.LIFE_MILESTONE_TYPE_MARRIAGE,
+  relocation: LifeMilestoneType.LIFE_MILESTONE_TYPE_RELOCATION,
+  graduation: LifeMilestoneType.LIFE_MILESTONE_TYPE_GRADUATION,
+  anniversary: LifeMilestoneType.LIFE_MILESTONE_TYPE_ANNIVERSARY,
 };
 
 const fitnessActivityMap: Record<string, FitnessActivity> = {
@@ -161,8 +161,8 @@ const climbingTypeMap: Record<string, ClimbingType> = {
 };
 
 function buildMetadata(args: UpdateEventArgs) {
-  if (args.spine_metadata) {
-    return { spineMetadata: { milestoneType: spineMilestoneTypeMap[args.spine_metadata.milestone_type] ?? SpineMilestoneType.SPINE_MILESTONE_TYPE_UNSPECIFIED, from: args.spine_metadata.from ?? "", to: args.spine_metadata.to ?? "" } };
+  if (args.life_metadata) {
+    return { lifeMetadata: { milestoneType: lifeMilestoneTypeMap[args.life_metadata.milestone_type] ?? LifeMilestoneType.LIFE_MILESTONE_TYPE_UNSPECIFIED, from: args.life_metadata.from ?? "", to: args.life_metadata.to ?? "" } };
   }
   if (args.employment_metadata) {
     return { employmentMetadata: { role: args.employment_metadata.role, companyName: args.employment_metadata.company_name, companyUrl: args.employment_metadata.company_url ?? "" } };

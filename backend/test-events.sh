@@ -53,7 +53,10 @@ grpc_create <<'EOF'
   "end_date": "2015-08-15",
   "location": {"label": "Thailand, Vietnam & Cambodia"},
   "visibility": "VISIBILITY_PUBLIC",
-  "metadata": "{\"countries\":[\"Thailand\",\"Vietnam\",\"Cambodia\"],\"cities\":[\"Bangkok\",\"Chiang Mai\",\"Hanoi\",\"Ho Chi Minh City\",\"Siem Reap\"]}"
+  "travel_metadata": {
+    "countries": ["Thailand", "Vietnam", "Cambodia"],
+    "cities": ["Bangkok", "Chiang Mai", "Hanoi", "Ho Chi Minh City", "Siem Reap"]
+  }
 }
 EOF
 
@@ -70,7 +73,10 @@ grpc_create <<'EOF'
   "end_date": "2018-07-25",
   "location": {"label": "Iceland"},
   "visibility": "VISIBILITY_PUBLIC",
-  "metadata": "{\"countries\":[\"Iceland\"],\"cities\":[\"Reykjavik\",\"Akureyri\",\"Vik\",\"Hofn\"]}"
+  "travel_metadata": {
+    "countries": ["Iceland"],
+    "cities": ["Reykjavik", "Akureyri", "Vik", "Hofn"]
+  }
 }
 EOF
 
@@ -88,7 +94,10 @@ grpc_create <<'EOF'
   "end_date": "2022-11-14",
   "location": {"label": "Japan", "lat": 36.2048, "lng": 138.2529},
   "visibility": "VISIBILITY_PUBLIC",
-  "metadata": "{\"countries\":[\"Japan\"],\"cities\":[\"Tokyo\",\"Kyoto\",\"Osaka\",\"Nara\"]}"
+  "travel_metadata": {
+    "countries": ["Japan"],
+    "cities": ["Tokyo", "Kyoto", "Osaka", "Nara"]
+  }
 }
 EOF
 
@@ -105,7 +114,10 @@ grpc_create <<'EOF'
   "end_date": "2024-05-22",
   "location": {"label": "Portugal & Spain"},
   "visibility": "VISIBILITY_PUBLIC",
-  "metadata": "{\"countries\":[\"Portugal\",\"Spain\"],\"cities\":[\"Lisbon\",\"Porto\",\"Seville\",\"Granada\",\"Madrid\"]}"
+  "travel_metadata": {
+    "countries": ["Portugal", "Spain"],
+    "cities": ["Lisbon", "Porto", "Seville", "Granada", "Madrid"]
+  }
 }
 EOF
 
@@ -124,7 +136,10 @@ grpc_create <<'EOF'
   "end_date": "2014-04-30",
   "location": {"label": "University of Toronto, Toronto, ON", "lat": 43.6629, "lng": -79.3957},
   "visibility": "VISIBILITY_PUBLIC",
-  "metadata": "{\"institution\":\"University of Toronto\",\"degree\":\"Bachelor of Science, Computer Science\"}"
+  "education_metadata": {
+    "institution": "University of Toronto",
+    "degree": "Bachelor of Science, Computer Science"
+  }
 }
 EOF
 
@@ -141,7 +156,10 @@ grpc_create <<'EOF'
   "end_date": "2016-04-30",
   "location": {"label": "University of Waterloo, Waterloo, ON", "lat": 43.4723, "lng": -80.5449},
   "visibility": "VISIBILITY_PUBLIC",
-  "metadata": "{\"institution\":\"University of Waterloo\",\"degree\":\"Master of Science, Human-Computer Interaction\"}"
+  "education_metadata": {
+    "institution": "University of Waterloo",
+    "degree": "Master of Science, Human-Computer Interaction"
+  }
 }
 EOF
 
@@ -159,7 +177,11 @@ grpc_create <<'EOF'
   "start_date": "2016-07-04",
   "end_date": "2019-03-29",
   "visibility": "VISIBILITY_PUBLIC",
-  "metadata": "{\"role\":\"Junior Software Developer\",\"company_name\":\"Acme Software\",\"company_url\":\"https://acme.example.com\"}"
+  "employment_metadata": {
+    "role": "Junior Software Developer",
+    "company_name": "Acme Software",
+    "company_url": "https://acme.example.com"
+  }
 }
 EOF
 
@@ -175,7 +197,11 @@ grpc_create <<'EOF'
   "start_date": "2019-04-15",
   "end_date": "2022-12-16",
   "visibility": "VISIBILITY_PUBLIC",
-  "metadata": "{\"role\":\"Senior Software Engineer\",\"company_name\":\"Northstar Technologies\",\"company_url\":\"https://northstar.example.com\"}"
+  "employment_metadata": {
+    "role": "Senior Software Engineer",
+    "company_name": "Northstar Technologies",
+    "company_url": "https://northstar.example.com"
+  }
 }
 EOF
 
@@ -190,7 +216,11 @@ grpc_create <<'EOF'
   "description": "Technical lead across three product teams. Driving the platform architecture and developer experience strategy.",
   "start_date": "2023-02-01",
   "visibility": "VISIBILITY_PUBLIC",
-  "metadata": "{\"role\":\"Staff Software Engineer\",\"company_name\":\"Meridian Systems\",\"company_url\":\"https://meridian.example.com\"}"
+  "employment_metadata": {
+    "role": "Staff Software Engineer",
+    "company_name": "Meridian Systems",
+    "company_url": "https://meridian.example.com"
+  }
 }
 EOF
 
@@ -200,14 +230,13 @@ echo "--- [10/20] Started learning guitar ---"
 grpc_create <<'EOF'
 {
   "family_id": "hobbies",
-  "line_key": "hobby-guitar",
+  "line_key": "hobbies",
   "type": "EVENT_TYPE_POINT",
   "title": "Started Learning Guitar",
   "icon": "mdi:guitar-acoustic",
   "description": "Picked up a second-hand acoustic and started weekly lessons. Currently working through fingerpicking arrangements.",
   "date": "2017-03-15",
-  "visibility": "VISIBILITY_PUBLIC",
-  "metadata": "{\"activity\":\"guitar\"}"
+  "visibility": "VISIBILITY_PUBLIC"
 }
 EOF
 
@@ -215,14 +244,13 @@ echo "--- [11/20] Took up photography ---"
 grpc_create <<'EOF'
 {
   "family_id": "hobbies",
-  "line_key": "hobby-photography",
+  "line_key": "hobbies",
   "type": "EVENT_TYPE_POINT",
   "title": "Took Up Photography",
   "icon": "mdi:camera",
   "description": "Got a mirrorless camera and started shooting street and landscape photography. Travel photos have never been the same.",
   "date": "2019-06-01",
-  "visibility": "VISIBILITY_PUBLIC",
-  "metadata": "{\"activity\":\"photography\"}"
+  "visibility": "VISIBILITY_PUBLIC"
 }
 EOF
 
@@ -230,16 +258,18 @@ echo "--- [12/20] Radiohead concert — Madison Square Garden ---"
 grpc_create <<'EOF'
 {
   "family_id": "hobbies",
-  "line_key": "concert-radiohead-msg",
+  "line_key": "hobbies",
   "type": "EVENT_TYPE_POINT",
-  "activity_type": "ACTIVITY_TYPE_CONCERT",
   "title": "Radiohead — In Rainbows From the Basement Tour",
   "icon": "mdi:music",
   "description": "One of the best live shows I've ever seen. Thom Yorke's voice was otherworldly and the light show was extraordinary.",
   "date": "2018-10-08",
   "location": {"label": "Madison Square Garden, New York, NY", "lat": 40.7505, "lng": -73.9934},
   "visibility": "VISIBILITY_PUBLIC",
-  "metadata": "{\"artist\":\"Radiohead\",\"venue\":\"Madison Square Garden\"}"
+  "concert_metadata": {
+    "main_act": "Radiohead",
+    "venue": {"label": "Madison Square Garden, New York, NY", "lat": 40.7505, "lng": -73.9934}
+  }
 }
 EOF
 
@@ -247,31 +277,35 @@ echo "--- [13/20] The National concert — Massey Hall ---"
 grpc_create <<'EOF'
 {
   "family_id": "hobbies",
-  "line_key": "concert-national-massey",
+  "line_key": "hobbies",
   "type": "EVENT_TYPE_POINT",
-  "activity_type": "ACTIVITY_TYPE_CONCERT",
   "title": "The National — First Two Pages of Frankenstein Tour",
   "icon": "mdi:music",
   "description": "Intimate show in one of the world's great concert halls. Bloodbuzz Ohio as the encore was a perfect closer.",
   "date": "2023-05-20",
   "location": {"label": "Massey Hall, Toronto, ON", "lat": 43.6535, "lng": -79.3805},
   "visibility": "VISIBILITY_PUBLIC",
-  "metadata": "{\"artist\":\"The National\",\"venue\":\"Massey Hall\"}"
+  "concert_metadata": {
+    "main_act": "The National",
+    "venue": {"label": "Massey Hall, Toronto, ON", "lat": 43.6535, "lng": -79.3805}
+  }
 }
 EOF
 
 echo "--- [14/20] Joined local cycling club ---"
 grpc_create <<'EOF'
 {
-  "family_id": "hobbies",
-  "line_key": "hobby-cycling",
+  "family_id": "fitness",
+  "line_key": "fitness",
   "type": "EVENT_TYPE_POINT",
   "title": "Joined Local Cycling Club",
   "icon": "mdi:bicycle",
   "description": "Started riding with a local club on weekend group rides. Averaging 80km per Sunday through the summer.",
   "date": "2021-04-10",
   "visibility": "VISIBILITY_PUBLIC",
-  "metadata": "{\"activity\":\"cycling\"}"
+  "fitness_metadata": {
+    "activity": "FITNESS_ACTIVITY_CYCLE"
+  }
 }
 EOF
 
@@ -282,14 +316,19 @@ grpc_create <<'EOF'
 {
   "family_id": "books",
   "line_key": "book-dune",
-  "type": "EVENT_TYPE_POINT",
-  "activity_type": "ACTIVITY_TYPE_BOOK",
+  "type": "EVENT_TYPE_SPAN",
   "title": "Dune",
   "icon": "mdi:book-open-variant",
   "description": "Frank Herbert's seminal sci-fi epic. Dense but rewarding — the ecological and political worldbuilding is unlike anything else.",
-  "date": "2014-08-10",
+  "start_date": "2014-07-10",
+  "end_date": "2014-08-10",
   "visibility": "VISIBILITY_PUBLIC",
-  "metadata": "{\"isbn\":\"978-0-441-01359-7\",\"author\":\"Frank Herbert\",\"rating\":5,\"review\":\"Epic science fiction. The worldbuilding is unparalleled.\"}"
+  "book_metadata": {
+    "isbn": "978-0-441-01359-7",
+    "author": "Frank Herbert",
+    "rating": 5,
+    "review": "Epic science fiction. The worldbuilding is unparalleled."
+  }
 }
 EOF
 
@@ -298,14 +337,19 @@ grpc_create <<'EOF'
 {
   "family_id": "books",
   "line_key": "book-name-of-wind",
-  "type": "EVENT_TYPE_POINT",
-  "activity_type": "ACTIVITY_TYPE_BOOK",
+  "type": "EVENT_TYPE_SPAN",
   "title": "The Name of the Wind",
   "icon": "mdi:book-open-variant",
   "description": "Patrick Rothfuss writes prose that feels like music. Kvothe is an unreliable narrator done right.",
-  "date": "2016-03-20",
+  "start_date": "2016-02-20",
+  "end_date": "2016-03-20",
   "visibility": "VISIBILITY_PUBLIC",
-  "metadata": "{\"isbn\":\"978-0-7564-0407-9\",\"author\":\"Patrick Rothfuss\",\"rating\":5,\"review\":\"Beautiful prose and a deeply compelling narrator.\"}"
+  "book_metadata": {
+    "isbn": "978-0-7564-0407-9",
+    "author": "Patrick Rothfuss",
+    "rating": 5,
+    "review": "Beautiful prose and a deeply compelling narrator."
+  }
 }
 EOF
 
@@ -314,14 +358,19 @@ grpc_create <<'EOF'
 {
   "family_id": "books",
   "line_key": "book-sapiens",
-  "type": "EVENT_TYPE_POINT",
-  "activity_type": "ACTIVITY_TYPE_BOOK",
+  "type": "EVENT_TYPE_SPAN",
   "title": "Sapiens: A Brief History of Humankind",
   "icon": "mdi:book-open-variant",
   "description": "A sweeping overview of human history that reframes how we think about culture, money, and progress. Occasionally reductive but consistently fascinating.",
-  "date": "2017-11-05",
+  "start_date": "2017-10-05",
+  "end_date": "2017-11-05",
   "visibility": "VISIBILITY_PUBLIC",
-  "metadata": "{\"isbn\":\"978-0-06-231609-7\",\"author\":\"Yuval Noah Harari\",\"rating\":4,\"review\":\"Mind-expanding perspective on human history and civilization.\"}"
+  "book_metadata": {
+    "isbn": "978-0-06-231609-7",
+    "author": "Yuval Noah Harari",
+    "rating": 4,
+    "review": "Mind-expanding perspective on human history and civilization."
+  }
 }
 EOF
 
@@ -330,14 +379,19 @@ grpc_create <<'EOF'
 {
   "family_id": "books",
   "line_key": "book-project-hail-mary",
-  "type": "EVENT_TYPE_POINT",
-  "activity_type": "ACTIVITY_TYPE_BOOK",
+  "type": "EVENT_TYPE_SPAN",
   "title": "Project Hail Mary",
   "icon": "mdi:book-open-variant",
   "description": "Andy Weir's best yet. The science is meticulous, the pacing is relentless, and the central friendship is genuinely moving.",
-  "date": "2021-08-22",
+  "start_date": "2021-08-05",
+  "end_date": "2021-08-22",
   "visibility": "VISIBILITY_PUBLIC",
-  "metadata": "{\"isbn\":\"978-0-593-13520-4\",\"author\":\"Andy Weir\",\"rating\":5,\"review\":\"Couldn't put it down. Rocky is one of the best characters in sci-fi.\"}"
+  "book_metadata": {
+    "isbn": "978-0-593-13520-4",
+    "author": "Andy Weir",
+    "rating": 5,
+    "review": "Couldn't put it down. Rocky is one of the best characters in sci-fi."
+  }
 }
 EOF
 
@@ -346,14 +400,19 @@ grpc_create <<'EOF'
 {
   "family_id": "books",
   "line_key": "book-pragmatic-programmer",
-  "type": "EVENT_TYPE_POINT",
-  "activity_type": "ACTIVITY_TYPE_BOOK",
+  "type": "EVENT_TYPE_SPAN",
   "title": "The Pragmatic Programmer",
   "icon": "mdi:book-open-variant",
   "description": "Required reading for any software engineer. The DRY principle and broken windows theory have permanently shaped how I approach code.",
-  "date": "2022-03-15",
+  "start_date": "2022-02-10",
+  "end_date": "2022-03-15",
   "visibility": "VISIBILITY_PERSONAL",
-  "metadata": "{\"isbn\":\"978-0-13-595705-9\",\"author\":\"David Thomas & Andrew Hunt\",\"rating\":4,\"review\":\"Essential career reading. Changed how I think about software craft.\"}"
+  "book_metadata": {
+    "isbn": "978-0-13-595705-9",
+    "author": "David Thomas & Andrew Hunt",
+    "rating": 4,
+    "review": "Essential career reading. Changed how I think about software craft."
+  }
 }
 EOF
 
@@ -362,14 +421,19 @@ grpc_create <<'EOF'
 {
   "family_id": "books",
   "line_key": "book-never-split",
-  "type": "EVENT_TYPE_POINT",
-  "activity_type": "ACTIVITY_TYPE_BOOK",
+  "type": "EVENT_TYPE_SPAN",
   "title": "Never Split the Difference",
   "icon": "mdi:book-open-variant",
   "description": "Chris Voss applies FBI hostage negotiation tactics to everyday life. The tactical empathy framework is immediately practical.",
-  "date": "2023-10-30",
+  "start_date": "2023-10-08",
+  "end_date": "2023-10-30",
   "visibility": "VISIBILITY_PUBLIC",
-  "metadata": "{\"isbn\":\"978-0-06-240780-1\",\"author\":\"Chris Voss\",\"rating\":4,\"review\":\"Surprisingly practical. The mirroring and labelling techniques actually work.\"}"
+  "book_metadata": {
+    "isbn": "978-0-06-240780-1",
+    "author": "Chris Voss",
+    "rating": 4,
+    "review": "Surprisingly practical. The mirroring and labelling techniques actually work."
+  }
 }
 EOF
 

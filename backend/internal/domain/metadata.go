@@ -28,7 +28,7 @@ func SetMetadata[T any](event *Event, m *T) error {
 
 // --- Per-family metadata structs ---
 
-type SpineMetadata struct {
+type LifeMetadata struct {
 	MilestoneType string `json:"milestone_type,omitempty"`
 	From          string `json:"from,omitempty"`
 	To            string `json:"to,omitempty"`

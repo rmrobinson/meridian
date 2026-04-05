@@ -13,18 +13,18 @@ message ConcertMetadata {
   string playlist_url = 4;
 }
 
-enum SpineMilestoneType {
-  SPINE_MILESTONE_TYPE_UNSPECIFIED = 0;
-  SPINE_MILESTONE_TYPE_BIRTH = 1;
-  SPINE_MILESTONE_TYPE_DEATH = 2;
-  SPINE_MILESTONE_TYPE_MARRIAGE = 3;
-  SPINE_MILESTONE_TYPE_RELOCATION = 4;
-  SPINE_MILESTONE_TYPE_GRADUATION = 5;
-  SPINE_MILESTONE_TYPE_ANNIVERSARY = 6;
+enum LifeMilestoneType {
+  LIFE_MILESTONE_TYPE_UNSPECIFIED = 0;
+  LIFE_MILESTONE_TYPE_BIRTH = 1;
+  LIFE_MILESTONE_TYPE_DEATH = 2;
+  LIFE_MILESTONE_TYPE_MARRIAGE = 3;
+  LIFE_MILESTONE_TYPE_RELOCATION = 4;
+  LIFE_MILESTONE_TYPE_GRADUATION = 5;
+  LIFE_MILESTONE_TYPE_ANNIVERSARY = 6;
 }
 
-message SpineMetadata {
-  SpineMilestoneType milestone_type = 1;
+message LifeMetadata {
+  LifeMilestoneType milestone_type = 1;
   string from = 2;
   string to = 3;
 }
@@ -224,7 +224,7 @@ message Event {
   string description = 22;
   string end_icon = 23;
   oneof metadata {
-    SpineMetadata spine_metadata = 24;
+    LifeMetadata life_metadata = 24;
     EmploymentMetadata employment_metadata = 25;
     EducationMetadata education_metadata = 26;
     TravelMetadata travel_metadata = 27;
@@ -258,7 +258,7 @@ message CreateEventRequest {
   string description = 19;
   string end_icon = 20;
   oneof metadata {
-    SpineMetadata spine_metadata = 21;
+    LifeMetadata life_metadata = 21;
     EmploymentMetadata employment_metadata = 22;
     EducationMetadata education_metadata = 23;
     TravelMetadata travel_metadata = 24;
@@ -291,7 +291,7 @@ message UpdateEventRequest {
   string description = 18;
   string end_icon = 19;
   oneof metadata {
-    SpineMetadata spine_metadata = 20;
+    LifeMetadata life_metadata = 20;
     EmploymentMetadata employment_metadata = 21;
     EducationMetadata education_metadata = 22;
     TravelMetadata travel_metadata = 23;

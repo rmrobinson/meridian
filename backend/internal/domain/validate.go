@@ -9,7 +9,7 @@ var validClimbingTypes = map[string]bool{
 	"sport": true, "bouldering": true, "gym": true,
 }
 
-var validSpineMilestoneTypes = map[string]bool{
+var validLifeMilestoneTypes = map[string]bool{
 	"birth": true, "death": true, "marriage": true, "relocation": true,
 	"graduation": true, "anniversary": true,
 }
@@ -116,14 +116,14 @@ func validateFitnessMetadata(event *Event) error {
 }
 
 func validateSpineMetadata(event *Event) error {
-	m, err := ParseMetadata[SpineMetadata](event)
+	m, err := ParseMetadata[LifeMetadata](event)
 	if err != nil {
 		return fmt.Errorf("parsing spine metadata: %w", err)
 	}
 	if m.MilestoneType == "" {
 		return errors.New("spine metadata: milestone_type is required")
 	}
-	if !validSpineMilestoneTypes[m.MilestoneType] {
+	if !validLifeMilestoneTypes[m.MilestoneType] {
 		return fmt.Errorf("spine metadata: unknown milestone_type %q", m.MilestoneType)
 	}
 	return nil
