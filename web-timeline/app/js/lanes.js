@@ -8,6 +8,8 @@
  * Rules:
  *   - Each span is placed on the innermost free lane on its family's
  *     preferred side, measured outward from its parent's laneOffset.
+ *   - The parent lane is determined by the family's parent_family_id field.
+ *     When unset the main spine (offset 0) is used as the parent.
  *   - Concurrent spans cannot share the same absolute laneOffset.
  *   - When a span ends its lane is freed for subsequent spans.
  *   - single_line families reuse the same line_key across all their
@@ -126,16 +128,18 @@ export function assignLanes(events, line_families) {
       continue;
     }
 
-    // Resolve parent offset (0 = spine when no parent_line_key).
+    // Resolve parent offset from the family's parent_family_id (0 = main spine
+    // when unset). Works for single_line and secondary_spine parents, which are
+    // stored in the result map under their family.id.
     let parentOffset = 0;
-    if (evt.parent_line_key) {
-      const parentInfo = result.get(evt.parent_line_key);
+    if (family.parent_family_id) {
+      const parentInfo = result.get(family.parent_family_id);
       if (parentInfo) {
         parentOffset = parentInfo.laneOffset;
       } else {
         console.warn(
-          `assignLanes: parent_line_key "${evt.parent_line_key}" not yet assigned ` +
-          `when processing "${lineKey}" — check event ordering.`,
+          `assignLanes: parent_family_id "${family.parent_family_id}" not yet assigned ` +
+          `when processing "${lineKey}" — check family ordering.`,
         );
       }
     }

@@ -45,12 +45,13 @@ func (s *Server) handleGetTimeline(w http.ResponseWriter, r *http.Request) {
 	families := make([]lineFamilyResponse, len(s.cfg.LineFamilies))
 	for i, f := range s.cfg.LineFamilies {
 		families[i] = lineFamilyResponse{
-			ID:            f.ID,
-			Label:         f.Label,
-			BaseColorHSL:  f.BaseColorHSL,
-			Side:          f.Side,
-			OnEnd:         f.OnEnd,
-			SpawnBehavior: f.SpawnBehavior,
+			ID:             f.ID,
+			Label:          f.Label,
+			BaseColorHSL:   f.BaseColorHSL,
+			Side:           f.Side,
+			OnEnd:          f.OnEnd,
+			SpawnBehavior:  f.SpawnBehavior,
+			ParentFamilyID: f.ParentFamilyID,
 		}
 	}
 

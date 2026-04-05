@@ -36,20 +36,21 @@ func TestLoad_AllNineLineFamilies(t *testing.T) {
 	}
 
 	expected := []struct {
-		id            string
-		side          string
-		onEnd         string
-		spawnBehavior string
-		hsl           [3]int
+		id             string
+		side           string
+		onEnd          string
+		spawnBehavior  string
+		hsl            [3]int
+		parentFamilyID string
 	}{
-		{"spine", "center", "never", "single_line", [3]int{0, 0, 80}},
-		{"employment", "left", "merge", "per_event", [3]int{210, 70, 50}},
-		{"education", "left", "merge", "per_event", [3]int{270, 60, 55}},
-		{"hobbies", "left", "terminate", "per_event", [3]int{180, 55, 45}},
-		{"travel", "right", "merge", "per_event", [3]int{50, 85, 50}},
-		{"books", "right", "terminate", "per_event", [3]int{30, 70, 50}},
-		{"film_tv", "right", "terminate", "per_event", [3]int{300, 60, 55}},
-		{"fitness", "left", "terminate", "secondary_spine", [3]int{140, 65, 45}},
+		{"spine", "center", "never", "single_line", [3]int{0, 0, 80}, ""},
+		{"employment", "left", "merge", "per_event", [3]int{210, 70, 50}, ""},
+		{"education", "left", "merge", "per_event", [3]int{270, 60, 55}, ""},
+		{"hobbies", "right", "terminate", "secondary_spine", [3]int{180, 55, 45}, ""},
+		{"travel", "right", "merge", "per_event", [3]int{50, 85, 50}, ""},
+		{"books", "right", "terminate", "per_event", [3]int{30, 70, 50}, "hobbies"},
+		{"film_tv", "right", "terminate", "per_event", [3]int{300, 60, 55}, "hobbies"},
+		{"fitness", "left", "terminate", "secondary_spine", [3]int{140, 65, 45}, ""},
 	}
 
 	for i, want := range expected {
@@ -71,6 +72,9 @@ func TestLoad_AllNineLineFamilies(t *testing.T) {
 			got.BaseColorHSL[1] != want.hsl[1] ||
 			got.BaseColorHSL[2] != want.hsl[2] {
 			t.Errorf("[%d] base_color_hsl: got %v, want %v", i, got.BaseColorHSL, want.hsl)
+		}
+		if got.ParentFamilyID != want.parentFamilyID {
+			t.Errorf("[%d] parent_family_id: got %q, want %q", i, got.ParentFamilyID, want.parentFamilyID)
 		}
 	}
 }

@@ -54,9 +54,9 @@ line_families:
   - id: hobbies
     label: Hobbies
     base_color_hsl: [180, 55, 45]
-    side: left
+    side: right
     on_end: terminate
-    spawn_behavior: per_event
+    spawn_behavior: secondary_spine
 
   - id: travel
     label: Travel
@@ -71,6 +71,7 @@ line_families:
     side: right
     on_end: terminate
     spawn_behavior: per_event
+    parent_family_id: hobbies
 
   - id: film_tv
     label: Film & TV
@@ -78,7 +79,7 @@ line_families:
     side: right
     on_end: terminate
     spawn_behavior: per_event
-
+    parent_family_id: hobbies
 
   - id: fitness
     label: Fitness & Health

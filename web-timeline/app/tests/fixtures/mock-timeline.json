@@ -10,7 +10,8 @@
       "base_color_hsl": [30, 70, 50],
       "side": "right",
       "on_end": "terminate",
-      "spawn_behavior": "per_event"
+      "spawn_behavior": "per_event",
+      "parent_family_id": "hobbies"
     },
     {
       "id": "film_tv",
@@ -18,7 +19,8 @@
       "base_color_hsl": [300, 60, 55],
       "side": "right",
       "on_end": "terminate",
-      "spawn_behavior": "per_event"
+      "spawn_behavior": "per_event",
+      "parent_family_id": "hobbies"
     },
     {
       "id": "employment",
@@ -56,9 +58,9 @@
       "id": "hobbies",
       "label": "Hobbies",
       "base_color_hsl": [180, 55, 45],
-      "side": "left",
+      "side": "right",
       "on_end": "terminate",
-      "spawn_behavior": "per_event"
+      "spawn_behavior": "secondary_spine"
     }
   ],
   "events": [
@@ -101,10 +103,32 @@
       }
     },
     {
+      "id": "evt_001b",
+      "family_id": "employment",
+      "line_key": "globaltech-internship-2013",
+      "type": "span",
+      "title": "GlobalTech — Summer Internship",
+      "label": "Internship",
+      "icon": "mdi:briefcase",
+      "start_date": "2013-06-01",
+      "end_date": "2013-08-31",
+      "location": {
+        "label": "London, UK",
+        "lat": 51.5074,
+        "lng": -0.1278
+      },
+      "description": "Summer internship during third year of BSc.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": {
+        "role": "Software Engineering Intern"
+      }
+    },
+    {
       "id": "evt_001",
       "family_id": "employment",
       "line_key": "acme-corp",
-      "parent_line_key": null,
       "type": "span",
       "title": "Acme Corp",
       "icon": "mdi:briefcase",
@@ -124,40 +148,15 @@
       }
     },
     {
-      "id": "evt_001b",
-      "family_id": "employment",
-      "line_key": "uni-placement-2012",
-      "parent_line_key": "university-2010",
-      "type": "span",
-      "title": "Summer Placement — CERN",
-      "label": "CERN",
-      "icon": "mdi:briefcase",
-      "start_date": "2012-06-01",
-      "end_date": "2012-08-31",
-      "location": {
-        "label": "Geneva, Switzerland",
-        "lat": 46.2044,
-        "lng": 6.1432
-      },
-      "description": "Summer research placement during second year.",
-      "external_url": null,
-      "hero_image_url": null,
-      "photos": [],
-      "metadata": {
-        "role": "Research Intern"
-      }
-    },
-    {
       "id": "evt_002",
       "family_id": "travel",
       "line_key": "japan-2023",
-      "parent_line_key": null,
       "type": "span",
       "title": "Japan Trip",
       "icon": "mdi:airplane-takeoff",
       "end_icon": "mdi:airplane-landing",
       "start_date": "2023-03-10",
-      "end_date": "2023-03-24",
+      "end_date": "2023-03-28",
       "location": {
         "label": "Japan",
         "lat": 36.2048,
@@ -173,10 +172,49 @@
       }
     },
     {
+      "id": "evt_002_tokyo_tower",
+      "family_id": "travel",
+      "line_key": "japan-2023",
+      "type": "point",
+      "title": "Tokyo Tower",
+      "label": "Tokyo Tower",
+      "icon": "mdi:star",
+      "date": "2023-03-14",
+      "location": {
+        "label": "Tokyo, Japan",
+        "lat": 35.6586,
+        "lng": 139.7454
+      },
+      "description": "Visited Tokyo Tower at sunset.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": {}
+    },
+    {
+      "id": "evt_002_fushimi",
+      "family_id": "travel",
+      "line_key": "japan-2023",
+      "type": "point",
+      "title": "Fushimi Inari",
+      "label": "Fushimi Inari",
+      "icon": "mdi:map-marker",
+      "date": "2023-03-20",
+      "location": {
+        "label": "Kyoto, Japan",
+        "lat": 34.9671,
+        "lng": 135.7727
+      },
+      "description": "Hiked the torii gate trail at dawn.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": {}
+    },
+    {
       "id": "evt_002b",
       "family_id": "travel",
       "line_key": "scotland-2024",
-      "parent_line_key": null,
       "type": "span",
       "title": "Scotland Road Trip",
       "label": "Scotland",
@@ -201,7 +239,6 @@
       "id": "evt_002c",
       "family_id": "travel",
       "line_key": "lisbon-2025",
-      "parent_line_key": null,
       "type": "span",
       "title": "Lisbon",
       "icon": "mdi:airplane-takeoff",
@@ -226,7 +263,6 @@
       "id": "evt_003",
       "family_id": "books",
       "line_key": "dune-2022",
-      "parent_line_key": null,
       "type": "span",
       "title": "Dune",
       "icon": "mdi:book-open-variant",
@@ -247,7 +283,6 @@
       "id": "evt_004",
       "family_id": "hobbies",
       "line_key": "glastonbury-2023",
-      "parent_line_key": null,
       "type": "point",
       "title": "Glastonbury Festival",
       "label": "Glastonbury",
@@ -273,7 +308,6 @@
       "id": "evt_005",
       "family_id": "education",
       "line_key": "university-2010",
-      "parent_line_key": null,
       "type": "span",
       "title": "University of Edinburgh",
       "label": "Edinburgh",
@@ -297,7 +331,6 @@
       "id": "evt_006",
       "family_id": "books",
       "line_key": "midnight-library-2022",
-      "parent_line_key": null,
       "type": "span",
       "title": "The Midnight Library",
       "label": "Midnight Library",

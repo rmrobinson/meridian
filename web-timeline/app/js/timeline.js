@@ -166,7 +166,8 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
         //      (departure/arrival stations of child span branches).
         const stationObj =
           collapsedSecondarySpines.has(obj.event?.family_id) ||
-          collapsedLaneOffsets.has(obj.laneOffset)
+          collapsedLaneOffsets.has(obj.laneOffset) ||
+          collapsedLaneOffsets.has(obj.parentOffset)
             ? { ...obj, laneOffset: 0 }
             : obj;
         liveStations.set(obj.id, stationsLayer.appendChild(buildStation(stationObj, spineX)));
@@ -228,9 +229,10 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
     secondarySpinesLayer.replaceChildren();
     collapsedSecondarySpines = new Set();
     collapsedLaneOffsets     = new Set();
+    const svgWidth = spineX * 2;
     for (const obj of secondarySpineObjs) {
       const x = spineX + obj.laneOffset;
-      if (x <= 0) {
+      if (x <= 0 || x >= svgWidth) {
         // Not enough horizontal space — collapse this spine's point event
         // stations and any child span branches to the main spine center.
         collapsedSecondarySpines.add(obj.familyId);

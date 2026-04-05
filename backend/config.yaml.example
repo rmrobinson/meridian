@@ -71,9 +71,9 @@ line_families:
   - id: hobbies
     label: Hobbies
     base_color_hsl: [180, 55, 45]
-    side: left
+    side: right
     on_end: terminate
-    spawn_behavior: per_event
+    spawn_behavior: secondary_spine
 
   - id: travel
     label: Travel
@@ -82,13 +82,15 @@ line_families:
     on_end: merge
     spawn_behavior: per_event
 
-
   - id: books
     label: Books
     base_color_hsl: [30, 70, 50]
     side: right
     on_end: terminate
     spawn_behavior: per_event
+    # parent_family_id causes branches to depart from the hobbies secondary spine
+    # rather than the main life spine.
+    parent_family_id: hobbies
 
   - id: film_tv
     label: Film & TV
@@ -96,6 +98,7 @@ line_families:
     side: right
     on_end: terminate
     spawn_behavior: per_event
+    parent_family_id: hobbies
 
   - id: fitness
     label: Fitness & Health

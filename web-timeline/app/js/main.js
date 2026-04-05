@@ -221,7 +221,7 @@ function buildRenderObjects(data, pxPerDay) {
     if (startStationY >= 0 && startStationY <= totalHeight) {
       const startStation = {
         type: 'station', id: evt.id,
-        y: startStationY, laneOffset: parentOffset, color, event: evt, isMajor: false,
+        y: startStationY, laneOffset: parentOffset, parentOffset, color, event: evt, isMajor: false,
         label:     evt.label ?? truncate(evt.title),
         icon:      evt.icon ?? null,
         departure: true,  // CSS hides icon at compressed zooms to avoid spine clutter
@@ -238,7 +238,7 @@ function buildRenderObjects(data, pxPerDay) {
       if (endY >= 0 && endY <= totalHeight) {
         const endStation = {
           type: 'station', id: `${evt.id}-end`,
-          y: endY, laneOffset: parentOffset, color, event: evt, isMajor: false,
+          y: endY, laneOffset: parentOffset, parentOffset, color, event: evt, isMajor: false,
           label:   null,
           icon:    evt.end_icon ?? null,
           arrival: true,  // CSS hides icon at compressed zooms
@@ -250,7 +250,7 @@ function buildRenderObjects(data, pxPerDay) {
       if (clampedYEnd >= 0 && clampedYEnd <= totalHeight) {
         const endStation = {
           type: 'station', id: `${evt.id}-end`,
-          y: clampedYEnd, laneOffset, color, event: evt, isMajor: false,
+          y: clampedYEnd, laneOffset, parentOffset, color, event: evt, isMajor: false,
           label: null,
           icon:  null,
         };

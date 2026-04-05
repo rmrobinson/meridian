@@ -3,14 +3,13 @@ import { assignLanes, LANE_WIDTH, SECONDARY_SPINE_SLOTS } from '../../js/lanes.j
 
 // ── Fixture helpers ───────────────────────────────────────────────────────────
 
-function makeFamily(id, side, spawn_behavior = 'per_event', on_end = 'merge') {
-  return { id, side, spawn_behavior, on_end, base_color_hsl: [120, 60, 50], label: id };
+function makeFamily(id, side, spawn_behavior = 'per_event', on_end = 'merge', parent_family_id = null) {
+  return { id, side, spawn_behavior, on_end, base_color_hsl: [120, 60, 50], label: id, parent_family_id };
 }
 
-function makeSpan(id, lineKey, familyId, startDate, endDate, parentLineKey = null) {
+function makeSpan(id, lineKey, familyId, startDate, endDate) {
   return {
     id, type: 'span', family_id: familyId, line_key: lineKey,
-    parent_line_key: parentLineKey,
     start_date: startDate, end_date: endDate,
     date: null, title: '', location: null, description: null,
     external_url: null, hero_image_url: null, photos: [], metadata: {},
@@ -128,52 +127,32 @@ describe('assignLanes()', () => {
     expect(result.get('k2').colorIndex).toBe(0); // first span in its own family
   });
 
-  // ── Nested branch ───────────────────────────────────────────────────────────
+  // ── Nested branch (parent_family_id on family) ──────────────────────────────
 
-  it('nested branch parentOffset equals the parent line laneOffset', () => {
-    const EDU = makeFamily('education',  'left');
-    const EMP = makeFamily('employment', 'left');
-    const events = [
-      makeSpan('e1', 'university-2010', 'education',  '2010-09-01', '2014-05-30'),
-      makeSpan('e2', 'cern-2012',       'employment', '2012-06-01', '2012-08-31', 'university-2010'),
-    ];
-    const result = assignLanes(events, [EDU, EMP]);
-    expect(result.get('university-2010').laneOffset).toBe(-LANE_WIDTH);
-    expect(result.get('cern-2012').parentOffset).toBe(-LANE_WIDTH);
+  it('branch parentOffset equals the parent family laneOffset', () => {
+    const FITNESS  = makeFamily('fitness',  'left', 'secondary_spine', 'terminate');
+    const PHYSIO   = makeFamily('physio',   'left', 'per_event',       'terminate', 'fitness');
+    const events   = [makeSpan('e1', 'physio-2022', 'physio', '2022-01-01', '2022-06-01')];
+    const result   = assignLanes(events, [FITNESS, PHYSIO]);
+    const fitnessOffset = -(SECONDARY_SPINE_SLOTS * LANE_WIDTH);
+    expect(result.get('physio-2022').parentOffset).toBe(fitnessOffset);
   });
 
-  it('nested branch laneOffset is further from spine than its parent', () => {
-    const EDU = makeFamily('education',  'left');
-    const EMP = makeFamily('employment', 'left');
-    const events = [
-      makeSpan('e1', 'university-2010', 'education',  '2010-09-01', '2014-05-30'),
-      makeSpan('e2', 'cern-2012',       'employment', '2012-06-01', '2012-08-31', 'university-2010'),
-    ];
-    const result = assignLanes(events, [EDU, EMP]);
-    const parentAbs = Math.abs(result.get('university-2010').laneOffset);
-    const childAbs  = Math.abs(result.get('cern-2012').laneOffset);
+  it('branch laneOffset is one step further from spine than its parent family', () => {
+    const FITNESS  = makeFamily('fitness',  'left', 'secondary_spine', 'terminate');
+    const PHYSIO   = makeFamily('physio',   'left', 'per_event',       'terminate', 'fitness');
+    const events   = [makeSpan('e1', 'physio-2022', 'physio', '2022-01-01', '2022-06-01')];
+    const result   = assignLanes(events, [FITNESS, PHYSIO]);
+    const parentAbs = Math.abs(result.get('physio-2022').parentOffset);
+    const childAbs  = Math.abs(result.get('physio-2022').laneOffset);
     expect(childAbs).toBeGreaterThan(parentAbs);
   });
 
-  it('nested branch laneOffset is exactly 2×LANE_WIDTH from spine when parent is at 1×', () => {
-    const EDU = makeFamily('education',  'left');
-    const EMP = makeFamily('employment', 'left');
-    const events = [
-      makeSpan('e1', 'university-2010', 'education',  '2010-09-01', '2014-05-30'),
-      makeSpan('e2', 'cern-2012',       'employment', '2012-06-01', '2012-08-31', 'university-2010'),
-    ];
-    const result = assignLanes(events, [EDU, EMP]);
-    expect(result.get('cern-2012').laneOffset).toBe(-2 * LANE_WIDTH);
-  });
-
-  it('nested branch with unknown parent falls back gracefully (no throw)', () => {
-    const EMP = makeFamily('employment', 'left');
-    const events = [
-      makeSpan('e1', 'cern', 'employment', '2012-06-01', '2012-08-31', 'missing-parent'),
-    ];
-    expect(() => assignLanes(events, [EMP])).not.toThrow();
-    const result = assignLanes(events, [EMP]);
-    expect(result.has('cern')).toBe(true);
+  it('branch with unknown parent_family_id falls back gracefully (no throw)', () => {
+    const ORPHAN = makeFamily('orphan', 'left', 'per_event', 'terminate', 'missing-family');
+    const events = [makeSpan('e1', 'orphan-key', 'orphan', '2020-01-01', '2021-01-01')];
+    expect(() => assignLanes(events, [ORPHAN])).not.toThrow();
+    expect(assignLanes(events, [ORPHAN]).has('orphan-key')).toBe(true);
   });
 
   // ── single_line family ──────────────────────────────────────────────────────
@@ -193,34 +172,36 @@ describe('assignLanes()', () => {
   // ── Full fixture trace ──────────────────────────────────────────────────────
 
   it('full fixture: all lane invariants hold', () => {
-    const BOOKS  = makeFamily('books',      'right', 'per_event', 'terminate');
-    const EDU    = makeFamily('education',  'left',  'per_event', 'merge');
-    const EMP    = makeFamily('employment', 'left',  'per_event', 'merge');
-    const TRAVEL = makeFamily('travel',     'right', 'per_event', 'merge');
+    const HOBBIES = makeFamily('hobbies',    'right', 'secondary_spine', 'terminate');
+    const BOOKS   = makeFamily('books',      'right', 'per_event', 'terminate', 'hobbies');
+    const EDU     = makeFamily('education',  'left',  'per_event', 'merge');
+    const EMP     = makeFamily('employment', 'left',  'per_event', 'merge');
+    const TRAVEL  = makeFamily('travel',     'right', 'per_event', 'merge');
+
+    const hobbiesOffset = SECONDARY_SPINE_SLOTS * LANE_WIDTH;
 
     const events = [
-      makeSpan('e005',  'university-2010',      'education',  '2010-09-01', '2014-05-30'),
-      makeSpan('e001b', 'uni-placement-2012',   'employment', '2012-06-01', '2012-08-31', 'university-2010'),
-      makeSpan('e001',  'acme-corp',            'employment', '2015-06-01', '2018-11-30'),
-      makeSpan('e003',  'dune-2022',            'books',      '2022-07-20', '2022-08-14'),
-      makeSpan('e006',  'midnight-library-2022','books',      '2022-07-25', '2022-09-10'),
-      makeSpan('e002',  'japan-2023',           'travel',     '2023-03-10', '2023-03-24'),
+      makeSpan('e005', 'university-2010',       'education',  '2010-09-01', '2014-05-30'),
+      makeSpan('e001', 'acme-corp',             'employment', '2015-06-01', '2018-11-30'),
+      makeSpan('e003', 'dune-2022',             'books',      '2022-07-20', '2022-08-14'),
+      makeSpan('e006', 'midnight-library-2022', 'books',      '2022-07-25', '2022-09-10'),
+      makeSpan('e002', 'japan-2023',            'travel',     '2023-03-10', '2023-03-24'),
     ];
 
-    const result = assignLanes(events, [BOOKS, EDU, EMP, TRAVEL]);
+    const result = assignLanes(events, [HOBBIES, BOOKS, EDU, EMP, TRAVEL]);
 
+    // Hobbies: reserved secondary spine on the right
+    expect(result.get('hobbies').laneOffset).toBe(hobbiesOffset);
     // Education spine-child: lane 1 left
     expect(result.get('university-2010').laneOffset).toBe(-LANE_WIDTH);
-    // CERN nested under university: lane 2 left, parentOffset = -80
-    expect(result.get('uni-placement-2012').parentOffset).toBe(-LANE_WIDTH);
-    expect(result.get('uni-placement-2012').laneOffset).toBe(-2 * LANE_WIDTH);
     // Acme Corp: non-concurrent with university → reuses lane 1 left
     expect(result.get('acme-corp').laneOffset).toBe(-LANE_WIDTH);
-    // Dune: right lane 1
-    expect(result.get('dune-2022').laneOffset).toBe(LANE_WIDTH);
-    // Midnight Library: concurrent with Dune → right lane 2
-    expect(result.get('midnight-library-2022').laneOffset).toBe(2 * LANE_WIDTH);
-    // Japan trip: non-concurrent with books → reuses right lane 1
+    // Dune: branches off hobbies secondary spine, one step further right
+    expect(result.get('dune-2022').parentOffset).toBe(hobbiesOffset);
+    expect(result.get('dune-2022').laneOffset).toBe(hobbiesOffset + LANE_WIDTH);
+    // Midnight Library: concurrent with Dune → two steps right of hobbies
+    expect(result.get('midnight-library-2022').laneOffset).toBe(hobbiesOffset + 2 * LANE_WIDTH);
+    // Japan trip: branches off spine (no parent_family_id) → right lane 1
     expect(result.get('japan-2023').laneOffset).toBe(LANE_WIDTH);
   });
 

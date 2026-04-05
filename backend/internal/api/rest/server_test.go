@@ -63,11 +63,11 @@ func testConfig() *config.Config {
 		LineFamilies: []config.LineFamily{
 			{ID: "spine", Label: "Life Spine", BaseColorHSL: []int{0, 0, 80}, Side: "center", OnEnd: "never", SpawnBehavior: "single_line"},
 			{ID: "travel", Label: "Travel", BaseColorHSL: []int{50, 85, 50}, Side: "right", OnEnd: "merge", SpawnBehavior: "per_event"},
-			{ID: "books", Label: "Books", BaseColorHSL: []int{30, 70, 50}, Side: "right", OnEnd: "terminate", SpawnBehavior: "per_event"},
+			{ID: "books", Label: "Books", BaseColorHSL: []int{30, 70, 50}, Side: "right", OnEnd: "terminate", SpawnBehavior: "per_event", ParentFamilyID: "hobbies"},
 			{ID: "employment", Label: "Employment", BaseColorHSL: []int{210, 70, 50}, Side: "left", OnEnd: "merge", SpawnBehavior: "per_event"},
 			{ID: "education", Label: "Education", BaseColorHSL: []int{270, 60, 55}, Side: "left", OnEnd: "merge", SpawnBehavior: "per_event"},
-			{ID: "hobbies", Label: "Hobbies", BaseColorHSL: []int{180, 55, 45}, Side: "left", OnEnd: "terminate", SpawnBehavior: "per_event"},
-			{ID: "film_tv", Label: "Film & TV", BaseColorHSL: []int{300, 60, 55}, Side: "right", OnEnd: "terminate", SpawnBehavior: "per_event"},
+			{ID: "hobbies", Label: "Hobbies", BaseColorHSL: []int{180, 55, 45}, Side: "right", OnEnd: "terminate", SpawnBehavior: "secondary_spine"},
+			{ID: "film_tv", Label: "Film & TV", BaseColorHSL: []int{300, 60, 55}, Side: "right", OnEnd: "terminate", SpawnBehavior: "per_event", ParentFamilyID: "hobbies"},
 			{ID: "fitness", Label: "Fitness & Health", BaseColorHSL: []int{140, 65, 45}, Side: "left", OnEnd: "terminate", SpawnBehavior: "secondary_spine"},
 		},
 	}

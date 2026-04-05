@@ -25,10 +25,11 @@ const (
 )
 
 type LineFamily struct {
-	ID            string
-	Label         string
-	BaseColorHSL  [3]int
-	Side          Side
-	OnEnd         OnEnd
-	SpawnBehavior SpawnBehavior
+	ID             string
+	Label          string
+	BaseColorHSL   [3]int
+	Side           Side
+	OnEnd          OnEnd
+	SpawnBehavior  SpawnBehavior
+	ParentFamilyID string // non-empty when this family branches off another family's lane
 }

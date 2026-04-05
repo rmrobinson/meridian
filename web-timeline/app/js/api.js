@@ -131,16 +131,10 @@ export function resolveFlights(events) {
       const icon = isStart ? 'mdi:airplane-takeoff'
                  : isEnd   ? 'mdi:airplane-landing'
                  :           'mdi:airplane';
-      return {
-        ...evt,
-        family_id:       containing.family_id,
-        line_key:        containing.line_key,
-        parent_line_key: containing.parent_line_key ?? null,
-        icon,
-      };
+      return { ...evt, family_id: containing.family_id, line_key: containing.line_key, icon };
     }
 
-    return { ...evt, family_id: 'spine', line_key: 'spine', parent_line_key: null, icon: 'mdi:airplane' };
+    return { ...evt, family_id: 'spine', line_key: 'spine', icon: 'mdi:airplane' };
   });
 }
 
@@ -153,7 +147,6 @@ function normalizeEvent(evt) {
     id: evt.id,
     family_id: evt.family_id,
     line_key: evt.line_key,
-    parent_line_key: evt.parent_line_key ?? null,
     type: evt.type,
     title: evt.title,
     label: evt.label ?? null,   // short display string; falls back to truncated title if null

@@ -131,7 +131,6 @@ describe('normalize()', () => {
     expect(evt.hero_image_url).toBeNull();
     expect(evt.photos).toEqual([]);
     expect(evt.metadata).toEqual({});
-    expect(evt.parent_line_key).toBeNull();
   });
 
   it('does not duplicate a birthday when an explicit event exists', () => {
@@ -282,7 +281,6 @@ describe('resolveFlights()', () => {
       type: 'point',
       family_id: 'flights',
       line_key: lineKey,
-      parent_line_key: null,
       date,
       title: `Flight ${id}`,
       label: null,
