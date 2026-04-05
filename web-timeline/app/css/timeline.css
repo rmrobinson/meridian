@@ -135,6 +135,13 @@ body.zoom-year  .station--span-hover .station-label {
   stroke-linejoin: round;
 }
 
+/* Branches off a secondary spine match the secondary spine's thinner weight. */
+.span-line--secondary-child .span-branch,
+.span-line--secondary-child .span-segment,
+.span-line--secondary-child .span-merge {
+  stroke-width: 3;
+}
+
 /* ── Span line hit area ───────────────────────────────────────────────────── */
 
 /* Wide transparent stroke over the segment path — makes the 7px visual line
