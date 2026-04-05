@@ -359,7 +359,8 @@ function buildSpanLine(obj, spineX) {
   const parentX = spineX + (parentOffset ?? 0);
 
   const g = svgEl('g');
-  g.setAttribute('class', `span-line span-line--${familyId}`);
+  const secondaryChild = (obj.parentOffset ?? 0) !== 0;
+  g.setAttribute('class', `span-line span-line--${familyId}${secondaryChild ? ' span-line--secondary-child' : ''}`);
   g.setAttribute('data-testid', `span-line-${obj.id}`);
   g.dataset.family    = familyId;
   g.dataset.id        = obj.eventId;
