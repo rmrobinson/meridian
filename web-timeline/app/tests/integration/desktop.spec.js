@@ -181,20 +181,21 @@ test.describe('Desktop — spine and year markers', () => {
     expect(x2 - x1).toBeCloseTo(80, -1);       // exactly one LANE_WIDTH apart
   });
 
-  test('CERN placement (nested branch) renders outward from education line, not from spine', async ({ page }) => {
-    await scrollToDate(page, '2012-07-01'); // mid-point of CERN placement
-    await expect(page.locator('[data-testid="span-line-span-evt_001b"]')).toBeAttached({ timeout: 3000 });
+  test('Dune (books branch off hobbies secondary spine) renders outward from hobbies line, not from spine', async ({ page }) => {
+    await scrollToDate(page, '2022-08-01'); // mid-point of Dune read
+    await expect(page.locator('[data-testid="span-line-span-evt_003"]')).toBeAttached({ timeout: 3000 });
 
-    // parentX = spineX + parentOffset = 640 + (-80) = 560 (university line)
-    // laneX   = spineX + laneOffset   = 640 + (-160) = 480
-    const branchD = await page.locator('[data-testid="span-line-span-evt_001b"] .span-branch').getAttribute('d');
+    // hobbies secondary spine: laneOffset = SECONDARY_SPINE_SLOTS * LANE_WIDTH = 4 * 80 = 320
+    // parentX = spineX + parentOffset = 640 + 320 = 960 (hobbies secondary spine)
+    // laneX   = spineX + laneOffset   = 640 + 400 = 1040 (one step further right)
+    const branchD = await page.locator('[data-testid="span-line-span-evt_003"] .span-branch').getAttribute('d');
     const tokens  = branchD.trim().split(/[\s,]+/);
-    const startX  = Number(tokens[1]); // parentX ≈ 560
-    const endX    = Number(tokens[8]); // laneX   ≈ 480
+    const startX  = Number(tokens[1]); // parentX ≈ 960
+    const endX    = Number(tokens[8]); // laneX   ≈ 1040
 
-    expect(startX).toBeCloseTo(560, -1); // starts at university line, not spine
-    expect(endX).toBeLessThan(startX);   // curves further left (outward)
-    expect(endX).toBeCloseTo(480, -1);
+    expect(startX).toBeCloseTo(960, -1); // starts at hobbies spine, not main spine
+    expect(endX).toBeGreaterThan(startX); // curves further right (outward)
+    expect(endX).toBeCloseTo(1040, -1);
   });
 
   // ── Phase 3 — card interaction ────────────────────────────────────────────
