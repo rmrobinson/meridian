@@ -77,6 +77,9 @@ func (e *ISBNdbEnricher) Enrich(ctx context.Context, event *domain.Event) error 
 		return fmt.Errorf("decoding ISBNdb response: %w", err)
 	}
 
+	if result.Book.Title != "" {
+		m.Title = result.Book.Title
+	}
 	if len(result.Book.Authors) > 0 {
 		m.Author = result.Book.Authors[0]
 	}

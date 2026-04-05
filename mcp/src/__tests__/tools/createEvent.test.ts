@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ClientError, Status } from "nice-grpc-common";
-import { ActivityType, EventType, Visibility } from "../../../proto-gen/meridian/v1/timeline.js";
+import { EventType, Visibility } from "../../../proto-gen/meridian/v1/timeline.js";
 
 vi.mock("../../client.js", () => ({
   client: { createEvent: vi.fn() },
@@ -32,7 +32,6 @@ const baseResponseEvent = {
   sourceEventId: "",
   canonicalId: "",
   photos: [],
-  activityType: ActivityType.ACTIVITY_TYPE_UNSPECIFIED,
   description: "",
   endIcon: "",
 };
@@ -55,36 +54,6 @@ describe("createEvent", () => {
       await createEvent({ title: "T", family_id: "spine", type: "point" });
       expect(mockCreateEvent).toHaveBeenCalledWith(
         expect.objectContaining({ type: EventType.EVENT_TYPE_POINT })
-      );
-    });
-  });
-
-  describe("activity_type mapping", () => {
-    it.each([
-      ["run", ActivityType.ACTIVITY_TYPE_RUN],
-      ["cycle", ActivityType.ACTIVITY_TYPE_CYCLE],
-      ["hike", ActivityType.ACTIVITY_TYPE_HIKE],
-      ["ski", ActivityType.ACTIVITY_TYPE_SKI],
-      ["scuba", ActivityType.ACTIVITY_TYPE_SCUBA],
-      ["climb", ActivityType.ACTIVITY_TYPE_CLIMB],
-      ["golf", ActivityType.ACTIVITY_TYPE_GOLF],
-      ["squash", ActivityType.ACTIVITY_TYPE_SQUASH],
-      ["concert", ActivityType.ACTIVITY_TYPE_CONCERT],
-      ["flight", ActivityType.ACTIVITY_TYPE_FLIGHT],
-      ["book", ActivityType.ACTIVITY_TYPE_BOOK],
-      ["movie", ActivityType.ACTIVITY_TYPE_MOVIE],
-      ["tv", ActivityType.ACTIVITY_TYPE_TV],
-    ] as const)('maps activity_type "%s" to the correct enum value', async (input, expected) => {
-      await createEvent({ title: "T", family_id: "spine", type: "point", activity_type: input });
-      expect(mockCreateEvent).toHaveBeenCalledWith(
-        expect.objectContaining({ activityType: expected })
-      );
-    });
-
-    it("sends ACTIVITY_TYPE_UNSPECIFIED when activity_type is omitted", async () => {
-      await createEvent({ title: "T", family_id: "spine", type: "point" });
-      expect(mockCreateEvent).toHaveBeenCalledWith(
-        expect.objectContaining({ activityType: ActivityType.ACTIVITY_TYPE_UNSPECIFIED })
       );
     });
   });

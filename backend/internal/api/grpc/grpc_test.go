@@ -263,17 +263,21 @@ func TestCreateEvent_WrongToken_ReturnsUnauthenticated(t *testing.T) {
 	assertCode(t, err, codes.Unauthenticated)
 }
 
-func TestCreateEvent_ActivityTypeRoundTrip(t *testing.T) {
+func TestCreateEvent_FitnessMetadataRoundTrip(t *testing.T) {
 	env := newTestEnv(t)
 	resp, err := env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
 		Id: "run-1", FamilyId: "fitness", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT,
-		Title: "Morning Run", Date: "2024-05-01", ActivityType: pb.ActivityType_ACTIVITY_TYPE_RUN,
+		Title: "Morning Run", Date: "2024-05-01",
+		Metadata: &pb.CreateEventRequest_FitnessMetadata{FitnessMetadata: &pb.FitnessMetadata{
+			Activity: pb.FitnessActivity_FITNESS_ACTIVITY_RUN,
+		}},
 	})
 	if err != nil {
 		t.Fatalf("CreateEvent: %v", err)
 	}
-	if resp.Event.ActivityType != pb.ActivityType_ACTIVITY_TYPE_RUN {
-		t.Errorf("activity_type: got %v, want ACTIVITY_TYPE_RUN", resp.Event.ActivityType)
+	fm := resp.Event.GetFitnessMetadata()
+	if fm == nil || fm.Activity != pb.FitnessActivity_FITNESS_ACTIVITY_RUN {
+		t.Errorf("fitness_metadata.activity: got %v, want FITNESS_ACTIVITY_RUN", fm)
 	}
 }
 
@@ -659,11 +663,11 @@ func TestMergeEvents_SetsCanonicalID(t *testing.T) {
 	env := newTestEnv(t)
 	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
 		Id: "canon-1", FamilyId: "fitness", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT,
-		Title: "Canonical Run", ActivityType: pb.ActivityType_ACTIVITY_TYPE_RUN,
+		Title: "Canonical Run",
 	})
 	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
 		Id: "linked-1", FamilyId: "fitness", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT,
-		Title: "Garmin Run", ActivityType: pb.ActivityType_ACTIVITY_TYPE_RUN,
+		Title: "Garmin Run",
 	})
 
 	_, err := env.client.MergeEvents(authCtx(t), &pb.MergeEventsRequest{
@@ -850,8 +854,7 @@ func TestImportEvents_SourceServiceStoredOnEvents(t *testing.T) {
 	env.client.ImportEvents(authCtx(t), &pb.ImportEventsRequest{
 		Events: []*pb.CreateEventRequest{
 			{FamilyId: "fitness", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT,
-				Title: "Run", Date: "2024-03-01", SourceEventId: "g-001",
-				ActivityType: pb.ActivityType_ACTIVITY_TYPE_RUN},
+				Title: "Run", Date: "2024-03-01", SourceEventId: "g-001"},
 		},
 		ConflictStrategy: pb.ConflictStrategy_CONFLICT_STRATEGY_UPSERT,
 		SourceService:    "garmin",
@@ -873,7 +876,10 @@ func TestImportEvents_AutoMerge_LinkedToCanonical(t *testing.T) {
 	env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
 		Id: "manual-run", FamilyId: "fitness", LineKey: "l",
 		Type: pb.EventType_EVENT_TYPE_POINT, Title: "My Run",
-		Date: "2024-06-01", ActivityType: pb.ActivityType_ACTIVITY_TYPE_RUN,
+		Date: "2024-06-01",
+		Metadata: &pb.CreateEventRequest_FitnessMetadata{FitnessMetadata: &pb.FitnessMetadata{
+			Activity: pb.FitnessActivity_FITNESS_ACTIVITY_RUN,
+		}},
 	})
 
 	// Import a Garmin run on the same date — should auto-merge.
@@ -881,7 +887,9 @@ func TestImportEvents_AutoMerge_LinkedToCanonical(t *testing.T) {
 		Events: []*pb.CreateEventRequest{
 			{FamilyId: "fitness", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT,
 				Title: "Garmin Run", Date: "2024-06-01", SourceEventId: "g-100",
-				ActivityType: pb.ActivityType_ACTIVITY_TYPE_RUN},
+				Metadata: &pb.CreateEventRequest_FitnessMetadata{FitnessMetadata: &pb.FitnessMetadata{
+					Activity: pb.FitnessActivity_FITNESS_ACTIVITY_RUN,
+				}}},
 		},
 		ConflictStrategy: pb.ConflictStrategy_CONFLICT_STRATEGY_UPSERT,
 		SourceService:    "garmin",
@@ -933,7 +941,8 @@ func TestCreateEvent_Books_CallsEnricher(t *testing.T) {
 
 	resp, err := env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
 		FamilyId: "books", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT,
-		Title: "Dune", Metadata: `{"isbn":"9780441013593"}`,
+		Title: "Dune",
+		Metadata: &pb.CreateEventRequest_BookMetadata{BookMetadata: &pb.BookMetadata{Isbn: "9780441013593"}},
 	})
 	if err != nil {
 		t.Fatalf("CreateEvent: %v", err)
@@ -941,7 +950,7 @@ func TestCreateEvent_Books_CallsEnricher(t *testing.T) {
 	if !enricher.called {
 		t.Error("expected book enricher to be called")
 	}
-	if resp.Event.Metadata == "" {
+	if resp.Event.Metadata == nil {
 		t.Error("expected enriched metadata in response")
 	}
 }
@@ -957,7 +966,10 @@ func TestCreateEvent_FilmTV_CallsEnricher(t *testing.T) {
 
 	resp, err := env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
 		FamilyId: "film_tv", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT,
-		Title: "The Godfather", Metadata: `{"tmdb_id":"238","type":"movie"}`,
+		Title: "The Godfather",
+		Metadata: &pb.CreateEventRequest_FilmTvMetadata{FilmTvMetadata: &pb.FilmTVMetadata{
+			TmdbId: "238", Type: pb.FilmTVType_FILM_TV_TYPE_MOVIE,
+		}},
 	})
 	if err != nil {
 		t.Fatalf("CreateEvent: %v", err)
@@ -965,7 +977,7 @@ func TestCreateEvent_FilmTV_CallsEnricher(t *testing.T) {
 	if !enricher.called {
 		t.Error("expected film_tv enricher to be called")
 	}
-	if resp.Event.Metadata == "" {
+	if resp.Event.Metadata == nil {
 		t.Error("expected enriched metadata in response")
 	}
 }
@@ -992,7 +1004,8 @@ func TestCreateEvent_EnricherFailure_ReturnsInternal(t *testing.T) {
 
 	_, err := env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
 		FamilyId: "books", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT,
-		Title: "Dune", Metadata: `{"isbn":"9780441013593"}`,
+		Title: "Dune",
+		Metadata: &pb.CreateEventRequest_BookMetadata{BookMetadata: &pb.BookMetadata{Isbn: "9780441013593"}},
 	})
 	if status.Code(err) != codes.Internal {
 		t.Errorf("expected codes.Internal, got %v", err)

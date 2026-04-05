@@ -2,6 +2,7 @@ package merge_test
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/rmrobinson/meridian/backend/internal/db"
@@ -20,11 +21,17 @@ func (s *stubLister) ListEvents(_ context.Context, _ db.ListEventsFilter) ([]*do
 
 func strPtr(s string) *string { return &s }
 
+func fitnessMetaJSON(activity string) *string {
+	b, _ := json.Marshal(domain.FitnessMetadata{Activity: activity})
+	s := string(b)
+	return &s
+}
+
 // --- FindMergeCandidates ---
 
 func TestFindMergeCandidates_NoEvents_ReturnsNil(t *testing.T) {
 	lister := &stubLister{}
-	incoming := &domain.Event{ActivityType: domain.ActivityTypeRun, Date: strPtr("2024-05-01")}
+	incoming := &domain.Event{FamilyID: "fitness", Metadata: fitnessMetaJSON("run"), Date: strPtr("2024-05-01")}
 	got, err := merge.FindMergeCandidates(context.Background(), lister, incoming)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -35,9 +42,9 @@ func TestFindMergeCandidates_NoEvents_ReturnsNil(t *testing.T) {
 }
 
 func TestFindMergeCandidates_DifferentActivityType_ReturnsNil(t *testing.T) {
-	existing := &domain.Event{ID: "e1", ActivityType: domain.ActivityTypeHike, Date: strPtr("2024-05-01")}
+	existing := &domain.Event{ID: "e1", FamilyID: "fitness", Metadata: fitnessMetaJSON("hike"), Date: strPtr("2024-05-01")}
 	lister := &stubLister{events: []*domain.Event{existing}}
-	incoming := &domain.Event{ActivityType: domain.ActivityTypeRun, Date: strPtr("2024-05-01")}
+	incoming := &domain.Event{FamilyID: "fitness", Metadata: fitnessMetaJSON("run"), Date: strPtr("2024-05-01")}
 	got, err := merge.FindMergeCandidates(context.Background(), lister, incoming)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -47,25 +54,25 @@ func TestFindMergeCandidates_DifferentActivityType_ReturnsNil(t *testing.T) {
 	}
 }
 
-func TestFindMergeCandidates_UnspecifiedActivityType_ReturnsNil(t *testing.T) {
-	existing := &domain.Event{ID: "e1", ActivityType: domain.ActivityTypeRun, Date: strPtr("2024-05-01")}
+func TestFindMergeCandidates_NoFitnessActivity_ReturnsNil(t *testing.T) {
+	existing := &domain.Event{ID: "e1", FamilyID: "fitness", Metadata: fitnessMetaJSON("run"), Date: strPtr("2024-05-01")}
 	lister := &stubLister{events: []*domain.Event{existing}}
-	// Incoming has no activity type — should not attempt merge.
-	incoming := &domain.Event{ActivityType: domain.ActivityTypeUnspecified, Date: strPtr("2024-05-01")}
+	// Incoming is not a fitness event — should not attempt merge.
+	incoming := &domain.Event{FamilyID: "travel", Date: strPtr("2024-05-01")}
 	got, err := merge.FindMergeCandidates(context.Background(), lister, incoming)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if got != nil {
-		t.Errorf("expected nil for unspecified activity type, got %+v", got)
+		t.Errorf("expected nil for non-fitness event, got %+v", got)
 	}
 }
 
 func TestFindMergeCandidates_NoDate_ReturnsNil(t *testing.T) {
 	lister := &stubLister{events: []*domain.Event{
-		{ID: "e1", ActivityType: domain.ActivityTypeRun},
+		{ID: "e1", FamilyID: "fitness", Metadata: fitnessMetaJSON("run")},
 	}}
-	incoming := &domain.Event{ActivityType: domain.ActivityTypeRun} // no date
+	incoming := &domain.Event{FamilyID: "fitness", Metadata: fitnessMetaJSON("run")} // no date
 	got, err := merge.FindMergeCandidates(context.Background(), lister, incoming)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -76,9 +83,9 @@ func TestFindMergeCandidates_NoDate_ReturnsNil(t *testing.T) {
 }
 
 func TestFindMergeCandidates_MatchOnDateAndActivity_ReturnsCandidate(t *testing.T) {
-	existing := &domain.Event{ID: "garmin-1", ActivityType: domain.ActivityTypeRun, Date: strPtr("2024-05-01")}
+	existing := &domain.Event{ID: "garmin-1", FamilyID: "fitness", Metadata: fitnessMetaJSON("run"), Date: strPtr("2024-05-01")}
 	lister := &stubLister{events: []*domain.Event{existing}}
-	incoming := &domain.Event{ActivityType: domain.ActivityTypeRun, Date: strPtr("2024-05-01")}
+	incoming := &domain.Event{FamilyID: "fitness", Metadata: fitnessMetaJSON("run"), Date: strPtr("2024-05-01")}
 	got, err := merge.FindMergeCandidates(context.Background(), lister, incoming)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -89,10 +96,10 @@ func TestFindMergeCandidates_MatchOnDateAndActivity_ReturnsCandidate(t *testing.
 }
 
 func TestFindMergeCandidates_MatchOnStartDate(t *testing.T) {
-	existing := &domain.Event{ID: "e1", ActivityType: domain.ActivityTypeHike, Date: strPtr("2024-07-10")}
+	existing := &domain.Event{ID: "e1", FamilyID: "fitness", Metadata: fitnessMetaJSON("hike"), Date: strPtr("2024-07-10")}
 	lister := &stubLister{events: []*domain.Event{existing}}
 	// Incoming uses start_date instead of date.
-	incoming := &domain.Event{ActivityType: domain.ActivityTypeHike, StartDate: strPtr("2024-07-10")}
+	incoming := &domain.Event{FamilyID: "fitness", Metadata: fitnessMetaJSON("hike"), StartDate: strPtr("2024-07-10")}
 	got, err := merge.FindMergeCandidates(context.Background(), lister, incoming)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -107,7 +114,7 @@ func TestFindMergeCandidates_SoftDeletedEventNotReturned(t *testing.T) {
 	// enforced by db.ListEvents. A stub that returns no events (simulating the
 	// filtered result) should yield nil.
 	lister := &stubLister{events: []*domain.Event{}} // DB has filtered out soft-deleted
-	incoming := &domain.Event{ActivityType: domain.ActivityTypeRun, Date: strPtr("2024-05-01")}
+	incoming := &domain.Event{FamilyID: "fitness", Metadata: fitnessMetaJSON("run"), Date: strPtr("2024-05-01")}
 	got, err := merge.FindMergeCandidates(context.Background(), lister, incoming)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -121,7 +128,7 @@ func TestFindMergeCandidates_NonCanonicalEventNotReturned(t *testing.T) {
 	// Same as above: db.ListEvents excludes non-canonical rows. Stub returns
 	// empty slice to confirm FindMergeCandidates returns nil in that case.
 	lister := &stubLister{events: []*domain.Event{}} // DB has filtered out non-canonical
-	incoming := &domain.Event{ActivityType: domain.ActivityTypeRun, Date: strPtr("2024-05-01")}
+	incoming := &domain.Event{FamilyID: "fitness", Metadata: fitnessMetaJSON("run"), Date: strPtr("2024-05-01")}
 	got, err := merge.FindMergeCandidates(context.Background(), lister, incoming)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

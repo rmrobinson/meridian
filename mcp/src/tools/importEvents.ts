@@ -3,7 +3,6 @@ import { client } from "../client.js";
 import { mapGrpcError } from "../errors.js";
 import {
   EventType,
-  ActivityType,
   Visibility,
   ConflictStrategy,
 } from "../../proto-gen/meridian/v1/timeline.js";
@@ -18,10 +17,6 @@ const eventInputSchema = z.object({
   start_date: z.string().optional().describe("Start date for span events (ISO 8601)"),
   end_date: z.string().optional().describe("End date for span events (ISO 8601)"),
   description: z.string().optional().describe("Free-text description"),
-  activity_type: z
-    .enum(["run", "cycle", "hike", "ski", "scuba", "climb", "golf", "squash", "concert", "flight", "book", "movie", "tv"])
-    .optional()
-    .describe("Specific activity type"),
   visibility: z
     .enum(["personal", "family", "friends", "public"])
     .optional()
@@ -32,7 +27,6 @@ const eventInputSchema = z.object({
   location_lat: z.number().optional().describe("Location latitude"),
   location_lng: z.number().optional().describe("Location longitude"),
   external_url: z.string().optional().describe("URL to an external resource"),
-  metadata: z.string().optional().describe("Family-specific metadata as a JSON string"),
   label: z.string().optional().describe("Short display label"),
   icon: z.string().optional().describe("Icon identifier"),
   source_event_id: z.string().optional().describe("ID from the originating external source"),
@@ -45,22 +39,6 @@ export const importEventsSchema = {
     .enum(["upsert", "skip"])
     .optional()
     .describe("How to handle events that already exist by source_event_id: upsert overwrites, skip leaves them unchanged (default: skip)"),
-};
-
-const activityTypeMap: Record<string, ActivityType> = {
-  run: ActivityType.ACTIVITY_TYPE_RUN,
-  cycle: ActivityType.ACTIVITY_TYPE_CYCLE,
-  hike: ActivityType.ACTIVITY_TYPE_HIKE,
-  ski: ActivityType.ACTIVITY_TYPE_SKI,
-  scuba: ActivityType.ACTIVITY_TYPE_SCUBA,
-  climb: ActivityType.ACTIVITY_TYPE_CLIMB,
-  golf: ActivityType.ACTIVITY_TYPE_GOLF,
-  squash: ActivityType.ACTIVITY_TYPE_SQUASH,
-  concert: ActivityType.ACTIVITY_TYPE_CONCERT,
-  flight: ActivityType.ACTIVITY_TYPE_FLIGHT,
-  book: ActivityType.ACTIVITY_TYPE_BOOK,
-  movie: ActivityType.ACTIVITY_TYPE_MOVIE,
-  tv: ActivityType.ACTIVITY_TYPE_TV,
 };
 
 const visibilityMap: Record<string, Visibility> = {
@@ -86,9 +64,6 @@ function toCreateEventRequest(e: EventInput) {
     startDate: e.start_date ?? "",
     endDate: e.end_date ?? "",
     description: e.description ?? "",
-    activityType: e.activity_type
-      ? (activityTypeMap[e.activity_type] ?? ActivityType.ACTIVITY_TYPE_UNSPECIFIED)
-      : ActivityType.ACTIVITY_TYPE_UNSPECIFIED,
     visibility: e.visibility
       ? (visibilityMap[e.visibility] ?? Visibility.VISIBILITY_PERSONAL)
       : Visibility.VISIBILITY_PERSONAL,
@@ -98,7 +73,6 @@ function toCreateEventRequest(e: EventInput) {
       ? { label: e.location_label ?? "", lat: e.location_lat ?? 0, lng: e.location_lng ?? 0 }
       : undefined,
     externalUrl: e.external_url ?? "",
-    metadata: e.metadata ?? "",
     label: e.label ?? "",
     icon: e.icon ?? "",
     sourceEventId: e.source_event_id ?? "",

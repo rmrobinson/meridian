@@ -103,7 +103,7 @@ func TestValidateMetadata_Fitness_UnknownActivity(t *testing.T) {
 }
 
 func TestValidateMetadata_Spine_UnknownMilestoneType(t *testing.T) {
-	e := &Event{FamilyID: "spine", Metadata: metaPtr(SpineMetadata{MilestoneType: "cosmic-event"})}
+	e := &Event{FamilyID: "spine", Metadata: metaPtr(LifeMetadata{MilestoneType: "cosmic-event"})}
 	if err := ValidateMetadata("spine", e); err == nil {
 		t.Error("expected error for unknown milestone_type, got nil")
 	}

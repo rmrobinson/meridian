@@ -30,7 +30,6 @@ type eventResponse struct {
 	LineKey       string              `json:"line_key"`
 	ParentLineKey *string             `json:"parent_line_key,omitempty"`
 	Type          string              `json:"type"`
-	ActivityType  string              `json:"activity_type,omitempty"`
 	Title         string              `json:"title"`
 	Label         *string             `json:"label,omitempty"`
 	Icon          *string             `json:"icon,omitempty"`
@@ -134,7 +133,6 @@ func toEventResponse(e *domain.Event, photos []*domain.Photo) eventResponse {
 		LineKey:       e.LineKey,
 		ParentLineKey: e.ParentLineKey,
 		Type:          string(e.Type),
-		ActivityType:  string(e.ActivityType),
 		Title:         e.Title,
 		Label:         e.Label,
 		Icon:          e.Icon,

@@ -79,13 +79,13 @@ SQLite with `SetMaxOpenConns(1)` (single-threaded). Migration SQL files live in 
 
 ### Metadata
 
-Each event family stores family-specific data as a JSON string in the `metadata` column (TEXT in DB, string in proto). Typed structs exist only in `backend/internal/domain/metadata.go`. Use the generic helpers `domain.ParseMetadata[T]` and `domain.SetMetadata[T]` everywhere — never do ad-hoc `json.Unmarshal`/`json.Marshal` on event metadata in handler or enricher code. Do not add typed metadata fields to proto messages or DB columns. When adding a new family's metadata schema, add a struct to `domain/metadata.go` only.
+Each event family stores family-specific data as a JSON string in the `metadata` column (TEXT in DB). The proto API exposes typed metadata messages (one per family) via a `oneof metadata` field on `Event`, `CreateEventRequest`, and `UpdateEventRequest`. Domain typed structs live in `backend/internal/domain/metadata.go`. Use the generic helpers `domain.ParseMetadata[T]` and `domain.SetMetadata[T]` everywhere — never do ad-hoc `json.Unmarshal`/`json.Marshal` on event metadata in handler or enricher code. Do not add typed metadata fields to DB columns. When adding a new family's metadata schema: add a struct to `domain/metadata.go`, add a proto message to `timeline.proto`, add it to the `oneof metadata` in all three request/response messages, and add the proto↔domain conversion in `mapping.go`.
 
 ### Proto as Single Source of Truth
 
 All API contracts live in `proto/meridian/v1/timeline.proto`. Generated code is gitignored; always run `./generate.sh` after changing `.proto` files.
 
-**Enum rule**: Use proto enums (not string fields) for any field whose valid values form a closed, known set — especially when the DB enforces a `CHECK` constraint. Enum naming convention: `ENUM_NAME_VALUE` with `ENUM_NAME_UNSPECIFIED = 0` as the zero value. All proto↔domain conversion helpers (including enum mappings) live in `backend/internal/api/grpc/mapping.go`.
+**Enum rule**: Use proto enums (not string fields) for any field whose valid values form a closed, known set. This applies everywhere in the proto — top-level message fields, nested metadata message fields, anywhere. A string field with a comment listing valid values (e.g. `// one of: foo, bar`) is wrong; define an enum instead. Enum naming convention: `ENUM_NAME_VALUE` with `ENUM_NAME_UNSPECIFIED = 0` as the zero value. All proto↔domain conversion helpers (including enum mappings) live in `backend/internal/api/grpc/mapping.go`.
 
 ### Frontend Architecture
 

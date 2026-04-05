@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ClientError, Status } from "nice-grpc-common";
-import { ActivityType, EventType, Visibility } from "../../../proto-gen/meridian/v1/timeline.js";
+import { EventType, Visibility } from "../../../proto-gen/meridian/v1/timeline.js";
 
 vi.mock("../../client.js", () => ({
   client: { listEvents: vi.fn() },
@@ -16,7 +16,6 @@ function makeEvent(overrides: Partial<{
   familyId: string;
   title: string;
   type: EventType;
-  activityType: ActivityType;
   date: string;
   startDate: string;
   endDate: string;
@@ -28,7 +27,6 @@ function makeEvent(overrides: Partial<{
     familyId: "spine",
     title: "Test Event",
     type: EventType.EVENT_TYPE_POINT,
-    activityType: ActivityType.ACTIVITY_TYPE_UNSPECIFIED,
     date: "2024-01-01",
     startDate: "",
     endDate: "",
@@ -131,15 +129,9 @@ describe("listEvents", () => {
       expect(result).toContain("no date");
     });
 
-    it("shows activity type label when activityType is not unspecified", async () => {
-      mockListEvents.mockResolvedValue({ events: [makeEvent({ activityType: ActivityType.ACTIVITY_TYPE_RUN })] });
-      const result = await listEvents({});
-      expect(result).toContain("ACTIVITY_TYPE_RUN");
-    });
-
-    it("shows event type label when activityType is unspecified", async () => {
+    it("shows event type label", async () => {
       mockListEvents.mockResolvedValue({
-        events: [makeEvent({ activityType: ActivityType.ACTIVITY_TYPE_UNSPECIFIED, type: EventType.EVENT_TYPE_POINT })],
+        events: [makeEvent({ type: EventType.EVENT_TYPE_POINT })],
       });
       const result = await listEvents({});
       expect(result).toContain("EVENT_TYPE_POINT");

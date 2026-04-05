@@ -1,19 +1,20 @@
 package grpc
 
 import (
+	"encoding/json"
+
 	pb "github.com/rmrobinson/meridian/backend/gen/go/meridian/v1"
 	"github.com/rmrobinson/meridian/backend/internal/domain"
 )
 
 func eventToProto(e *domain.Event, photos []*domain.Photo) *pb.Event {
 	out := &pb.Event{
-		Id:           e.ID,
-		FamilyId:     e.FamilyID,
-		LineKey:      e.LineKey,
-		Type:         eventTypeToProto(e.Type),
-		ActivityType: activityTypeToProto(e.ActivityType),
-		Title:        e.Title,
-		Visibility:   visibilityToProto(e.Visibility),
+		Id:         e.ID,
+		FamilyId:   e.FamilyID,
+		LineKey:    e.LineKey,
+		Type:       eventTypeToProto(e.Type),
+		Title:      e.Title,
+		Visibility: visibilityToProto(e.Visibility),
 	}
 	if e.ParentLineKey != nil {
 		out.ParentLineKey = *e.ParentLineKey
@@ -57,9 +58,7 @@ func eventToProto(e *domain.Event, photos []*domain.Photo) *pb.Event {
 	if e.HeroImageURL != nil {
 		out.HeroImageUrl = *e.HeroImageURL
 	}
-	if e.Metadata != nil {
-		out.Metadata = *e.Metadata
-	}
+	jsonToEventMetadata(e, out)
 	if e.SourceService != nil {
 		out.SourceService = *e.SourceService
 	}
@@ -107,71 +106,6 @@ func protoToEventType(t pb.EventType) domain.EventType {
 	}
 }
 
-func activityTypeToProto(a domain.ActivityType) pb.ActivityType {
-	switch a {
-	case domain.ActivityTypeRun:
-		return pb.ActivityType_ACTIVITY_TYPE_RUN
-	case domain.ActivityTypeCycle:
-		return pb.ActivityType_ACTIVITY_TYPE_CYCLE
-	case domain.ActivityTypeHike:
-		return pb.ActivityType_ACTIVITY_TYPE_HIKE
-	case domain.ActivityTypeSki:
-		return pb.ActivityType_ACTIVITY_TYPE_SKI
-	case domain.ActivityTypeScuba:
-		return pb.ActivityType_ACTIVITY_TYPE_SCUBA
-	case domain.ActivityTypeClimb:
-		return pb.ActivityType_ACTIVITY_TYPE_CLIMB
-	case domain.ActivityTypeGolf:
-		return pb.ActivityType_ACTIVITY_TYPE_GOLF
-	case domain.ActivityTypeSquash:
-		return pb.ActivityType_ACTIVITY_TYPE_SQUASH
-	case domain.ActivityTypeConcert:
-		return pb.ActivityType_ACTIVITY_TYPE_CONCERT
-	case domain.ActivityTypeFlight:
-		return pb.ActivityType_ACTIVITY_TYPE_FLIGHT
-	case domain.ActivityTypeBook:
-		return pb.ActivityType_ACTIVITY_TYPE_BOOK
-	case domain.ActivityTypeMovie:
-		return pb.ActivityType_ACTIVITY_TYPE_MOVIE
-	case domain.ActivityTypeTV:
-		return pb.ActivityType_ACTIVITY_TYPE_TV
-	default:
-		return pb.ActivityType_ACTIVITY_TYPE_UNSPECIFIED
-	}
-}
-
-func protoToActivityType(a pb.ActivityType) domain.ActivityType {
-	switch a {
-	case pb.ActivityType_ACTIVITY_TYPE_RUN:
-		return domain.ActivityTypeRun
-	case pb.ActivityType_ACTIVITY_TYPE_CYCLE:
-		return domain.ActivityTypeCycle
-	case pb.ActivityType_ACTIVITY_TYPE_HIKE:
-		return domain.ActivityTypeHike
-	case pb.ActivityType_ACTIVITY_TYPE_SKI:
-		return domain.ActivityTypeSki
-	case pb.ActivityType_ACTIVITY_TYPE_SCUBA:
-		return domain.ActivityTypeScuba
-	case pb.ActivityType_ACTIVITY_TYPE_CLIMB:
-		return domain.ActivityTypeClimb
-	case pb.ActivityType_ACTIVITY_TYPE_GOLF:
-		return domain.ActivityTypeGolf
-	case pb.ActivityType_ACTIVITY_TYPE_SQUASH:
-		return domain.ActivityTypeSquash
-	case pb.ActivityType_ACTIVITY_TYPE_CONCERT:
-		return domain.ActivityTypeConcert
-	case pb.ActivityType_ACTIVITY_TYPE_FLIGHT:
-		return domain.ActivityTypeFlight
-	case pb.ActivityType_ACTIVITY_TYPE_BOOK:
-		return domain.ActivityTypeBook
-	case pb.ActivityType_ACTIVITY_TYPE_MOVIE:
-		return domain.ActivityTypeMovie
-	case pb.ActivityType_ACTIVITY_TYPE_TV:
-		return domain.ActivityTypeTV
-	default:
-		return domain.ActivityTypeUnspecified
-	}
-}
 
 func visibilityToProto(v domain.Visibility) pb.Visibility {
 	switch v {
@@ -227,6 +161,545 @@ func protoToPhotoVariant(v pb.PhotoVariant) domain.PhotoVariant {
 	default:
 		return domain.PhotoVariantOriginal
 	}
+}
+
+// extractCreateMetadata converts the oneof metadata in a CreateEventRequest to a JSON string.
+func extractCreateMetadata(req *pb.CreateEventRequest) *string {
+	switch v := req.Metadata.(type) {
+	case *pb.CreateEventRequest_LifeMetadata:
+		return marshalMetadata(&domain.LifeMetadata{
+			MilestoneType: lifeMilestoneTypeFromProto(v.LifeMetadata.GetMilestoneType()),
+			From:          v.LifeMetadata.GetFrom(),
+			To:            v.LifeMetadata.GetTo(),
+		})
+	case *pb.CreateEventRequest_EmploymentMetadata:
+		return marshalMetadata(&domain.EmploymentMetadata{
+			Role:        v.EmploymentMetadata.GetRole(),
+			CompanyName: v.EmploymentMetadata.GetCompanyName(),
+			CompanyURL:  v.EmploymentMetadata.GetCompanyUrl(),
+		})
+	case *pb.CreateEventRequest_EducationMetadata:
+		return marshalMetadata(&domain.EducationMetadata{
+			Institution: v.EducationMetadata.GetInstitution(),
+			Degree:      v.EducationMetadata.GetDegree(),
+		})
+	case *pb.CreateEventRequest_TravelMetadata:
+		return marshalMetadata(&domain.TravelMetadata{
+			Countries: v.TravelMetadata.GetCountries(),
+			Cities:    v.TravelMetadata.GetCities(),
+		})
+	case *pb.CreateEventRequest_FlightMetadata:
+		return marshalMetadata(protoToFlightMetadata(v.FlightMetadata))
+	case *pb.CreateEventRequest_BookMetadata:
+		return marshalMetadata(protoToBookMetadata(v.BookMetadata))
+	case *pb.CreateEventRequest_FilmTvMetadata:
+		return marshalMetadata(protoToFilmTVMetadata(v.FilmTvMetadata))
+	case *pb.CreateEventRequest_ConcertMetadata:
+		return marshalMetadata(protoToConcertMetadata(v.ConcertMetadata))
+	case *pb.CreateEventRequest_FitnessMetadata:
+		return marshalMetadata(protoToFitnessMetadata(v.FitnessMetadata))
+	}
+	return nil
+}
+
+// extractUpdateMetadata converts the oneof metadata in an UpdateEventRequest to a JSON string.
+func extractUpdateMetadata(req *pb.UpdateEventRequest) *string {
+	switch v := req.Metadata.(type) {
+	case *pb.UpdateEventRequest_LifeMetadata:
+		return marshalMetadata(&domain.LifeMetadata{
+			MilestoneType: lifeMilestoneTypeFromProto(v.LifeMetadata.GetMilestoneType()),
+			From:          v.LifeMetadata.GetFrom(),
+			To:            v.LifeMetadata.GetTo(),
+		})
+	case *pb.UpdateEventRequest_EmploymentMetadata:
+		return marshalMetadata(&domain.EmploymentMetadata{
+			Role:        v.EmploymentMetadata.GetRole(),
+			CompanyName: v.EmploymentMetadata.GetCompanyName(),
+			CompanyURL:  v.EmploymentMetadata.GetCompanyUrl(),
+		})
+	case *pb.UpdateEventRequest_EducationMetadata:
+		return marshalMetadata(&domain.EducationMetadata{
+			Institution: v.EducationMetadata.GetInstitution(),
+			Degree:      v.EducationMetadata.GetDegree(),
+		})
+	case *pb.UpdateEventRequest_TravelMetadata:
+		return marshalMetadata(&domain.TravelMetadata{
+			Countries: v.TravelMetadata.GetCountries(),
+			Cities:    v.TravelMetadata.GetCities(),
+		})
+	case *pb.UpdateEventRequest_FlightMetadata:
+		return marshalMetadata(protoToFlightMetadata(v.FlightMetadata))
+	case *pb.UpdateEventRequest_BookMetadata:
+		return marshalMetadata(protoToBookMetadata(v.BookMetadata))
+	case *pb.UpdateEventRequest_FilmTvMetadata:
+		return marshalMetadata(protoToFilmTVMetadata(v.FilmTvMetadata))
+	case *pb.UpdateEventRequest_ConcertMetadata:
+		return marshalMetadata(protoToConcertMetadata(v.ConcertMetadata))
+	case *pb.UpdateEventRequest_FitnessMetadata:
+		return marshalMetadata(protoToFitnessMetadata(v.FitnessMetadata))
+	}
+	return nil
+}
+
+// jsonToEventMetadata parses e.Metadata JSON and sets the corresponding oneof field on out.
+func jsonToEventMetadata(e *domain.Event, out *pb.Event) {
+	if e.Metadata == nil || *e.Metadata == "" {
+		return
+	}
+	switch e.FamilyID {
+	case "spine":
+		m, err := domain.ParseMetadata[domain.LifeMetadata](e)
+		if err != nil {
+			return
+		}
+		out.Metadata = &pb.Event_LifeMetadata{LifeMetadata: &pb.LifeMetadata{
+			MilestoneType: lifeMilestoneTypeToProto(m.MilestoneType),
+			From:          m.From,
+			To:            m.To,
+		}}
+	case "employment":
+		m, err := domain.ParseMetadata[domain.EmploymentMetadata](e)
+		if err != nil {
+			return
+		}
+		out.Metadata = &pb.Event_EmploymentMetadata{EmploymentMetadata: &pb.EmploymentMetadata{
+			Role:        m.Role,
+			CompanyName: m.CompanyName,
+			CompanyUrl:  m.CompanyURL,
+		}}
+	case "education":
+		m, err := domain.ParseMetadata[domain.EducationMetadata](e)
+		if err != nil {
+			return
+		}
+		out.Metadata = &pb.Event_EducationMetadata{EducationMetadata: &pb.EducationMetadata{
+			Institution: m.Institution,
+			Degree:      m.Degree,
+		}}
+	case "travel":
+		m, err := domain.ParseMetadata[domain.TravelMetadata](e)
+		if err != nil {
+			return
+		}
+		out.Metadata = &pb.Event_TravelMetadata{TravelMetadata: &pb.TravelMetadata{
+			Countries: m.Countries,
+			Cities:    m.Cities,
+		}}
+	case "flights":
+		m, err := domain.ParseMetadata[domain.FlightMetadata](e)
+		if err != nil {
+			return
+		}
+		out.Metadata = &pb.Event_FlightMetadata{FlightMetadata: &pb.FlightMetadata{
+			Airline:            m.Airline,
+			FlightNumber:       m.FlightNumber,
+			AircraftType:       m.AircraftType,
+			TailNumber:         m.TailNumber,
+			OriginIata:         m.OriginIATA,
+			DestinationIata:    m.DestinationIATA,
+			ScheduledDeparture: m.ScheduledDeparture,
+			ScheduledArrival:   m.ScheduledArrival,
+			ActualDeparture:    m.ActualDeparture,
+			ActualArrival:      m.ActualArrival,
+		}}
+	case "books":
+		m, err := domain.ParseMetadata[domain.BookMetadata](e)
+		if err != nil {
+			return
+		}
+		out.Metadata = &pb.Event_BookMetadata{BookMetadata: &pb.BookMetadata{
+			Isbn:          m.ISBN,
+			Author:        m.Author,
+			CoverImageUrl: m.CoverImageURL,
+			PreviewUrl:    m.PreviewURL,
+			Rating:        int32(m.Rating),
+			Review:        m.Review,
+			Title:         m.Title,
+		}}
+	case "film_tv":
+		m, err := domain.ParseMetadata[domain.FilmTVMetadata](e)
+		if err != nil {
+			return
+		}
+		pbMeta := &pb.FilmTVMetadata{
+			TmdbId:    m.TMDBID,
+			Type:      filmTVTypeToProto(m.Type),
+			PosterUrl: m.PosterURL,
+			Director:  m.Director,
+			Network:   m.Network,
+			Year:      int32(m.Year),
+			Rating:    int32(m.Rating),
+			Review:    m.Review,
+		}
+		if m.SeasonsWatched != nil {
+			v := int32(*m.SeasonsWatched)
+			pbMeta.SeasonsWatched = &v
+		}
+		out.Metadata = &pb.Event_FilmTvMetadata{FilmTvMetadata: pbMeta}
+	case "hobbies":
+		m, err := domain.ParseMetadata[domain.ConcertMetadata](e)
+		if err != nil {
+			return
+		}
+		out.Metadata = &pb.Event_ConcertMetadata{ConcertMetadata: domainConcertToProto(m)}
+	case "fitness":
+		m, err := domain.ParseMetadata[domain.FitnessMetadata](e)
+		if err != nil {
+			return
+		}
+		out.Metadata = &pb.Event_FitnessMetadata{FitnessMetadata: domainFitnessToProto(m)}
+	}
+}
+
+// --- shared proto→domain converters ---
+
+func protoToConcertMetadata(p *pb.ConcertMetadata) *domain.ConcertMetadata {
+	m := &domain.ConcertMetadata{
+		MainAct:     p.GetMainAct(),
+		OpeningActs: p.GetOpeningActs(),
+		PlaylistURL: p.GetPlaylistUrl(),
+	}
+	if v := p.GetVenue(); v != nil {
+		lat := v.GetLat()
+		lng := v.GetLng()
+		m.Venue = &domain.ConcertLocation{
+			Label: v.GetLabel(),
+			Lat:   &lat,
+			Lng:   &lng,
+		}
+	}
+	return m
+}
+
+func domainConcertToProto(m *domain.ConcertMetadata) *pb.ConcertMetadata {
+	p := &pb.ConcertMetadata{
+		MainAct:     m.MainAct,
+		OpeningActs: m.OpeningActs,
+		PlaylistUrl: m.PlaylistURL,
+	}
+	if m.Venue != nil {
+		p.Venue = &pb.Location{
+			Label: m.Venue.Label,
+		}
+		if m.Venue.Lat != nil {
+			p.Venue.Lat = *m.Venue.Lat
+		}
+		if m.Venue.Lng != nil {
+			p.Venue.Lng = *m.Venue.Lng
+		}
+	}
+	return p
+}
+
+func protoToFlightMetadata(p *pb.FlightMetadata) *domain.FlightMetadata {
+	return &domain.FlightMetadata{
+		Airline:            p.GetAirline(),
+		FlightNumber:       p.GetFlightNumber(),
+		AircraftType:       p.GetAircraftType(),
+		TailNumber:         p.GetTailNumber(),
+		OriginIATA:         p.GetOriginIata(),
+		DestinationIATA:    p.GetDestinationIata(),
+		ScheduledDeparture: p.GetScheduledDeparture(),
+		ScheduledArrival:   p.GetScheduledArrival(),
+		ActualDeparture:    p.GetActualDeparture(),
+		ActualArrival:      p.GetActualArrival(),
+	}
+}
+
+func protoToBookMetadata(p *pb.BookMetadata) *domain.BookMetadata {
+	return &domain.BookMetadata{
+		ISBN:          p.GetIsbn(),
+		Author:        p.GetAuthor(),
+		CoverImageURL: p.GetCoverImageUrl(),
+		PreviewURL:    p.GetPreviewUrl(),
+		Rating:        int(p.GetRating()),
+		Review:        p.GetReview(),
+		Title:         p.GetTitle(),
+	}
+}
+
+func protoToFilmTVMetadata(p *pb.FilmTVMetadata) *domain.FilmTVMetadata {
+	m := &domain.FilmTVMetadata{
+		TMDBID:    p.GetTmdbId(),
+		Type:      filmTVTypeFromProto(p.GetType()),
+		PosterURL: p.GetPosterUrl(),
+		Director:  p.GetDirector(),
+		Network:   p.GetNetwork(),
+		Year:      int(p.GetYear()),
+		Rating:    int(p.GetRating()),
+		Review:    p.GetReview(),
+	}
+	if p.SeasonsWatched != nil {
+		v := int(p.GetSeasonsWatched())
+		m.SeasonsWatched = &v
+	}
+	return m
+}
+
+func protoToFitnessMetadata(p *pb.FitnessMetadata) *domain.FitnessMetadata {
+	m := &domain.FitnessMetadata{
+		Activity:     fitnessActivityFromProto(p.GetActivity()),
+		Duration:     p.GetDuration(),
+		GarminURL:    p.GetGarminActivityUrl(),
+		Bike:         p.GetBike(),
+		TrailName:    p.GetTrailName(),
+		AllTrailsURL: p.GetAlltrailsUrl(),
+		Resort:       p.GetResort(),
+		DiveSite:     p.GetDiveSite(),
+		ClimbingType: climbingTypeFromProto(p.GetClimbingType()),
+		RouteName:    p.GetRouteName(),
+		ProblemName:  p.GetProblemName(),
+		Grade:        p.GetGrade(),
+		CourseName:   p.GetCourseName(),
+		Opponent:     p.GetOpponent(),
+		Result:       p.GetResult(),
+	}
+	if p.DistanceKm != nil {
+		v := p.GetDistanceKm()
+		m.DistanceKM = &v
+	}
+	if p.ElevationGainM != nil {
+		v := int(p.GetElevationGainM())
+		m.ElevationGainM = &v
+	}
+	if p.AvgHeartRate != nil {
+		v := int(p.GetAvgHeartRate())
+		m.AvgHeartRate = &v
+	}
+	if p.AvgPaceMinKm != nil {
+		v := p.GetAvgPaceMinKm()
+		m.AvgPaceMinKM = &v
+	}
+	if p.AvgSpeedKmh != nil {
+		v := p.GetAvgSpeedKmh()
+		m.AvgSpeedKMH = &v
+	}
+	if p.VerticalDropM != nil {
+		v := int(p.GetVerticalDropM())
+		m.VerticalDropM = &v
+	}
+	if p.Runs != nil {
+		v := int(p.GetRuns())
+		m.Runs = &v
+	}
+	if p.MaxDepthM != nil {
+		v := p.GetMaxDepthM()
+		m.MaxDepthM = &v
+	}
+	if p.AvgDepthM != nil {
+		v := p.GetAvgDepthM()
+		m.AvgDepthM = &v
+	}
+	if p.Holes != nil {
+		v := int(p.GetHoles())
+		m.Holes = &v
+	}
+	if p.Score != nil {
+		v := int(p.GetScore())
+		m.Score = &v
+	}
+	return m
+}
+
+func domainFitnessToProto(m *domain.FitnessMetadata) *pb.FitnessMetadata {
+	p := &pb.FitnessMetadata{
+		Activity:          fitnessActivityToProto(m.Activity),
+		Duration:          m.Duration,
+		GarminActivityUrl: m.GarminURL,
+		Bike:              m.Bike,
+		TrailName:         m.TrailName,
+		AlltrailsUrl:      m.AllTrailsURL,
+		Resort:            m.Resort,
+		DiveSite:          m.DiveSite,
+		ClimbingType:      climbingTypeToProto(m.ClimbingType),
+		RouteName:         m.RouteName,
+		ProblemName:       m.ProblemName,
+		Grade:             m.Grade,
+		CourseName:        m.CourseName,
+		Opponent:          m.Opponent,
+		Result:            m.Result,
+	}
+	if m.DistanceKM != nil {
+		p.DistanceKm = m.DistanceKM
+	}
+	if m.ElevationGainM != nil {
+		v := int32(*m.ElevationGainM)
+		p.ElevationGainM = &v
+	}
+	if m.AvgHeartRate != nil {
+		v := int32(*m.AvgHeartRate)
+		p.AvgHeartRate = &v
+	}
+	if m.AvgPaceMinKM != nil {
+		p.AvgPaceMinKm = m.AvgPaceMinKM
+	}
+	if m.AvgSpeedKMH != nil {
+		p.AvgSpeedKmh = m.AvgSpeedKMH
+	}
+	if m.VerticalDropM != nil {
+		v := int32(*m.VerticalDropM)
+		p.VerticalDropM = &v
+	}
+	if m.Runs != nil {
+		v := int32(*m.Runs)
+		p.Runs = &v
+	}
+	if m.MaxDepthM != nil {
+		p.MaxDepthM = m.MaxDepthM
+	}
+	if m.AvgDepthM != nil {
+		p.AvgDepthM = m.AvgDepthM
+	}
+	if m.Holes != nil {
+		v := int32(*m.Holes)
+		p.Holes = &v
+	}
+	if m.Score != nil {
+		v := int32(*m.Score)
+		p.Score = &v
+	}
+	return p
+}
+
+func lifeMilestoneTypeToProto(s string) pb.LifeMilestoneType {
+	switch s {
+	case "birth":
+		return pb.LifeMilestoneType_LIFE_MILESTONE_TYPE_BIRTH
+	case "death":
+		return pb.LifeMilestoneType_LIFE_MILESTONE_TYPE_DEATH
+	case "marriage":
+		return pb.LifeMilestoneType_LIFE_MILESTONE_TYPE_MARRIAGE
+	case "relocation":
+		return pb.LifeMilestoneType_LIFE_MILESTONE_TYPE_RELOCATION
+	case "graduation":
+		return pb.LifeMilestoneType_LIFE_MILESTONE_TYPE_GRADUATION
+	case "anniversary":
+		return pb.LifeMilestoneType_LIFE_MILESTONE_TYPE_ANNIVERSARY
+	default:
+		return pb.LifeMilestoneType_LIFE_MILESTONE_TYPE_UNSPECIFIED
+	}
+}
+
+func lifeMilestoneTypeFromProto(t pb.LifeMilestoneType) string {
+	switch t {
+	case pb.LifeMilestoneType_LIFE_MILESTONE_TYPE_BIRTH:
+		return "birth"
+	case pb.LifeMilestoneType_LIFE_MILESTONE_TYPE_DEATH:
+		return "death"
+	case pb.LifeMilestoneType_LIFE_MILESTONE_TYPE_MARRIAGE:
+		return "marriage"
+	case pb.LifeMilestoneType_LIFE_MILESTONE_TYPE_RELOCATION:
+		return "relocation"
+	case pb.LifeMilestoneType_LIFE_MILESTONE_TYPE_GRADUATION:
+		return "graduation"
+	case pb.LifeMilestoneType_LIFE_MILESTONE_TYPE_ANNIVERSARY:
+		return "anniversary"
+	default:
+		return ""
+	}
+}
+
+func fitnessActivityToProto(s string) pb.FitnessActivity {
+	switch s {
+	case "run":
+		return pb.FitnessActivity_FITNESS_ACTIVITY_RUN
+	case "cycle":
+		return pb.FitnessActivity_FITNESS_ACTIVITY_CYCLE
+	case "hike":
+		return pb.FitnessActivity_FITNESS_ACTIVITY_HIKE
+	case "ski":
+		return pb.FitnessActivity_FITNESS_ACTIVITY_SKI
+	case "scuba":
+		return pb.FitnessActivity_FITNESS_ACTIVITY_SCUBA
+	case "climb":
+		return pb.FitnessActivity_FITNESS_ACTIVITY_CLIMB
+	case "golf":
+		return pb.FitnessActivity_FITNESS_ACTIVITY_GOLF
+	case "squash":
+		return pb.FitnessActivity_FITNESS_ACTIVITY_SQUASH
+	default:
+		return pb.FitnessActivity_FITNESS_ACTIVITY_UNSPECIFIED
+	}
+}
+
+func fitnessActivityFromProto(t pb.FitnessActivity) string {
+	switch t {
+	case pb.FitnessActivity_FITNESS_ACTIVITY_RUN:
+		return "run"
+	case pb.FitnessActivity_FITNESS_ACTIVITY_CYCLE:
+		return "cycle"
+	case pb.FitnessActivity_FITNESS_ACTIVITY_HIKE:
+		return "hike"
+	case pb.FitnessActivity_FITNESS_ACTIVITY_SKI:
+		return "ski"
+	case pb.FitnessActivity_FITNESS_ACTIVITY_SCUBA:
+		return "scuba"
+	case pb.FitnessActivity_FITNESS_ACTIVITY_CLIMB:
+		return "climb"
+	case pb.FitnessActivity_FITNESS_ACTIVITY_GOLF:
+		return "golf"
+	case pb.FitnessActivity_FITNESS_ACTIVITY_SQUASH:
+		return "squash"
+	default:
+		return ""
+	}
+}
+
+func climbingTypeToProto(s string) pb.ClimbingType {
+	switch s {
+	case "sport":
+		return pb.ClimbingType_CLIMBING_TYPE_SPORT
+	case "bouldering":
+		return pb.ClimbingType_CLIMBING_TYPE_BOULDERING
+	case "gym":
+		return pb.ClimbingType_CLIMBING_TYPE_GYM
+	default:
+		return pb.ClimbingType_CLIMBING_TYPE_UNSPECIFIED
+	}
+}
+
+func climbingTypeFromProto(t pb.ClimbingType) string {
+	switch t {
+	case pb.ClimbingType_CLIMBING_TYPE_SPORT:
+		return "sport"
+	case pb.ClimbingType_CLIMBING_TYPE_BOULDERING:
+		return "bouldering"
+	case pb.ClimbingType_CLIMBING_TYPE_GYM:
+		return "gym"
+	default:
+		return ""
+	}
+}
+
+func filmTVTypeToProto(t string) pb.FilmTVType {
+	switch t {
+	case "movie":
+		return pb.FilmTVType_FILM_TV_TYPE_MOVIE
+	case "tv":
+		return pb.FilmTVType_FILM_TV_TYPE_TV
+	default:
+		return pb.FilmTVType_FILM_TV_TYPE_UNSPECIFIED
+	}
+}
+
+func filmTVTypeFromProto(t pb.FilmTVType) string {
+	switch t {
+	case pb.FilmTVType_FILM_TV_TYPE_MOVIE:
+		return "movie"
+	case pb.FilmTVType_FILM_TV_TYPE_TV:
+		return "tv"
+	default:
+		return ""
+	}
+}
+
+func marshalMetadata[T any](m *T) *string {
+	b, err := json.Marshal(m)
+	if err != nil {
+		return nil
+	}
+	s := string(b)
+	return &s
 }
 
 func strPtr(s string) *string {

@@ -103,7 +103,8 @@ function bookCard(event) {
 
   appendShared(wrap, event);
 
-  const { author, rating, review } = event.metadata ?? {};
+  const { title, author, rating, review } = event.metadata ?? {};
+  if (title) wrap.appendChild(el('p', 'card-book-title', title));
   if (author) wrap.appendChild(el('p', 'card-author', author));
   if (typeof rating === 'number') {
     wrap.appendChild(el('p', 'card-rating', starsFor(rating)));

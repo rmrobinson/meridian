@@ -28,7 +28,7 @@ func SetMetadata[T any](event *Event, m *T) error {
 
 // --- Per-family metadata structs ---
 
-type SpineMetadata struct {
+type LifeMetadata struct {
 	MilestoneType string `json:"milestone_type,omitempty"`
 	From          string `json:"from,omitempty"`
 	To            string `json:"to,omitempty"`
@@ -70,6 +70,7 @@ type BookMetadata struct {
 	PreviewURL    string `json:"preview_url,omitempty"`
 	Rating        int    `json:"rating,omitempty"`
 	Review        string `json:"review,omitempty"`
+	Title         string `json:"title,omitempty"`
 }
 
 type FilmTVMetadata struct {
@@ -84,11 +85,17 @@ type FilmTVMetadata struct {
 	Review         string `json:"review,omitempty"`
 }
 
-type HobbiesMetadata struct {
-	Activity   string `json:"activity,omitempty"`
-	Artist     string `json:"artist,omitempty"`
-	Venue      string `json:"venue,omitempty"`
-	SetlistURL string `json:"setlist_url,omitempty"`
+type ConcertLocation struct {
+	Label string   `json:"label,omitempty"`
+	Lat   *float64 `json:"lat,omitempty"`
+	Lng   *float64 `json:"lng,omitempty"`
+}
+
+type ConcertMetadata struct {
+	MainAct     string           `json:"main_act,omitempty"`
+	OpeningActs []string         `json:"opening_acts,omitempty"`
+	Venue       *ConcertLocation `json:"venue,omitempty"`
+	PlaylistURL string           `json:"playlist_url,omitempty"`
 }
 
 type FitnessMetadata struct {
