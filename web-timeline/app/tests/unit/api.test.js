@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { generateBirthdays, normalize, getTokenFromSearch, fetchTimeline } from '../../js/api.js';
+import { generateBirthdays, normalize, resolveFlights, getTokenFromSearch, fetchTimeline } from '../../js/api.js';
 
 const BIRTH = '1990-04-12';
 
@@ -131,7 +131,6 @@ describe('normalize()', () => {
     expect(evt.hero_image_url).toBeNull();
     expect(evt.photos).toEqual([]);
     expect(evt.metadata).toEqual({});
-    expect(evt.parent_line_key).toBeNull();
   });
 
   it('does not duplicate a birthday when an explicit event exists', () => {
@@ -249,5 +248,184 @@ describe('fetchTimeline() authorization', () => {
   it('throws when the response is not ok', async () => {
     fetch.mockResolvedValue({ ok: false, status: 401 });
     await expect(fetchTimeline('/api/timeline', 'bad')).rejects.toThrow('401');
+  });
+});
+
+// ── resolveFlights() ──────────────────────────────────────────────────────────
+
+describe('resolveFlights()', () => {
+  const TRAVEL_SPAN = {
+    id: 'trip-japan',
+    type: 'span',
+    family_id: 'travel',
+    line_key: 'japan-2023',
+    parent_line_key: null,
+    start_date: '2023-03-10',
+    end_date: '2023-03-24',
+    title: 'Japan Trip',
+    label: null,
+    icon: null,
+    end_icon: null,
+    date: null,
+    location: null,
+    description: null,
+    external_url: null,
+    hero_image_url: null,
+    photos: [],
+    metadata: {},
+  };
+
+  function makeFlight(id, date, lineKey = `flight-${id}`) {
+    return {
+      id,
+      type: 'point',
+      family_id: 'flights',
+      line_key: lineKey,
+      date,
+      title: `Flight ${id}`,
+      label: null,
+      icon: 'mdi:airplane-takeoff',
+      end_icon: null,
+      start_date: null,
+      end_date: null,
+      location: null,
+      description: null,
+      external_url: null,
+      hero_image_url: null,
+      photos: [],
+      metadata: {},
+    };
+  }
+
+  it('moves a flight within a travel span onto that travel line', () => {
+    const flight = makeFlight('f1', '2023-03-15');
+    const result = resolveFlights([TRAVEL_SPAN, flight]);
+    const resolved = result.find((e) => e.id === 'f1');
+    expect(resolved.family_id).toBe('travel');
+    expect(resolved.line_key).toBe('japan-2023');
+  });
+
+  it('is inclusive on the start_date of the travel span', () => {
+    const flight = makeFlight('f_start', '2023-03-10');
+    const result = resolveFlights([TRAVEL_SPAN, flight]);
+    const resolved = result.find((e) => e.id === 'f_start');
+    expect(resolved.family_id).toBe('travel');
+    expect(resolved.line_key).toBe('japan-2023');
+  });
+
+  it('is inclusive on the end_date of the travel span', () => {
+    const flight = makeFlight('f_end', '2023-03-24');
+    const result = resolveFlights([TRAVEL_SPAN, flight]);
+    const resolved = result.find((e) => e.id === 'f_end');
+    expect(resolved.family_id).toBe('travel');
+    expect(resolved.line_key).toBe('japan-2023');
+  });
+
+  it('promotes a flight with no matching travel span to the spine', () => {
+    const flight = makeFlight('f_solo', '2021-03-15');
+    const result = resolveFlights([TRAVEL_SPAN, flight]);
+    const resolved = result.find((e) => e.id === 'f_solo');
+    expect(resolved.family_id).toBe('spine');
+    expect(resolved.line_key).toBe('spine');
+  });
+
+  it('preserves title on the reassigned event', () => {
+    const flight = makeFlight('f2', '2023-03-10');
+    const result = resolveFlights([TRAVEL_SPAN, flight]);
+    expect(result.find((e) => e.id === 'f2').title).toBe('Flight f2');
+  });
+
+  it('icon is mdi:airplane-takeoff for a flight on the trip start_date', () => {
+    const flight = makeFlight('f_dep', '2023-03-10');
+    const result = resolveFlights([TRAVEL_SPAN, flight]);
+    expect(result.find((e) => e.id === 'f_dep').icon).toBe('mdi:airplane-takeoff');
+  });
+
+  it('icon is mdi:airplane-landing for a flight on the trip end_date', () => {
+    const flight = makeFlight('f_arr', '2023-03-24');
+    const result = resolveFlights([TRAVEL_SPAN, flight]);
+    expect(result.find((e) => e.id === 'f_arr').icon).toBe('mdi:airplane-landing');
+  });
+
+  it('icon is mdi:airplane for a flight mid-trip', () => {
+    const flight = makeFlight('f_mid', '2023-03-15');
+    const result = resolveFlights([TRAVEL_SPAN, flight]);
+    expect(result.find((e) => e.id === 'f_mid').icon).toBe('mdi:airplane');
+  });
+
+  it('icon is mdi:airplane for a standalone flight promoted to spine', () => {
+    const flight = makeFlight('f_solo2', '2021-03-15');
+    const result = resolveFlights([TRAVEL_SPAN, flight]);
+    expect(result.find((e) => e.id === 'f_solo2').icon).toBe('mdi:airplane');
+  });
+
+  it('leaves non-flight events unchanged', () => {
+    const result = resolveFlights([TRAVEL_SPAN]);
+    expect(result[0]).toBe(TRAVEL_SPAN);
+  });
+
+  it('handles no travel spans — all flights go to spine', () => {
+    const f1 = makeFlight('f_a', '2022-06-01');
+    const f2 = makeFlight('f_b', '2023-03-15');
+    const result = resolveFlights([f1, f2]);
+    expect(result.every((e) => e.family_id === 'spine')).toBe(true);
+  });
+
+  it('integrates via normalize(): flights in a travel span get travel family', () => {
+    const raw = {
+      person: { name: 'Test', birth_date: BIRTH },
+      line_families: [
+        {
+          id: 'travel', label: 'Travel', base_color_hsl: [50, 85, 50],
+          side: 'right', on_end: 'merge', spawn_behavior: 'per_event',
+        },
+      ],
+      events: [
+        {
+          id: 'trip',
+          family_id: 'travel',
+          line_key: 'japan-2023',
+          type: 'span',
+          title: 'Japan Trip',
+          start_date: '2023-03-10',
+          end_date: '2023-03-24',
+        },
+        {
+          id: 'flight',
+          family_id: 'flights',
+          line_key: 'lhr-nrt',
+          type: 'point',
+          title: 'LHR → NRT',
+          date: '2023-03-10',
+          icon: 'mdi:airplane-takeoff',
+        },
+      ],
+    };
+    const result = normalize(raw);
+    const flight = result.events.find((e) => e.id === 'flight');
+    expect(flight.family_id).toBe('travel');
+    expect(flight.line_key).toBe('japan-2023');
+  });
+
+  it('integrates via normalize(): flight outside all trips goes to spine', () => {
+    const raw = {
+      person: { name: 'Test', birth_date: BIRTH },
+      line_families: [],
+      events: [
+        {
+          id: 'solo_flight',
+          family_id: 'flights',
+          line_key: 'lhr-dub',
+          type: 'point',
+          title: 'LHR → DUB',
+          date: '2021-03-15',
+          icon: 'mdi:airplane-takeoff',
+        },
+      ],
+    };
+    const result = normalize(raw);
+    const flight = result.events.find((e) => e.id === 'solo_flight');
+    expect(flight.family_id).toBe('spine');
+    expect(flight.line_key).toBe('spine');
   });
 });

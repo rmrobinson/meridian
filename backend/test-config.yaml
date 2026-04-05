@@ -1,21 +1,33 @@
 server:
   rest_port: 8080
   grpc_port: 9090
+  cors_allowed_origins:
+    - "http://localhost:3000"
+    - "http://localhost:5174"
+    - "http://localhost:8081"
 
 database:
-  path: ./timeline.db
+  path: ./test-timeline.db
 
 auth:
-  jwt_secret: "test-secret"
+  # Secret used to validate JWT Bearer tokens on the REST read API.
+  # Generate a JWT for this secret with test-events.sh or jwt.io using HS256.
+  jwt_secret: "test-jwt-secret-for-meridian-dev!"
+
+  # Write tokens for the gRPC API.
+  # Raw token: test-write-token
+  # Hash generated with: htpasswd -bnBC 10 "" test-write-token | tr -d ':'
   write_tokens:
     - name: "cli"
-      token_hash: "$2a$10$testhashforclitokenAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-    - name: "ios-app"
-      token_hash: "$2a$10$testhashforiosapptokenBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+      token_hash: "$2y$10$pCb0slUbNgVCGjgOQKfSE.buvp.kJaonPA2jTqUtGmgaohfJpSNH."
+    # Raw token: mcp-write-token
+    # Hash generated with: htpasswd -bnBC 10 "" mcp-write-token | tr -d ':'
+    - name: "mcp"
+      token_hash: "$2y$10$anB858ubElWwqJGwa9KqnOpgqIijBbTfQvybUwGmQxzbB8/WXa3T2"
 
 person:
-  name: "Test User"
-  birth_date: "1990-04-12"
+  name: "Alex Meridian"
+  birth_date: "1992-03-14"
 
 line_families:
   - id: spine
@@ -82,4 +94,9 @@ source_priority:
     - garmin
     - alltrails
     - strava
-    - google_fit
+
+enrichment:
+  isbndb_api_key: ""
+  tmdb_api_key: ""
+  s3_bucket: ""
+  s3_region: "us-east-1"

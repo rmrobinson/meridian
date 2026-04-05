@@ -19,15 +19,17 @@ const (
 type SpawnBehavior string
 
 const (
-	SpawnBehaviorPerEvent    SpawnBehavior = "per_event"
-	SpawnBehaviorSingleLine  SpawnBehavior = "single_line"
+	SpawnBehaviorPerEvent       SpawnBehavior = "per_event"
+	SpawnBehaviorSingleLine     SpawnBehavior = "single_line"
+	SpawnBehaviorSecondarySpine SpawnBehavior = "secondary_spine"
 )
 
 type LineFamily struct {
-	ID            string
-	Label         string
-	BaseColorHSL  [3]int
-	Side          Side
-	OnEnd         OnEnd
-	SpawnBehavior SpawnBehavior
+	ID             string
+	Label          string
+	BaseColorHSL   [3]int
+	Side           Side
+	OnEnd          OnEnd
+	SpawnBehavior  SpawnBehavior
+	ParentFamilyID string // non-empty when this family branches off another family's lane
 }

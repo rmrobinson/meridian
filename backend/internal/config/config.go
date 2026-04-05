@@ -51,12 +51,13 @@ type Person struct {
 }
 
 type LineFamily struct {
-	ID            string  `mapstructure:"id"`
-	Label         string  `mapstructure:"label"`
-	BaseColorHSL  []int   `mapstructure:"base_color_hsl"`
-	Side          string  `mapstructure:"side"`
-	OnEnd         string  `mapstructure:"on_end"`
-	SpawnBehavior string  `mapstructure:"spawn_behavior"`
+	ID             string `mapstructure:"id"`
+	Label          string `mapstructure:"label"`
+	BaseColorHSL   []int  `mapstructure:"base_color_hsl"`
+	Side           string `mapstructure:"side"`
+	OnEnd          string `mapstructure:"on_end"`
+	SpawnBehavior  string `mapstructure:"spawn_behavior"`
+	ParentFamilyID string `mapstructure:"parent_family_id"`
 }
 
 type SourcePriority struct {

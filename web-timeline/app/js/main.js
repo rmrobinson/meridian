@@ -128,6 +128,24 @@ function buildRenderObjects(data, pxPerDay) {
 
   const renderObjects = [];
 
+  // ── Secondary spine lines ─────────────────────────────────────────────────
+  //
+  // Families with spawn_behavior === 'secondary_spine' render as a persistent
+  // vertical line (like the main spine) at their reserved lane offset.
+
+  for (const family of data.line_families) {
+    if (family.spawn_behavior !== 'secondary_spine') continue;
+    const info = laneMap.get(family.id);
+    if (!info) continue;
+    renderObjects.push({
+      type:       'secondary-spine-line',
+      id:         `secondary-spine-${family.id}`,
+      familyId:   family.id,
+      laneOffset: info.laneOffset,
+      color:      hslColor(family.base_color_hsl),
+    });
+  }
+
   // ── Year markers ──────────────────────────────────────────────────────────
 
   const birthYear   = birthDate.getUTCFullYear();
@@ -203,7 +221,7 @@ function buildRenderObjects(data, pxPerDay) {
     if (startStationY >= 0 && startStationY <= totalHeight) {
       const startStation = {
         type: 'station', id: evt.id,
-        y: startStationY, laneOffset: parentOffset, color, event: evt, isMajor: false,
+        y: startStationY, laneOffset: parentOffset, parentOffset, color, event: evt, isMajor: false,
         label:     evt.label ?? truncate(evt.title),
         icon:      evt.icon ?? null,
         departure: true,  // CSS hides icon at compressed zooms to avoid spine clutter
@@ -220,7 +238,7 @@ function buildRenderObjects(data, pxPerDay) {
       if (endY >= 0 && endY <= totalHeight) {
         const endStation = {
           type: 'station', id: `${evt.id}-end`,
-          y: endY, laneOffset: parentOffset, color, event: evt, isMajor: false,
+          y: endY, laneOffset: parentOffset, parentOffset, color, event: evt, isMajor: false,
           label:   null,
           icon:    evt.end_icon ?? null,
           arrival: true,  // CSS hides icon at compressed zooms
@@ -232,7 +250,7 @@ function buildRenderObjects(data, pxPerDay) {
       if (clampedYEnd >= 0 && clampedYEnd <= totalHeight) {
         const endStation = {
           type: 'station', id: `${evt.id}-end`,
-          y: clampedYEnd, laneOffset, color, event: evt, isMajor: false,
+          y: clampedYEnd, laneOffset, parentOffset, color, event: evt, isMajor: false,
           label: null,
           icon:  null,
         };

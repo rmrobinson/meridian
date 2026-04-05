@@ -71,7 +71,7 @@ func newTestEnv(t *testing.T) *testEnv {
 			{ID: "spine", Label: "Life Spine", BaseColorHSL: []int{0, 0, 80}, Side: "center", OnEnd: "never", SpawnBehavior: "single_line"},
 			{ID: "travel", Label: "Travel", BaseColorHSL: []int{50, 85, 50}, Side: "right", OnEnd: "merge", SpawnBehavior: "per_event"},
 			{ID: "books", Label: "Books", BaseColorHSL: []int{30, 70, 50}, Side: "right", OnEnd: "terminate", SpawnBehavior: "per_event"},
-			{ID: "fitness", Label: "Fitness", BaseColorHSL: []int{140, 65, 45}, Side: "right", OnEnd: "terminate", SpawnBehavior: "single_line"},
+			{ID: "fitness", Label: "Fitness", BaseColorHSL: []int{140, 65, 45}, Side: "left", OnEnd: "terminate", SpawnBehavior: "secondary_spine"},
 		},
 	}
 

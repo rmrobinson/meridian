@@ -8,6 +8,8 @@
  * Rules:
  *   - Each span is placed on the innermost free lane on its family's
  *     preferred side, measured outward from its parent's laneOffset.
+ *   - The parent lane is determined by the family's parent_family_id field.
+ *     When unset the main spine (offset 0) is used as the parent.
  *   - Concurrent spans cannot share the same absolute laneOffset.
  *   - When a span ends its lane is freed for subsequent spans.
  *   - single_line families reuse the same line_key across all their
@@ -17,6 +19,13 @@
  */
 
 export const LANE_WIDTH = 80; // px between adjacent lanes
+
+/**
+ * Number of LANE_WIDTH steps from the spine center reserved for secondary
+ * spines (families with spawn_behavior === 'secondary_spine').  Their slot is
+ * pre-occupied before the sweep so regular branches never land there.
+ */
+export const SECONDARY_SPINE_SLOTS = 4;
 
 /**
  * @typedef {object} LaneInfo
@@ -45,6 +54,26 @@ export function assignLanes(events, line_families) {
 
   /** Next color-variant index per family (increments each time a new line_key is assigned). */
   const colorIndexByFamily = new Map();
+
+  // ── Pre-assign secondary_spine families ───────────────────────────────────
+  //
+  // Secondary spine families don't participate in the sweep — they hold a
+  // fixed, reserved lane slot so regular branches can never land there.
+  // The family's id is used as the map key (all events share that line_key).
+
+  for (const family of line_families) {
+    if (family.spawn_behavior !== 'secondary_spine') continue;
+    const direction    = family.side === 'right' ? 1 : -1;
+    const laneOffset   = direction * SECONDARY_SPINE_SLOTS * LANE_WIDTH;
+    result.set(family.id, {
+      laneOffset,
+      parentOffset: 0,
+      side:         family.side,
+      familyId:     family.id,
+      colorIndex:   0,
+    });
+    occupiedOffsets.add(laneOffset);
+  }
 
   // ── Build sweep-line events ────────────────────────────────────────────────
 
@@ -99,16 +128,18 @@ export function assignLanes(events, line_families) {
       continue;
     }
 
-    // Resolve parent offset (0 = spine when no parent_line_key).
+    // Resolve parent offset from the family's parent_family_id (0 = main spine
+    // when unset). Works for single_line and secondary_spine parents, which are
+    // stored in the result map under their family.id.
     let parentOffset = 0;
-    if (evt.parent_line_key) {
-      const parentInfo = result.get(evt.parent_line_key);
+    if (family.parent_family_id) {
+      const parentInfo = result.get(family.parent_family_id);
       if (parentInfo) {
         parentOffset = parentInfo.laneOffset;
       } else {
         console.warn(
-          `assignLanes: parent_line_key "${evt.parent_line_key}" not yet assigned ` +
-          `when processing "${lineKey}" — check event ordering.`,
+          `assignLanes: parent_family_id "${family.parent_family_id}" not yet assigned ` +
+          `when processing "${lineKey}" — check family ordering.`,
         );
       }
     }

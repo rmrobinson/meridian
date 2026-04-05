@@ -52,13 +52,14 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
   let spineX = (svg.getBoundingClientRect().width || window.innerWidth) / 2;
 
   // ── Layer groups — created once, never torn down ──────────────────────────
-  // Paint order (bottom → top): markers, spine, branch lines, stations.
+  // Paint order (bottom → top): markers, spine, secondary spines, branch lines, stations.
   // spine-layer must be below lines-layer so child branches render over the
   // parent spine rather than behind it.
-  const markersLayer  = appendGroup(svg, 'year-markers-layer');
-  const spineLayer    = appendGroup(svg, 'spine-layer');
-  const linesLayer    = appendGroup(svg, 'lines-layer');
-  const stationsLayer = appendGroup(svg, 'stations-layer');
+  const markersLayer         = appendGroup(svg, 'year-markers-layer');
+  const spineLayer           = appendGroup(svg, 'spine-layer');
+  const secondarySpinesLayer = appendGroup(svg, 'secondary-spines-layer');
+  const linesLayer           = appendGroup(svg, 'lines-layer');
+  const stationsLayer        = appendGroup(svg, 'stations-layer');
 
   // ── Spine (border + main line, always in DOM) ─────────────────────────────
   // The border line is rendered first (behind) at a wider stroke-width.
@@ -83,12 +84,20 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
   spineLayer.appendChild(spineLine);
 
   // ── Mutable render state (swapped by loadContent) ─────────────────────────
-  let spanObjects       = [];
-  let stationObjects    = [];
-  let spanObjectById    = new Map(); // id → render object (for O(1) eviction lookup)
-  let stationObjectById = new Map();
-  const liveSpans       = new Map(); // id → SVGElement
-  const liveStations    = new Map(); // id → SVGElement
+  let spanObjects              = [];
+  let stationObjects           = [];
+  let secondarySpineObjs       = []; // secondary-spine-line render objects (rebuilt on resize)
+  let currentTotalHeight       = totalHeight;
+  /** familyIds whose secondary spine x ≤ 0 at the current spineX — point
+   *  event stations for these families fall back to the main spine. */
+  let collapsedSecondarySpines = new Set();
+  /** laneOffset values of collapsed secondary spines — spans whose parentOffset
+   *  matches are also collapsed: both parentOffset and laneOffset remapped to 0. */
+  let collapsedLaneOffsets = new Set();
+  let spanObjectById           = new Map(); // id → render object (for O(1) eviction lookup)
+  let stationObjectById        = new Map();
+  const liveSpans              = new Map(); // id → SVGElement
+  const liveStations           = new Map(); // id → SVGElement
 
   // ── Virtualized sync loop ─────────────────────────────────────────────────
   //
@@ -138,14 +147,30 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
     for (const obj of spanObjects) {
       if ((obj.yEnd - obj.curveHeight) > yMax) break;
       if ((obj.yStart + obj.curveHeight) >= yMin && !liveSpans.has(obj.id)) {
-        liveSpans.set(obj.id, linesLayer.appendChild(buildSpanLine(obj, spineX)));
+        // Collapse branches whose parent secondary spine is off-screen: remap
+        // both parentOffset and laneOffset to 0 so the bezier connects to the
+        // main spine and the branch line runs along it.
+        const spanObj = collapsedLaneOffsets.has(obj.parentOffset)
+          ? { ...obj, parentOffset: 0, laneOffset: 0 }
+          : obj;
+        liveSpans.set(obj.id, linesLayer.appendChild(buildSpanLine(spanObj, spineX)));
       }
     }
     // stationObjects sorted by y asc.
     for (const obj of stationObjects) {
       if (obj.y > yMax) break;
       if (obj.y >= yMin && !liveStations.has(obj.id)) {
-        liveStations.set(obj.id, stationsLayer.appendChild(buildStation(obj, spineX)));
+        // Collapse to the main spine when:
+        //   a) the station belongs to a secondary-spine family (point events), or
+        //   b) the station sits on a secondary-spine lane that has collapsed
+        //      (departure/arrival stations of child span branches).
+        const stationObj =
+          collapsedSecondarySpines.has(obj.event?.family_id) ||
+          collapsedLaneOffsets.has(obj.laneOffset) ||
+          collapsedLaneOffsets.has(obj.parentOffset)
+            ? { ...obj, laneOffset: 0 }
+            : obj;
+        liveStations.set(obj.id, stationsLayer.appendChild(buildStation(stationObj, spineX)));
       }
     }
 
@@ -163,6 +188,7 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
 
   function loadContent(newLayout, newRenderObjects) {
     const { totalHeight: newHeight } = newLayout;
+    currentTotalHeight = newHeight;
 
     // Resize canvas and spine to match the new scale.
     svg.setAttribute('height', newHeight);
@@ -174,6 +200,10 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
     for (const marker of newRenderObjects.filter((o) => o.type === 'year-marker')) {
       markersLayer.appendChild(buildYearMarker(marker));
     }
+
+    // Rebuild secondary spine lines (non-virtualized; position depends on spineX).
+    secondarySpineObjs = newRenderObjects.filter((o) => o.type === 'secondary-spine-line');
+    rebuildSecondarySpines();
 
     // Evict all currently live virtualized elements.
     for (const el of liveSpans.values()) el.remove();
@@ -195,6 +225,24 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
     sync();
   }
 
+  function rebuildSecondarySpines() {
+    secondarySpinesLayer.replaceChildren();
+    collapsedSecondarySpines = new Set();
+    collapsedLaneOffsets     = new Set();
+    const svgWidth = spineX * 2;
+    for (const obj of secondarySpineObjs) {
+      const x = spineX + obj.laneOffset;
+      if (x <= 0 || x >= svgWidth) {
+        // Not enough horizontal space — collapse this spine's point event
+        // stations and any child span branches to the main spine center.
+        collapsedSecondarySpines.add(obj.familyId);
+        collapsedLaneOffsets.add(obj.laneOffset);
+      } else {
+        secondarySpinesLayer.appendChild(buildSecondarySpineLine(obj, spineX, currentTotalHeight));
+      }
+    }
+  }
+
   // Initial render.
   loadContent(layout, renderObjects);
 
@@ -213,10 +261,12 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
     if (newSpineX === spineX) return;
     spineX = newSpineX;
     // Evict all live elements — sync() will rebuild them with the updated spineX.
+    // Secondary spine lines embed absolute x coordinates so they need rebuilding too.
     for (const el of liveSpans.values()) el.remove();
     liveSpans.clear();
     for (const el of liveStations.values()) el.remove();
     liveStations.clear();
+    rebuildSecondarySpines();
     sync();
   }).observe(svg);
 
@@ -233,6 +283,38 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
 }
 
 // ── Builder functions ─────────────────────────────────────────────────────────
+
+/**
+ * Secondary spine line: a full-height vertical line at a fixed lane position.
+ * Rendered like the main spine (border + foreground stroke) but colored by
+ * the family and positioned at spineX + laneOffset.
+ */
+function buildSecondarySpineLine(obj, spineX, totalHeight) {
+  const x = String(spineX + obj.laneOffset);
+
+  const g = svgEl('g');
+  g.setAttribute('class', `secondary-spine secondary-spine--${obj.familyId}`);
+  g.setAttribute('data-testid', `secondary-spine-${obj.familyId}`);
+
+  const border = svgEl('line');
+  border.setAttribute('class', 'secondary-spine-border');
+  border.setAttribute('x1', x);
+  border.setAttribute('x2', x);
+  border.setAttribute('y1', '0');
+  border.setAttribute('y2', String(totalHeight));
+
+  const line = svgEl('line');
+  line.setAttribute('class', 'secondary-spine-path');
+  line.setAttribute('x1', x);
+  line.setAttribute('x2', x);
+  line.setAttribute('y1', '0');
+  line.setAttribute('y2', String(totalHeight));
+  if (obj.color) line.setAttribute('stroke', obj.color);
+
+  g.appendChild(border);
+  g.appendChild(line);
+  return g;
+}
 
 /**
  * Year marker: horizontal tick line + year label.
