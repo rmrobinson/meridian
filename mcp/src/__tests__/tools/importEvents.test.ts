@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ClientError, Status } from "nice-grpc-common";
-import { ActivityType, ConflictStrategy, EventType, Visibility } from "../../../proto-gen/meridian/v1/timeline.js";
+import { ConflictStrategy, EventType, Visibility } from "../../../proto-gen/meridian/v1/timeline.js";
 
 vi.mock("../../client.js", () => ({
   client: { importEvents: vi.fn() },
@@ -59,12 +59,6 @@ describe("importEvents", () => {
       await importEvents({ events: [baseEventInput], source_service: "test" });
       const call = mockImportEvents.mock.calls[0][0];
       expect(call.events[0].type).toBe(EventType.EVENT_TYPE_POINT);
-    });
-
-    it("maps activity_type to the correct enum value", async () => {
-      await importEvents({ events: [{ ...baseEventInput, activity_type: "run" }], source_service: "test" });
-      const call = mockImportEvents.mock.calls[0][0];
-      expect(call.events[0].activityType).toBe(ActivityType.ACTIVITY_TYPE_RUN);
     });
 
     it("maps visibility to the correct enum value", async () => {

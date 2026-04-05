@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ClientError, Status } from "nice-grpc-common";
-import { ActivityType, EventType, Visibility } from "../../../proto-gen/meridian/v1/timeline.js";
+import { EventType, Visibility } from "../../../proto-gen/meridian/v1/timeline.js";
 
 vi.mock("../../client.js", () => ({
   client: { updateEvent: vi.fn() },
@@ -32,7 +32,6 @@ const baseResponseEvent = {
   sourceEventId: "",
   canonicalId: "",
   photos: [],
-  activityType: ActivityType.ACTIVITY_TYPE_UNSPECIFIED,
   description: "",
   endIcon: "",
 };
@@ -53,12 +52,10 @@ describe("updateEvent", () => {
         startDate: "",
         endDate: "",
         description: "",
-        activityType: ActivityType.ACTIVITY_TYPE_UNSPECIFIED,
         visibility: Visibility.VISIBILITY_UNSPECIFIED,
         lineKey: "",
         parentLineKey: "",
         externalUrl: "",
-        metadata: "",
         label: "",
         icon: "",
       })

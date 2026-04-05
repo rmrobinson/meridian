@@ -4,6 +4,144 @@ package meridian.v1;
 
 option go_package = "github.com/rmrobinson/meridian/backend/gen/go/meridian/v1;meridianv1";
 
+// --- Per-family metadata messages ---
+
+message ConcertMetadata {
+  string main_act = 1;
+  repeated string opening_acts = 2;
+  Location venue = 3;
+  string playlist_url = 4;
+}
+
+enum SpineMilestoneType {
+  SPINE_MILESTONE_TYPE_UNSPECIFIED = 0;
+  SPINE_MILESTONE_TYPE_BIRTH = 1;
+  SPINE_MILESTONE_TYPE_DEATH = 2;
+  SPINE_MILESTONE_TYPE_MARRIAGE = 3;
+  SPINE_MILESTONE_TYPE_RELOCATION = 4;
+  SPINE_MILESTONE_TYPE_GRADUATION = 5;
+  SPINE_MILESTONE_TYPE_ANNIVERSARY = 6;
+}
+
+message SpineMetadata {
+  SpineMilestoneType milestone_type = 1;
+  string from = 2;
+  string to = 3;
+}
+
+message EmploymentMetadata {
+  string role = 1;
+  string company_name = 2;
+  string company_url = 3;
+}
+
+message EducationMetadata {
+  string institution = 1;
+  string degree = 2;
+}
+
+message TravelMetadata {
+  repeated string countries = 1;
+  repeated string cities = 2;
+}
+
+message FlightMetadata {
+  string airline = 1;
+  string flight_number = 2;
+  string aircraft_type = 3;
+  string tail_number = 4;
+  string origin_iata = 5;
+  string destination_iata = 6;
+  string scheduled_departure = 7;
+  string scheduled_arrival = 8;
+  string actual_departure = 9;
+  string actual_arrival = 10;
+}
+
+message BookMetadata {
+  string isbn = 1;
+  string author = 2;
+  string cover_image_url = 3;
+  string preview_url = 4;
+  int32 rating = 5;
+  string review = 6;
+}
+
+enum FilmTVType {
+  FILM_TV_TYPE_UNSPECIFIED = 0;
+  FILM_TV_TYPE_MOVIE = 1;
+  FILM_TV_TYPE_TV = 2;
+}
+
+message FilmTVMetadata {
+  string tmdb_id = 1;
+  FilmTVType type = 2;
+  string poster_url = 3;
+  string director = 4;
+  string network = 5;
+  int32 year = 6;
+  optional int32 seasons_watched = 7;
+  int32 rating = 8;
+  string review = 9;
+}
+
+
+enum FitnessActivity {
+  FITNESS_ACTIVITY_UNSPECIFIED = 0;
+  FITNESS_ACTIVITY_RUN = 1;
+  FITNESS_ACTIVITY_CYCLE = 2;
+  FITNESS_ACTIVITY_HIKE = 3;
+  FITNESS_ACTIVITY_SKI = 4;
+  FITNESS_ACTIVITY_SCUBA = 5;
+  FITNESS_ACTIVITY_CLIMB = 6;
+  FITNESS_ACTIVITY_GOLF = 7;
+  FITNESS_ACTIVITY_SQUASH = 8;
+}
+
+enum ClimbingType {
+  CLIMBING_TYPE_UNSPECIFIED = 0;
+  CLIMBING_TYPE_SPORT = 1;
+  CLIMBING_TYPE_BOULDERING = 2;
+  CLIMBING_TYPE_GYM = 3;
+}
+
+message FitnessMetadata {
+  FitnessActivity activity = 1;
+  string duration = 2;
+  optional double distance_km = 3;
+  optional int32 elevation_gain_m = 4;
+  optional int32 avg_heart_rate = 5;
+  string garmin_activity_url = 6;
+  // running
+  optional double avg_pace_min_km = 7;
+  // cycling
+  string bike = 8;
+  optional double avg_speed_kmh = 9;
+  // hiking
+  string trail_name = 10;
+  string alltrails_url = 11;
+  // skiing
+  string resort = 12;
+  optional int32 vertical_drop_m = 13;
+  optional int32 runs = 14;
+  // scuba
+  string dive_site = 15;
+  optional double max_depth_m = 16;
+  optional double avg_depth_m = 17;
+  // climbing
+  ClimbingType climbing_type = 18;
+  string route_name = 19;
+  string problem_name = 20;
+  string grade = 21;
+  // golf
+  string course_name = 22;
+  optional int32 holes = 23;
+  optional int32 score = 24;
+  // squash
+  string opponent = 25;
+  string result = 26;
+}
+
 service TimelineService {
   rpc CreateEvent(CreateEventRequest) returns (CreateEventResponse);
   rpc UpdateEvent(UpdateEventRequest) returns (UpdateEventResponse);
@@ -31,26 +169,6 @@ enum EventType {
   EVENT_TYPE_POINT = 2;
 }
 
-enum ActivityType {
-  ACTIVITY_TYPE_UNSPECIFIED = 0;
-  // fitness
-  ACTIVITY_TYPE_RUN = 1;
-  ACTIVITY_TYPE_CYCLE = 2;
-  ACTIVITY_TYPE_HIKE = 3;
-  ACTIVITY_TYPE_SKI = 4;
-  ACTIVITY_TYPE_SCUBA = 5;
-  ACTIVITY_TYPE_CLIMB = 6;
-  ACTIVITY_TYPE_GOLF = 7;
-  ACTIVITY_TYPE_SQUASH = 8;
-  // hobbies
-  ACTIVITY_TYPE_CONCERT = 9;
-  // flights
-  ACTIVITY_TYPE_FLIGHT = 10;
-  // books / film_tv
-  ACTIVITY_TYPE_BOOK = 11;
-  ACTIVITY_TYPE_MOVIE = 12;
-  ACTIVITY_TYPE_TV = 13;
-}
 
 enum Visibility {
   VISIBILITY_UNSPECIFIED = 0;
@@ -96,15 +214,26 @@ message Event {
   Location location = 12;
   string external_url = 13;
   string hero_image_url = 14;
-  string metadata = 15;
+  reserved 15; reserved "metadata";
   Visibility visibility = 16;
   string source_service = 17;
   string source_event_id = 18;
   string canonical_id = 19;
   repeated Photo photos = 20;
-  ActivityType activity_type = 21;
+  reserved 21; reserved "activity_type";
   string description = 22;
   string end_icon = 23;
+  oneof metadata {
+    SpineMetadata spine_metadata = 24;
+    EmploymentMetadata employment_metadata = 25;
+    EducationMetadata education_metadata = 26;
+    TravelMetadata travel_metadata = 27;
+    FlightMetadata flight_metadata = 28;
+    BookMetadata book_metadata = 29;
+    FilmTVMetadata film_tv_metadata = 30;
+    ConcertMetadata concert_metadata = 31;
+    FitnessMetadata fitness_metadata = 32;
+  }
 }
 
 message CreateEventRequest {
@@ -122,12 +251,23 @@ message CreateEventRequest {
   Location location = 12;
   string external_url = 13;
   string hero_image_url = 14;
-  string metadata = 15;
+  reserved 15; reserved "metadata";
   Visibility visibility = 16;
   string source_event_id = 17;
-  ActivityType activity_type = 18;
+  reserved 18; reserved "activity_type";
   string description = 19;
   string end_icon = 20;
+  oneof metadata {
+    SpineMetadata spine_metadata = 21;
+    EmploymentMetadata employment_metadata = 22;
+    EducationMetadata education_metadata = 23;
+    TravelMetadata travel_metadata = 24;
+    FlightMetadata flight_metadata = 25;
+    BookMetadata book_metadata = 26;
+    FilmTVMetadata film_tv_metadata = 27;
+    ConcertMetadata concert_metadata = 28;
+    FitnessMetadata fitness_metadata = 29;
+  }
 }
 
 message UpdateEventRequest {
@@ -145,11 +285,22 @@ message UpdateEventRequest {
   Location location = 12;
   string external_url = 13;
   string hero_image_url = 14;
-  string metadata = 15;
+  reserved 15; reserved "metadata";
   Visibility visibility = 16;
-  ActivityType activity_type = 17;
+  reserved 17; reserved "activity_type";
   string description = 18;
   string end_icon = 19;
+  oneof metadata {
+    SpineMetadata spine_metadata = 20;
+    EmploymentMetadata employment_metadata = 21;
+    EducationMetadata education_metadata = 22;
+    TravelMetadata travel_metadata = 23;
+    FlightMetadata flight_metadata = 24;
+    BookMetadata book_metadata = 25;
+    FilmTVMetadata film_tv_metadata = 26;
+    ConcertMetadata concert_metadata = 27;
+    FitnessMetadata fitness_metadata = 28;
+  }
 }
 
 message DeleteEventRequest {

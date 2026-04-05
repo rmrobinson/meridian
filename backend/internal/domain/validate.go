@@ -93,7 +93,7 @@ func validateFitnessMetadata(event *Event) error {
 		return fmt.Errorf("parsing fitness metadata: %w", err)
 	}
 	if m.Activity == "" {
-		return nil // no activity in metadata is fine; activity_type column is used
+		return nil
 	}
 	if !validFitnessActivities[m.Activity] {
 		return fmt.Errorf("fitness metadata: unknown activity %q", m.Activity)

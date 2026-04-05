@@ -84,11 +84,17 @@ type FilmTVMetadata struct {
 	Review         string `json:"review,omitempty"`
 }
 
-type HobbiesMetadata struct {
-	Activity   string `json:"activity,omitempty"`
-	Artist     string `json:"artist,omitempty"`
-	Venue      string `json:"venue,omitempty"`
-	SetlistURL string `json:"setlist_url,omitempty"`
+type ConcertLocation struct {
+	Label string   `json:"label,omitempty"`
+	Lat   *float64 `json:"lat,omitempty"`
+	Lng   *float64 `json:"lng,omitempty"`
+}
+
+type ConcertMetadata struct {
+	MainAct     string           `json:"main_act,omitempty"`
+	OpeningActs []string         `json:"opening_acts,omitempty"`
+	Venue       *ConcertLocation `json:"venue,omitempty"`
+	PlaylistURL string           `json:"playlist_url,omitempty"`
 }
 
 type FitnessMetadata struct {

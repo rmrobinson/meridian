@@ -22,11 +22,25 @@ func New(sourcePriority []string) *Merger {
 	return &Merger{SourcePriority: sourcePriority}
 }
 
+// fitnessActivity returns the activity string from a fitness event's metadata,
+// or "" if the event is not a fitness event or has no activity set.
+func fitnessActivity(e *domain.Event) string {
+	if e.FamilyID != "fitness" {
+		return ""
+	}
+	m, err := domain.ParseMetadata[domain.FitnessMetadata](e)
+	if err != nil || m == nil {
+		return ""
+	}
+	return m.Activity
+}
+
 // FindMergeCandidates searches for an existing canonical event that matches
-// the incoming event on date and activity_type. Returns the best match or nil.
-// Only events with a non-unspecified activity_type and a date are considered.
+// the incoming event on date and fitness activity. Returns the best match or nil.
+// Only fitness events with a non-empty activity and a date are considered.
 func FindMergeCandidates(ctx context.Context, lister EventLister, incoming *domain.Event) (*domain.Event, error) {
-	if incoming.ActivityType == domain.ActivityTypeUnspecified {
+	incomingActivity := fitnessActivity(incoming)
+	if incomingActivity == "" {
 		return nil, nil
 	}
 
@@ -41,15 +55,16 @@ func FindMergeCandidates(ctx context.Context, lister EventLister, incoming *doma
 	}
 
 	candidates, err := lister.ListEvents(ctx, db.ListEventsFilter{
-		From: date,
-		To:   date,
+		FamilyID: "fitness",
+		From:     date,
+		To:       date,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	for _, c := range candidates {
-		if c.ActivityType == incoming.ActivityType {
+		if fitnessActivity(c) == incomingActivity {
 			return c, nil
 		}
 	}

@@ -4,7 +4,6 @@ import { mapGrpcError } from "../errors.js";
 import {
   Visibility,
   visibilityFromJSON,
-  activityTypeToJSON,
   eventTypeToJSON,
   visibilityToJSON,
 } from "../../proto-gen/meridian/v1/timeline.js";
@@ -33,7 +32,6 @@ function formatEvent(e: {
   familyId: string;
   title: string;
   type: number;
-  activityType: number;
   date: string;
   startDate: string;
   endDate: string;
@@ -41,9 +39,7 @@ function formatEvent(e: {
   description: string;
 }): string {
   const dateStr = e.date || (e.startDate && e.endDate ? `${e.startDate} – ${e.endDate}` : e.startDate || e.endDate || "no date");
-  const type = activityTypeToJSON(e.activityType) !== "ACTIVITY_TYPE_UNSPECIFIED"
-    ? activityTypeToJSON(e.activityType)
-    : eventTypeToJSON(e.type);
+  const type = eventTypeToJSON(e.type);
   const vis = visibilityToJSON(e.visibility);
   const desc = e.description ? `  ${e.description.slice(0, 80)}${e.description.length > 80 ? "…" : ""}` : "";
   return `[${e.id}] ${e.title} (${e.familyId} / ${type}) ${dateStr} [${vis}]${desc}`;
