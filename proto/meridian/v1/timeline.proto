@@ -65,6 +65,7 @@ message BookMetadata {
   string preview_url = 4;
   int32 rating = 5;
   string review = 6;
+  string title = 7;
 }
 
 enum FilmTVType {

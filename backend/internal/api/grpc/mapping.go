@@ -308,12 +308,13 @@ func jsonToEventMetadata(e *domain.Event, out *pb.Event) {
 			return
 		}
 		out.Metadata = &pb.Event_BookMetadata{BookMetadata: &pb.BookMetadata{
-			Isbn:         m.ISBN,
-			Author:       m.Author,
+			Isbn:          m.ISBN,
+			Author:        m.Author,
 			CoverImageUrl: m.CoverImageURL,
-			PreviewUrl:   m.PreviewURL,
-			Rating:       int32(m.Rating),
-			Review:       m.Review,
+			PreviewUrl:    m.PreviewURL,
+			Rating:        int32(m.Rating),
+			Review:        m.Review,
+			Title:         m.Title,
 		}}
 	case "film_tv":
 		m, err := domain.ParseMetadata[domain.FilmTVMetadata](e)
@@ -413,6 +414,7 @@ func protoToBookMetadata(p *pb.BookMetadata) *domain.BookMetadata {
 		PreviewURL:    p.GetPreviewUrl(),
 		Rating:        int(p.GetRating()),
 		Review:        p.GetReview(),
+		Title:         p.GetTitle(),
 	}
 }
 

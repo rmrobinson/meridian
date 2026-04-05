@@ -67,6 +67,7 @@ const flightMetadataSchema = z
 const bookMetadataSchema = z
   .object({
     isbn: z.string().describe("ISBN-13 (required)"),
+    title: z.string().optional().describe("Book title"),
     author: z.string().optional().describe("Author name"),
     cover_image_url: z.string().optional().describe("Cover image URL"),
     preview_url: z.string().optional().describe("Preview or buy URL"),
@@ -222,7 +223,7 @@ type CreateEventArgs = {
     scheduled_departure?: string; scheduled_arrival?: string;
     actual_departure?: string; actual_arrival?: string;
   };
-  book_metadata?: { isbn: string; author?: string; cover_image_url?: string; preview_url?: string; rating?: number; review?: string };
+  book_metadata?: { isbn: string; title?: string; author?: string; cover_image_url?: string; preview_url?: string; rating?: number; review?: string };
   film_tv_metadata?: { tmdb_id: string; type: "movie" | "tv"; poster_url?: string; director?: string; network?: string; year?: number; seasons_watched?: number; rating?: number; review?: string };
   concert_metadata?: { main_act: string; opening_acts?: string[]; venue_label?: string; venue_lat?: number; venue_lng?: number; playlist_url?: string };
   fitness_metadata?: {
@@ -281,7 +282,7 @@ function buildMetadata(args: CreateEventArgs) {
   }
   if (args.book_metadata) {
     const b = args.book_metadata;
-    return { bookMetadata: { isbn: b.isbn, author: b.author ?? "", coverImageUrl: b.cover_image_url ?? "", previewUrl: b.preview_url ?? "", rating: b.rating ?? 0, review: b.review ?? "" } };
+    return { bookMetadata: { isbn: b.isbn, title: b.title ?? "", author: b.author ?? "", coverImageUrl: b.cover_image_url ?? "", previewUrl: b.preview_url ?? "", rating: b.rating ?? 0, review: b.review ?? "" } };
   }
   if (args.film_tv_metadata) {
     const f = args.film_tv_metadata;

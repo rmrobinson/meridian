@@ -61,7 +61,7 @@ export const updateEventSchema = {
     .optional()
     .describe("Metadata for flights family events"),
   book_metadata: z
-    .object({ isbn: z.string(), author: z.string().optional(), cover_image_url: z.string().optional(), preview_url: z.string().optional(), rating: z.number().int().min(0).max(10).optional(), review: z.string().optional() })
+    .object({ isbn: z.string(), title: z.string().optional(), author: z.string().optional(), cover_image_url: z.string().optional(), preview_url: z.string().optional(), rating: z.number().int().min(0).max(10).optional(), review: z.string().optional() })
     .optional()
     .describe("Metadata for books family events"),
   film_tv_metadata: z
@@ -128,7 +128,7 @@ type UpdateEventArgs = {
   education_metadata?: { institution: string; degree?: string };
   travel_metadata?: { countries?: string[]; cities?: string[] };
   flight_metadata?: { airline: string; flight_number: string; aircraft_type?: string; tail_number?: string; origin_iata?: string; destination_iata?: string; scheduled_departure?: string; scheduled_arrival?: string; actual_departure?: string; actual_arrival?: string };
-  book_metadata?: { isbn: string; author?: string; cover_image_url?: string; preview_url?: string; rating?: number; review?: string };
+  book_metadata?: { isbn: string; title?: string; author?: string; cover_image_url?: string; preview_url?: string; rating?: number; review?: string };
   film_tv_metadata?: { tmdb_id: string; type: "movie" | "tv"; poster_url?: string; director?: string; network?: string; year?: number; seasons_watched?: number; rating?: number; review?: string };
   concert_metadata?: { main_act: string; opening_acts?: string[]; venue_label?: string; venue_lat?: number; venue_lng?: number; playlist_url?: string };
   fitness_metadata?: { activity: string; duration?: string; distance_km?: number; elevation_gain_m?: number; avg_heart_rate?: number; garmin_activity_url?: string; avg_pace_min_km?: number; bike?: string; avg_speed_kmh?: number; trail_name?: string; alltrails_url?: string; resort?: string; vertical_drop_m?: number; runs?: number; dive_site?: string; max_depth_m?: number; avg_depth_m?: number; climbing_type?: string; route_name?: string; problem_name?: string; grade?: string; course_name?: string; holes?: number; score?: number; opponent?: string; result?: string };
@@ -179,7 +179,7 @@ function buildMetadata(args: UpdateEventArgs) {
   }
   if (args.book_metadata) {
     const b = args.book_metadata;
-    return { bookMetadata: { isbn: b.isbn, author: b.author ?? "", coverImageUrl: b.cover_image_url ?? "", previewUrl: b.preview_url ?? "", rating: b.rating ?? 0, review: b.review ?? "" } };
+    return { bookMetadata: { isbn: b.isbn, title: b.title ?? "", author: b.author ?? "", coverImageUrl: b.cover_image_url ?? "", previewUrl: b.preview_url ?? "", rating: b.rating ?? 0, review: b.review ?? "" } };
   }
   if (args.film_tv_metadata) {
     const f = args.film_tv_metadata;

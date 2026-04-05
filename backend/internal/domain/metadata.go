@@ -70,6 +70,7 @@ type BookMetadata struct {
 	PreviewURL    string `json:"preview_url,omitempty"`
 	Rating        int    `json:"rating,omitempty"`
 	Review        string `json:"review,omitempty"`
+	Title         string `json:"title,omitempty"`
 }
 
 type FilmTVMetadata struct {

@@ -325,6 +325,7 @@ grpc_create <<'EOF'
   "visibility": "VISIBILITY_PUBLIC",
   "book_metadata": {
     "isbn": "978-0-441-01359-7",
+    "title": "Dune",
     "author": "Frank Herbert",
     "rating": 5,
     "review": "Epic science fiction. The worldbuilding is unparalleled."
@@ -346,6 +347,7 @@ grpc_create <<'EOF'
   "visibility": "VISIBILITY_PUBLIC",
   "book_metadata": {
     "isbn": "978-0-7564-0407-9",
+    "title": "The Name of the Wind",
     "author": "Patrick Rothfuss",
     "rating": 5,
     "review": "Beautiful prose and a deeply compelling narrator."
@@ -367,6 +369,7 @@ grpc_create <<'EOF'
   "visibility": "VISIBILITY_PUBLIC",
   "book_metadata": {
     "isbn": "978-0-06-231609-7",
+    "title": "Sapiens: A Brief History of Humankind",
     "author": "Yuval Noah Harari",
     "rating": 4,
     "review": "Mind-expanding perspective on human history and civilization."
@@ -388,6 +391,7 @@ grpc_create <<'EOF'
   "visibility": "VISIBILITY_PUBLIC",
   "book_metadata": {
     "isbn": "978-0-593-13520-4",
+    "title": "Project Hail Mary",
     "author": "Andy Weir",
     "rating": 5,
     "review": "Couldn't put it down. Rocky is one of the best characters in sci-fi."
@@ -409,6 +413,7 @@ grpc_create <<'EOF'
   "visibility": "VISIBILITY_PERSONAL",
   "book_metadata": {
     "isbn": "978-0-13-595705-9",
+    "title": "The Pragmatic Programmer",
     "author": "David Thomas & Andrew Hunt",
     "rating": 4,
     "review": "Essential career reading. Changed how I think about software craft."
@@ -430,6 +435,7 @@ grpc_create <<'EOF'
   "visibility": "VISIBILITY_PUBLIC",
   "book_metadata": {
     "isbn": "978-0-06-240780-1",
+    "title": "Never Split the Difference",
     "author": "Chris Voss",
     "rating": 4,
     "review": "Surprisingly practical. The mirroring and labelling techniques actually work."
