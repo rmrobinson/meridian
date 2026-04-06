@@ -89,13 +89,13 @@ func TestS3UploadFromURL_S3PutFailure(t *testing.T) {
 	}
 }
 
-// --- ISBNdb tests ---
+// --- OpenLibrary tests ---
 
-func newTestISBNdbEnricher(apiSrv *httptest.Server, uploader *S3Uploader) *ISBNdbEnricher {
-	return &ISBNdbEnricher{
-		apiKey:   "test-key",
+func newTestOpenLibraryEnricher(apiSrv, coverSrv *httptest.Server, uploader *S3Uploader) *OpenLibraryEnricher {
+	return &OpenLibraryEnricher{
 		uploader: uploader,
 		baseURL:  apiSrv.URL,
+		coverURL: coverSrv.URL,
 		client:   apiSrv.Client(),
 	}
 }
@@ -105,22 +105,24 @@ func bookEvent(isbn string) *domain.Event {
 	return &domain.Event{FamilyID: "books", Metadata: &meta}
 }
 
-func TestISBNdb_ValidISBN_PopulatesAuthorAndCoverURL(t *testing.T) {
-	imgSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func TestOpenLibrary_ValidISBN_PopulatesAuthorAndTitle(t *testing.T) {
+	const isbn = "9780441013593"
+
+	coverSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("img"))
 	}))
-	defer imgSrv.Close()
+	defer coverSrv.Close()
 
 	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, `{"book":{"title":"Dune","authors":["Frank Herbert"],"image":%q}}`, imgSrv.URL+"/cover.jpg")
+		fmt.Fprintf(w, `{"ISBN:%s":{"title":"Dune","authors":[{"name":"Frank Herbert"}]}}`, isbn)
 	}))
 	defer apiSrv.Close()
 
 	s3mock := &mockS3{}
-	uploader := newTestUploader(s3mock, imgSrv.Client())
-	enricher := newTestISBNdbEnricher(apiSrv, uploader)
+	uploader := newTestUploader(s3mock, coverSrv.Client())
+	enricher := newTestOpenLibraryEnricher(apiSrv, coverSrv, uploader)
 
-	event := bookEvent("9780441013593")
+	event := bookEvent(isbn)
 	if err := enricher.Enrich(context.Background(), event); err != nil {
 		t.Fatalf("Enrich: %v", err)
 	}
@@ -129,80 +131,93 @@ func TestISBNdb_ValidISBN_PopulatesAuthorAndCoverURL(t *testing.T) {
 	if m.Author != "Frank Herbert" {
 		t.Errorf("author: got %q, want Frank Herbert", m.Author)
 	}
+	if m.Title != "Dune" {
+		t.Errorf("title: got %q, want Dune", m.Title)
+	}
 }
 
-func TestISBNdb_CoverUploadedToS3_URLReplaced(t *testing.T) {
-	imgSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func TestOpenLibrary_CoverUploadedToS3_URLReplaced(t *testing.T) {
+	const isbn = "9780441013593"
+
+	coverSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("img"))
 	}))
-	defer imgSrv.Close()
+	defer coverSrv.Close()
 
 	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, `{"book":{"title":"Dune","authors":["Frank Herbert"],"image":%q}}`, imgSrv.URL+"/cover.jpg")
+		fmt.Fprintf(w, `{"ISBN:%s":{"title":"Dune","authors":[{"name":"Frank Herbert"}]}}`, isbn)
 	}))
 	defer apiSrv.Close()
 
 	s3mock := &mockS3{}
-	uploader := newTestUploader(s3mock, imgSrv.Client())
-	enricher := newTestISBNdbEnricher(apiSrv, uploader)
+	uploader := newTestUploader(s3mock, coverSrv.Client())
+	enricher := newTestOpenLibraryEnricher(apiSrv, coverSrv, uploader)
 
-	event := bookEvent("9780441013593")
+	event := bookEvent(isbn)
 	if err := enricher.Enrich(context.Background(), event); err != nil {
 		t.Fatalf("Enrich: %v", err)
 	}
 
 	m, _ := domain.ParseMetadata[domain.BookMetadata](event)
-	if m.CoverImageURL == imgSrv.URL+"/cover.jpg" {
-		t.Error("cover_image_url should be S3 URL, not original URL")
-	}
 	if m.CoverImageURL == "" {
 		t.Error("cover_image_url should not be empty after upload")
 	}
+	if s3mock.lastKey != "timeline/books/"+isbn+"/cover.jpg" {
+		t.Errorf("s3 key: got %q, want timeline/books/%s/cover.jpg", s3mock.lastKey, isbn)
+	}
 }
 
-func TestISBNdb_APIError_ReturnsError(t *testing.T) {
+func TestOpenLibrary_APIError_ReturnsError(t *testing.T) {
+	coverSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	defer coverSrv.Close()
+
 	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer apiSrv.Close()
 
-	enricher := newTestISBNdbEnricher(apiSrv, newTestUploader(&mockS3{}, apiSrv.Client()))
+	enricher := newTestOpenLibraryEnricher(apiSrv, coverSrv, newTestUploader(&mockS3{}, apiSrv.Client()))
 	err := enricher.Enrich(context.Background(), bookEvent("9780441013593"))
 	if err == nil {
 		t.Error("expected error for 500 response, got nil")
 	}
 }
 
-func TestISBNdb_UnknownISBN_ReturnsNotFound(t *testing.T) {
+func TestOpenLibrary_UnknownISBN_ReturnsNotFound(t *testing.T) {
+	coverSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	defer coverSrv.Close()
+
+	// OpenLibrary returns HTTP 200 with an empty object when the ISBN is unknown.
 	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(`{}`))
 	}))
 	defer apiSrv.Close()
 
-	enricher := newTestISBNdbEnricher(apiSrv, newTestUploader(&mockS3{}, apiSrv.Client()))
+	enricher := newTestOpenLibraryEnricher(apiSrv, coverSrv, newTestUploader(&mockS3{}, apiSrv.Client()))
 	err := enricher.Enrich(context.Background(), bookEvent("0000000000"))
 	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("expected ErrNotFound, got %v", err)
 	}
 }
 
-func TestISBNdb_S3UploadFailure_ReturnsError(t *testing.T) {
-	imgSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func TestOpenLibrary_S3UploadFailure_ReturnsError(t *testing.T) {
+	const isbn = "9780441013593"
+
+	coverSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("img"))
 	}))
-	defer imgSrv.Close()
+	defer coverSrv.Close()
 
 	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, `{"book":{"title":"Dune","authors":["Frank Herbert"],"image":%q}}`, imgSrv.URL+"/cover.jpg")
+		fmt.Fprintf(w, `{"ISBN:%s":{"title":"Dune","authors":[{"name":"Frank Herbert"}]}}`, isbn)
 	}))
 	defer apiSrv.Close()
 
 	s3mock := &mockS3{err: errors.New("s3 down")}
-	// Use imgSrv.Client() for image downloads but S3 will fail
-	uploader := newTestUploader(s3mock, imgSrv.Client())
-	enricher := newTestISBNdbEnricher(apiSrv, uploader)
+	uploader := newTestUploader(s3mock, coverSrv.Client())
+	enricher := newTestOpenLibraryEnricher(apiSrv, coverSrv, uploader)
 
-	err := enricher.Enrich(context.Background(), bookEvent("9780441013593"))
+	err := enricher.Enrich(context.Background(), bookEvent(isbn))
 	if err == nil {
 		t.Error("expected error when S3 upload fails, got nil")
 	}

@@ -129,45 +129,33 @@ func main() {
 	os.Exit(0)
 }
 
-// buildEnrichers constructs ISBNdb and TMDB enrichers when API keys are present.
-// Returns nil for either enricher if its API key is not configured.
+// buildEnrichers constructs enrichers when S3 is configured.
+// The OpenLibrary book enricher requires no API key; TMDB requires one.
+// Returns nil for either enricher if its prerequisites are not met.
 func buildEnrichers(cfg *config.Config, logger *zap.Logger) (book domain.Enricher, filmTV domain.Enricher) {
 	e := cfg.Enrichment
-	if e.ISBNdbAPIKey == "" && e.TMDBAPIKey == "" {
+	if e.S3Bucket == "" {
 		return nil, nil
 	}
 
-	// Load AWS config only if we actually need S3.
-	var uploader *enrichment.S3Uploader
-	if e.S3Bucket != "" {
-		awsCfg, err := awsconfig.LoadDefaultConfig(context.Background(),
-			awsconfig.WithRegion(e.S3Region),
-		)
-		if err != nil {
-			logger.Warn("failed to load AWS config, enrichment disabled", zap.Error(err))
-			return nil, nil
-		}
-		s3Client := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
-			o.Region = e.S3Region
-		})
-		uploader = enrichment.NewS3Uploader(s3Client, e.S3Bucket, e.S3Region)
+	awsCfg, err := awsconfig.LoadDefaultConfig(context.Background(),
+		awsconfig.WithRegion(e.S3Region),
+	)
+	if err != nil {
+		logger.Warn("failed to load AWS config, enrichment disabled", zap.Error(err))
+		return nil, nil
 	}
+	s3Client := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
+		o.Region = e.S3Region
+	})
+	uploader := enrichment.NewS3Uploader(s3Client, e.S3Bucket, e.S3Region)
 
-	if e.ISBNdbAPIKey != "" {
-		if uploader == nil {
-			logger.Warn("ISBNdb API key configured but S3 bucket not configured; book enrichment disabled")
-		} else {
-			book = enrichment.NewISBNdbEnricher(e.ISBNdbAPIKey, uploader)
-			logger.Info("ISBNdb enricher enabled")
-		}
-	}
+	book = enrichment.NewOpenLibraryEnricher(uploader)
+	logger.Info("OpenLibrary book enricher enabled")
+
 	if e.TMDBAPIKey != "" {
-		if uploader == nil {
-			logger.Warn("TMDB API key configured but S3 bucket not configured; film/TV enrichment disabled")
-		} else {
-			filmTV = enrichment.NewTMDBEnricher(e.TMDBAPIKey, uploader)
-			logger.Info("TMDB enricher enabled")
-		}
+		filmTV = enrichment.NewTMDBEnricher(e.TMDBAPIKey, uploader)
+		logger.Info("TMDB enricher enabled")
 	}
 
 	return book, filmTV
