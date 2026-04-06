@@ -14,6 +14,15 @@ Meridian is a personal life timeline visualization system. It is a monorepo with
 ./generate.sh          # runs buf generate from proto/, outputs to backend/gen/go/ and mcp/proto-gen/
 ```
 
+### Proto Lint and Format (required after editing any .proto file)
+
+After any change to a `.proto` file, run these two commands from the repo root and fix all reported issues before committing:
+
+```bash
+buf lint proto           # checks style rules (enum zero values, field naming, etc.)
+buf format --diff proto  # shows formatting diff; add --write to apply in place
+```
+
 ### Backend (Go)
 
 ```bash

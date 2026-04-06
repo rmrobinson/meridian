@@ -86,7 +86,6 @@ message FilmTVMetadata {
   string review = 9;
 }
 
-
 enum FitnessActivity {
   FITNESS_ACTIVITY_UNSPECIFIED = 0;
   FITNESS_ACTIVITY_RUN = 1;
@@ -170,7 +169,6 @@ enum EventType {
   EVENT_TYPE_POINT = 2;
 }
 
-
 enum Visibility {
   VISIBILITY_UNSPECIFIED = 0;
   VISIBILITY_PUBLIC = 1;
@@ -215,13 +213,15 @@ message Event {
   Location location = 12;
   string external_url = 13;
   string hero_image_url = 14;
-  reserved 15; reserved "metadata";
+  reserved 15;
+  reserved "metadata";
   Visibility visibility = 16;
   string source_service = 17;
   string source_event_id = 18;
   string canonical_id = 19;
   repeated Photo photos = 20;
-  reserved 21; reserved "activity_type";
+  reserved 21;
+  reserved "activity_type";
   string description = 22;
   string end_icon = 23;
   oneof metadata {
@@ -252,10 +252,12 @@ message CreateEventRequest {
   Location location = 12;
   string external_url = 13;
   string hero_image_url = 14;
-  reserved 15; reserved "metadata";
+  reserved 15;
+  reserved "metadata";
   Visibility visibility = 16;
   string source_event_id = 17;
-  reserved 18; reserved "activity_type";
+  reserved 18;
+  reserved "activity_type";
   string description = 19;
   string end_icon = 20;
   oneof metadata {
@@ -286,9 +288,11 @@ message UpdateEventRequest {
   Location location = 12;
   string external_url = 13;
   string hero_image_url = 14;
-  reserved 15; reserved "metadata";
+  reserved 15;
+  reserved "metadata";
   Visibility visibility = 16;
-  reserved 17; reserved "activity_type";
+  reserved 17;
+  reserved "activity_type";
   string description = 18;
   string end_icon = 19;
   oneof metadata {

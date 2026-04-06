@@ -120,14 +120,12 @@ source_priority:
 
 # Optional: external enrichment services. All fields in this section are
 # optional — omit (or leave blank) any key whose service you do not use.
-# Both ISBNdb and TMDB require an S3 bucket to store downloaded cover/poster
-# images. If an API key is set but s3_bucket is empty the enricher is disabled
-# at startup and a warning is logged.
+# An S3 bucket is required for any enricher to store downloaded cover/poster
+# images. If s3_bucket is empty all enrichment is disabled at startup.
 enrichment:
-  # ISBNdb (https://isbndb.com) — enriches "books" family events.
-  # Populates author, cover image, and preview URL from the book's ISBN.
-  # Obtain an API key at https://isbndb.com/isbn-database
-  isbndb_api_key: ""
+  # OpenLibrary (https://openlibrary.org) — enriches "books" family events.
+  # Populates title, author, and cover image from the book's ISBN.
+  # No API key required.
 
   # TMDB (https://www.themoviedb.org) — enriches "film_tv" family events.
   # Populates director/network, release year, and poster image from the TMDB ID.

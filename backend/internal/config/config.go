@@ -18,10 +18,9 @@ type Config struct {
 }
 
 type Enrichment struct {
-	ISBNdbAPIKey string `mapstructure:"isbndb_api_key"`
-	TMDBAPIKey   string `mapstructure:"tmdb_api_key"`
-	S3Bucket     string `mapstructure:"s3_bucket"`
-	S3Region     string `mapstructure:"s3_region"`
+	TMDBAPIKey string `mapstructure:"tmdb_api_key"`
+	S3Bucket   string `mapstructure:"s3_bucket"`
+	S3Region   string `mapstructure:"s3_region"`
 }
 
 type Server struct {
