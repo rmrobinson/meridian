@@ -34,12 +34,104 @@ grpc_create() {
     "$GRPC_ADDR" meridian.v1.TimelineService/CreateEvent
 }
 
-echo "===== Creating 20 life events ====="
+echo "===== Creating 26 life events ====="
 echo ""
+
+# ── SPINE RELOCATIONS (6) — required for week grid residence colouring ────────
+
+echo "--- [1/26] Grew up in Ottawa ---"
+grpc_create <<'EOF'
+{
+  "family_id": "spine",
+  "line_key": "spine",
+  "type": "EVENT_TYPE_POINT",
+  "title": "Born in Ottawa",
+  "icon": "mdi:home",
+  "date": "1992-03-14",
+  "location": {"label": "Ottawa, ON", "lat": 45.4215, "lng": -75.6972},
+  "visibility": "VISIBILITY_PUBLIC",
+  "life_metadata": {"milestone_type": "LIFE_MILESTONE_TYPE_RELOCATION"}
+}
+EOF
+
+echo "--- [2/26] Moved to Toronto for university ---"
+grpc_create <<'EOF'
+{
+  "family_id": "spine",
+  "line_key": "spine",
+  "type": "EVENT_TYPE_POINT",
+  "title": "Moved to Toronto",
+  "icon": "mdi:home",
+  "date": "2010-09-01",
+  "location": {"label": "Toronto, ON", "lat": 43.6532, "lng": -79.3832},
+  "visibility": "VISIBILITY_PUBLIC",
+  "life_metadata": {"milestone_type": "LIFE_MILESTONE_TYPE_RELOCATION"}
+}
+EOF
+
+echo "--- [3/26] Moved to Waterloo for master's ---"
+grpc_create <<'EOF'
+{
+  "family_id": "spine",
+  "line_key": "spine",
+  "type": "EVENT_TYPE_POINT",
+  "title": "Moved to Waterloo",
+  "icon": "mdi:home",
+  "date": "2014-09-01",
+  "location": {"label": "Waterloo, ON", "lat": 43.4668, "lng": -80.5164},
+  "visibility": "VISIBILITY_PUBLIC",
+  "life_metadata": {"milestone_type": "LIFE_MILESTONE_TYPE_RELOCATION"}
+}
+EOF
+
+echo "--- [4/26] Moved back to Toronto for first job ---"
+grpc_create <<'EOF'
+{
+  "family_id": "spine",
+  "line_key": "spine",
+  "type": "EVENT_TYPE_POINT",
+  "title": "Moved back to Toronto",
+  "icon": "mdi:home",
+  "date": "2016-07-04",
+  "location": {"label": "Toronto, ON", "lat": 43.6532, "lng": -79.3832},
+  "visibility": "VISIBILITY_PUBLIC",
+  "life_metadata": {"milestone_type": "LIFE_MILESTONE_TYPE_RELOCATION"}
+}
+EOF
+
+echo "--- [5/26] Moved to Vancouver for Northstar ---"
+grpc_create <<'EOF'
+{
+  "family_id": "spine",
+  "line_key": "spine",
+  "type": "EVENT_TYPE_POINT",
+  "title": "Moved to Vancouver",
+  "icon": "mdi:home",
+  "date": "2019-04-15",
+  "location": {"label": "Vancouver, BC", "lat": 49.2827, "lng": -123.1207},
+  "visibility": "VISIBILITY_PUBLIC",
+  "life_metadata": {"milestone_type": "LIFE_MILESTONE_TYPE_RELOCATION"}
+}
+EOF
+
+echo "--- [6/26] Moved to Toronto for Meridian Systems ---"
+grpc_create <<'EOF'
+{
+  "family_id": "spine",
+  "line_key": "spine",
+  "type": "EVENT_TYPE_POINT",
+  "title": "Moved back to Toronto",
+  "icon": "mdi:home",
+  "date": "2023-02-01",
+  "location": {"label": "Toronto, ON", "lat": 43.6532, "lng": -79.3832},
+  "visibility": "VISIBILITY_PUBLIC",
+  "life_metadata": {"milestone_type": "LIFE_MILESTONE_TYPE_RELOCATION"}
+}
+EOF
 
 # ── TRAVEL (4 trips) ─────────────────────────────────────────────────────────
 
-echo "--- [1/20] Backpacking Southeast Asia ---"
+echo "--- [7/26] Backpacking Southeast Asia ---"
 grpc_create <<'EOF'
 {
   "family_id": "travel",
@@ -60,7 +152,7 @@ grpc_create <<'EOF'
 }
 EOF
 
-echo "--- [2/20] Iceland Ring Road Trip ---"
+echo "--- [8/26] Iceland Ring Road Trip ---"
 grpc_create <<'EOF'
 {
   "family_id": "travel",
@@ -80,7 +172,7 @@ grpc_create <<'EOF'
 }
 EOF
 
-echo "--- [3/20] Japan — Tokyo & Kyoto ---"
+echo "--- [9/26] Japan — Tokyo & Kyoto ---"
 grpc_create <<'EOF'
 {
   "family_id": "travel",
@@ -101,7 +193,7 @@ grpc_create <<'EOF'
 }
 EOF
 
-echo "--- [4/20] Portugal & Spain Road Trip ---"
+echo "--- [10/26] Portugal & Spain Road Trip ---"
 grpc_create <<'EOF'
 {
   "family_id": "travel",
@@ -123,7 +215,7 @@ EOF
 
 # ── EDUCATION (2) ────────────────────────────────────────────────────────────
 
-echo "--- [5/20] BSc Computer Science ---"
+echo "--- [11/26] BSc Computer Science ---"
 grpc_create <<'EOF'
 {
   "family_id": "education",
@@ -143,7 +235,7 @@ grpc_create <<'EOF'
 }
 EOF
 
-echo "--- [6/20] MSc Human-Computer Interaction ---"
+echo "--- [12/26] MSc Human-Computer Interaction ---"
 grpc_create <<'EOF'
 {
   "family_id": "education",
@@ -165,7 +257,7 @@ EOF
 
 # ── EMPLOYMENT (3) ───────────────────────────────────────────────────────────
 
-echo "--- [7/20] Junior Developer at Acme Software ---"
+echo "--- [13/26] Junior Developer at Acme Software ---"
 grpc_create <<'EOF'
 {
   "family_id": "employment",
@@ -185,7 +277,7 @@ grpc_create <<'EOF'
 }
 EOF
 
-echo "--- [8/20] Senior Engineer at Northstar Technologies ---"
+echo "--- [14/26] Senior Engineer at Northstar Technologies ---"
 grpc_create <<'EOF'
 {
   "family_id": "employment",
@@ -205,7 +297,7 @@ grpc_create <<'EOF'
 }
 EOF
 
-echo "--- [9/20] Staff Engineer at Meridian Systems (current) ---"
+echo "--- [15/26] Staff Engineer at Meridian Systems (current) ---"
 grpc_create <<'EOF'
 {
   "family_id": "employment",
@@ -226,7 +318,7 @@ EOF
 
 # ── HOBBIES (5) ──────────────────────────────────────────────────────────────
 
-echo "--- [10/20] Started learning guitar ---"
+echo "--- [16/26] Started learning guitar ---"
 grpc_create <<'EOF'
 {
   "family_id": "hobbies",
@@ -240,7 +332,7 @@ grpc_create <<'EOF'
 }
 EOF
 
-echo "--- [11/20] Took up photography ---"
+echo "--- [17/26] Took up photography ---"
 grpc_create <<'EOF'
 {
   "family_id": "hobbies",
@@ -254,7 +346,7 @@ grpc_create <<'EOF'
 }
 EOF
 
-echo "--- [12/20] Radiohead concert — Madison Square Garden ---"
+echo "--- [18/26] Radiohead concert — Madison Square Garden ---"
 grpc_create <<'EOF'
 {
   "family_id": "hobbies",
@@ -273,7 +365,7 @@ grpc_create <<'EOF'
 }
 EOF
 
-echo "--- [13/20] The National concert — Massey Hall ---"
+echo "--- [19/26] The National concert — Massey Hall ---"
 grpc_create <<'EOF'
 {
   "family_id": "hobbies",
@@ -292,7 +384,7 @@ grpc_create <<'EOF'
 }
 EOF
 
-echo "--- [14/20] Joined local cycling club ---"
+echo "--- [20/26] Joined local cycling club ---"
 grpc_create <<'EOF'
 {
   "family_id": "fitness",
@@ -311,7 +403,7 @@ EOF
 
 # ── BOOKS (6) ────────────────────────────────────────────────────────────────
 
-echo "--- [15/20] Book: Dune ---"
+echo "--- [21/26] Book: Dune ---"
 grpc_create <<'EOF'
 {
   "family_id": "books",
@@ -333,7 +425,7 @@ grpc_create <<'EOF'
 }
 EOF
 
-echo "--- [16/20] Book: The Name of the Wind ---"
+echo "--- [22/26] Book: The Name of the Wind ---"
 grpc_create <<'EOF'
 {
   "family_id": "books",
@@ -355,7 +447,7 @@ grpc_create <<'EOF'
 }
 EOF
 
-echo "--- [17/20] Book: Sapiens ---"
+echo "--- [23/26] Book: Sapiens ---"
 grpc_create <<'EOF'
 {
   "family_id": "books",
@@ -377,7 +469,7 @@ grpc_create <<'EOF'
 }
 EOF
 
-echo "--- [18/20] Book: Project Hail Mary ---"
+echo "--- [24/26] Book: Project Hail Mary ---"
 grpc_create <<'EOF'
 {
   "family_id": "books",
@@ -399,7 +491,7 @@ grpc_create <<'EOF'
 }
 EOF
 
-echo "--- [19/20] Book: The Pragmatic Programmer ---"
+echo "--- [25/26] Book: The Pragmatic Programmer ---"
 grpc_create <<'EOF'
 {
   "family_id": "books",
@@ -421,7 +513,7 @@ grpc_create <<'EOF'
 }
 EOF
 
-echo "--- [20/20] Book: Never Split the Difference ---"
+echo "--- [26/26] Book: Never Split the Difference ---"
 grpc_create <<'EOF'
 {
   "family_id": "books",

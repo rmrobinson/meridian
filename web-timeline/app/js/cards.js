@@ -35,6 +35,69 @@ export function buildCardContent(event) {
   return standardCard(event);
 }
 
+/**
+ * Build a week summary card showing all events that overlap the given ISO week,
+ * grouped by family. Each event item carries a data-id attribute so the
+ * delegated click handler in main.js can open the individual event card.
+ *
+ * @param {string}   weekKey - ISO week key, e.g. "2023-W11".
+ * @param {object[]} events  - Events overlapping this week (from grid.eventsForWeek).
+ * @returns {HTMLElement}
+ */
+export function buildWeekCardContent(weekKey, events, residenceLabel = null) {
+  const wrap = el('div', 'card--week');
+
+  wrap.appendChild(el('p', 'card-title', formatWeekKey(weekKey)));
+
+  if (events.length === 0) {
+    const msg = residenceLabel
+      ? `Living in ${residenceLabel}.`
+      : 'No events this week.';
+    wrap.appendChild(el('p', 'card-description', msg));
+    return wrap;
+  }
+
+  // Group events by family label.
+  const groups = new Map(); // familyLabel → event[]
+  for (const evt of events) {
+    const label = FAMILY_LABELS[evt.family_id] ?? titleCase(evt.family_id);
+    if (!groups.has(label)) groups.set(label, []);
+    groups.get(label).push(evt);
+  }
+
+  for (const [groupLabel, groupEvents] of groups) {
+    const section = document.createElement('section');
+    section.className = 'card-week-section';
+
+    const heading = el('p', 'card-week-group-label', groupLabel);
+    section.appendChild(heading);
+
+    const list = document.createElement('ul');
+    list.className = 'card-week-event-list';
+
+    for (const evt of groupEvents) {
+      const item = document.createElement('li');
+
+      const btn = document.createElement('button');
+      btn.className = 'week-event-item';
+      btn.dataset.id = evt.id;
+      btn.type = 'button';
+
+      const titleSpan = el('span', 'week-event-title', evt.title);
+      const dateSpan  = el('span', 'week-event-date', weekEventDate(evt));
+      btn.appendChild(titleSpan);
+      btn.appendChild(dateSpan);
+      item.appendChild(btn);
+      list.appendChild(item);
+    }
+
+    section.appendChild(list);
+    wrap.appendChild(section);
+  }
+
+  return wrap;
+}
+
 // ── Card builders ─────────────────────────────────────────────────────────────
 
 function milestoneCard(event) {
@@ -240,3 +303,42 @@ function formatYearMonth(yearMonth) {
   return new Date(Number(yr), Number(mo) - 1, 1)
     .toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 }
+
+/**
+ * Format an ISO week key ("2023-W11") as a human-readable header ("Week 11 · 2023").
+ * @param {string} weekKey
+ * @returns {string}
+ */
+function formatWeekKey(weekKey) {
+  if (!weekKey) return '';
+  const [yr, wPart] = weekKey.split('-W');
+  return `Week ${Number(wPart)} · ${yr}`;
+}
+
+/**
+ * Format a short date string for a week card event item.
+ * Spans show start date only; point events show their date.
+ * @param {object} evt
+ * @returns {string}
+ */
+function weekEventDate(evt) {
+  if (evt.start_date) return formatDate(evt.start_date);
+  return formatDate(evt.date);
+}
+
+/** Convert a snake_case or kebab-case id to Title Case. */
+function titleCase(str) {
+  return str.replace(/[_-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+const FAMILY_LABELS = {
+  spine:      'Milestones',
+  travel:     'Travel',
+  employment: 'Employment',
+  education:  'Education',
+  books:      'Books',
+  fitness:    'Fitness & Health',
+  film_tv:    'Film & TV',
+  hobbies:    'Hobbies',
+  flights:    'Flights',
+};
