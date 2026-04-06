@@ -52,6 +52,9 @@
   --color-link-trip:     hsl(50, 85%, 65%);
   --color-rating:        hsl(50, 100%, 60%);
   --color-review-border: rgba(255, 255, 255, 0.15);
+
+  /* Week grid — residence cell lightness */
+  --residence-l: 45%;
 }
 
 /* Light mode — system preference */
@@ -86,6 +89,8 @@
     --color-link-trip:     hsl(50, 85%, 35%);
     --color-rating:        hsl(50, 100%, 35%);
     --color-review-border: rgba(0, 0, 0, 0.15);
+
+    --residence-l: 55%;
   }
 }
 
@@ -120,6 +125,8 @@
   --color-link-trip:     hsl(50, 85%, 65%);
   --color-rating:        hsl(50, 100%, 60%);
   --color-review-border: rgba(255, 255, 255, 0.15);
+
+  --residence-l: 45%;
 }
 
 /* Manual override — light (beats prefers-color-scheme: dark default) */
@@ -153,6 +160,8 @@
   --color-link-trip:     hsl(50, 85%, 35%);
   --color-rating:        hsl(50, 100%, 35%);
   --color-review-border: rgba(0, 0, 0, 0.15);
+
+  --residence-l: 55%;
 }
 
 /* ── Reset ────────────────────────────────────────────────────────────────── */
@@ -162,6 +171,10 @@
   margin: 0;
   padding: 0;
 }
+
+/* Ensure the HTML hidden attribute is always respected even when a CSS rule
+   sets display explicitly on the same element (e.g. .timeline-svg { display: block }). */
+[hidden] { display: none !important; }
 
 /* ── Base ─────────────────────────────────────────────────────────────────── */
 

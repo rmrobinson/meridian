@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="css/main.css" />
     <link rel="stylesheet" href="css/timeline.css" />
     <link rel="stylesheet" href="css/cards.css" />
+    <link rel="stylesheet" href="css/grid.css" />
     <!-- Apply stored theme before first paint to prevent flash of wrong theme.
          Runs synchronously (no defer/async) so data-theme is set before CSS renders. -->
     <script>
@@ -82,6 +83,8 @@
       >
         <!-- Rendered by timeline.js -->
       </svg>
+      <!-- Week grid — shown when Year zoom is active; hidden otherwise -->
+      <div id="week-grid-container" hidden aria-label="Life timeline week grid"></div>
     </main>
 
     <!-- Detail card overlay (desktop: floating, mobile: bottom sheet) -->

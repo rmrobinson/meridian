@@ -16,7 +16,7 @@
  */
 
 import { fetchTimeline } from './api.js';
-import { buildCardContent } from './cards.js';
+import { buildCardContent, buildWeekCardContent } from './cards.js';
 import { preloadIcons } from './icons.js';
 import { CURVE_HEIGHT, timeToY } from './lines.js';
 import { assignLanes } from './lanes.js';
@@ -25,6 +25,7 @@ import {
   ZOOM_DAY, ZOOM_MONTH, ZOOM_YEAR,
   aggregateByMonth, filterForYearZoom,
 } from './zoom.js';
+import { buildWeekMap, renderGrid, eventsForWeek } from './grid.js';
 
 const MS_PER_DAY = 86_400_000;
 
@@ -36,6 +37,12 @@ let _controller = null;
 
 /** Active zoom level — tracked so theme changes can re-render at the same scale. */
 let _pxPerDay   = ZOOM_DAY;
+
+/** WeekMap built once after fetch; rebuilt on theme change (colors are baked in). */
+let _weekMap    = null;
+
+/** Reference to #week-grid-container element. */
+let _gridContainer = null;
 
 /**
  * Lookup maps built once from _data after fetch. Used by the click handler to
@@ -68,15 +75,21 @@ async function init() {
 
   const svg             = document.getElementById('timeline-svg');
   const scrollContainer = document.getElementById('timeline-container');
+  _gridContainer        = document.getElementById('week-grid-container');
 
   const { layout, renderObjects } = buildRenderObjects(_data, ZOOM_DAY);
   setBodyZoom(ZOOM_DAY);
   _controller = initTimeline({ svg, scrollContainer, layout, renderObjects });
 
-  setupZoomButtons();
+  // Build the WeekMap once — reused every time Year zoom is activated.
+  _weekMap = buildWeekMap(_data, hslColor);
+
+  setupZoomButtons(svg);
   setupThemeToggle();
   setupCardInteraction(svg);
+  setupGridCardInteraction();
   setupSpanHoverSync(svg);
+  setupGridResizeHandler();
 }
 
 /**
@@ -354,12 +367,16 @@ function buildRenderObjects(data, pxPerDay) {
 
 /**
  * Attach click listeners to the Day / Month / Year buttons in the zoom bar.
- * Toggles `zoom-btn--active` class and `aria-pressed` attribute on each press,
- * then rebuilds render objects and hands off to the timeline controller.
+ * Toggles `zoom-btn--active` class and `aria-pressed` attribute on each press.
+ *
+ * Year zoom activates the week grid instead of the subway map SVG.
+ * Day / Month zoom return to the subway map (restoring its prior zoom state).
  *
  * Called once after first render so _data and _controller are guaranteed set.
+ *
+ * @param {SVGElement} svg - The #timeline-svg element (toggled hidden for grid view).
  */
-function setupZoomButtons() {
+function setupZoomButtons(svg) {
   const ZOOM_BY_NAME = { day: ZOOM_DAY, month: ZOOM_MONTH, year: ZOOM_YEAR };
   const buttons = Array.from(document.querySelectorAll('.zoom-btn'));
 
@@ -381,9 +398,20 @@ function setupZoomButtons() {
       btn.setAttribute('aria-pressed', 'true');
 
       _pxPerDay = pxPerDay;
-      const { layout, renderObjects } = buildRenderObjects(_data, pxPerDay);
       setBodyZoom(pxPerDay);
-      _controller.setRenderObjects(layout, renderObjects);
+
+      if (pxPerDay === ZOOM_YEAR) {
+        // Switch to grid view.
+        svg.setAttribute('hidden', '');
+        _gridContainer.removeAttribute('hidden');
+        renderGrid(_weekMap, _data, _gridContainer);
+      } else {
+        // Return to subway map.
+        _gridContainer.setAttribute('hidden', '');
+        svg.removeAttribute('hidden');
+        const { layout, renderObjects } = buildRenderObjects(_data, pxPerDay);
+        _controller.setRenderObjects(layout, renderObjects);
+      }
     });
   });
 }
@@ -429,6 +457,74 @@ function setupCardInteraction(svg) {
 
   // Mobile swipe-down dismiss.
   setupSwipeDismiss(sheet, overlay);
+}
+
+/**
+ * Wire click interaction for the week grid view.
+ *
+ * Two levels of delegation on #week-grid-container:
+ *   .week-cell[data-week]  → open a week summary card listing all events that week.
+ *   .week-event-item       → open the individual event detail card.
+ *
+ * Both use the same #card-overlay / #card-sheet / #card-content elements as the
+ * subway map, so close / Escape / backdrop dismiss work without extra wiring.
+ */
+function setupGridCardInteraction() {
+  const overlay = document.getElementById('card-overlay');
+  const sheet   = document.getElementById('card-sheet');
+  const content = document.getElementById('card-content');
+
+  // Week cell clicks — delegated on the grid container.
+  _gridContainer.addEventListener('click', (e) => {
+    const cell = e.target.closest('.week-cell[data-week]');
+    if (!cell) return;
+
+    const weekKey      = cell.dataset.week;
+    const events       = eventsForWeek(weekKey, _data);
+    const entry        = _weekMap[weekKey];
+    const residenceLabel = entry?.family === 'residence' ? entry.label : null;
+
+    content.innerHTML = '';
+    content.appendChild(buildWeekCardContent(weekKey, events, residenceLabel));
+
+    if (window.innerWidth >= 480) positionCard(cell, e, sheet);
+    else {
+      sheet.style.top  = '';
+      sheet.style.left = '';
+    }
+
+    overlay.removeAttribute('hidden');
+  });
+
+  // Keyboard activation on week cells.
+  _gridContainer.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const cell = e.target.closest('.week-cell[data-week]');
+    if (!cell) return;
+    e.preventDefault();
+    const weekKey      = cell.dataset.week;
+    const events       = eventsForWeek(weekKey, _data);
+    const entry        = _weekMap[weekKey];
+    const residenceLabel = entry?.family === 'residence' ? entry.label : null;
+    content.innerHTML = '';
+    content.appendChild(buildWeekCardContent(weekKey, events, residenceLabel));
+    sheet.style.top  = '';
+    sheet.style.left = '';
+    overlay.removeAttribute('hidden');
+  });
+
+  // Week event item clicks — delegated on the overlay, since .week-event-item
+  // buttons are rendered inside #card-content (a child of #card-overlay),
+  // not inside #week-grid-container.
+  overlay.addEventListener('click', (e) => {
+    const itemBtn = e.target.closest('.week-event-item');
+    if (!itemBtn) return;
+    const event = _eventById.get(itemBtn.dataset.id);
+    if (!event) return;
+    content.innerHTML = '';
+    content.appendChild(buildCardContent(event));
+    if (window.innerWidth >= 480) positionCard(itemBtn, e, sheet);
+  });
 }
 
 function handleActivate(el, mouseEvent, overlay, sheet, content) {
@@ -581,7 +677,7 @@ function setupSwipeDismiss(sheet, overlay) {
  * True when the current active theme is light.
  * Checks explicit data-theme override first, then the system preference.
  */
-function isLightMode() {
+export function isLightMode() {
   const theme = document.documentElement.getAttribute('data-theme');
   if (theme === 'light') return true;
   if (theme === 'dark')  return false;
@@ -596,7 +692,7 @@ function themeL(l) {
   return isLightMode() ? Math.max(l - 20, 20) : l;
 }
 
-function hslColor([h, s, l]) {
+export function hslColor([h, s, l]) {
   return `hsl(${h}, ${s}%, ${themeL(l)}%)`;
 }
 
@@ -634,6 +730,27 @@ function setBodyZoom(pxPerDay) {
   else                             document.body.classList.add('zoom-day');
 }
 
+// ── Grid resize handler ───────────────────────────────────────────────────────
+
+/**
+ * Re-render the grid on window resize so the single-row ↔ half-row split
+ * stays in sync with the 480px CSS breakpoint.
+ * Only re-renders when the grid is the active view (Year zoom).
+ *
+ * The grid DOM is small (~35 years × ≤53 cells) so a full re-render on
+ * resize is inexpensive. A 100ms debounce prevents thrashing during drag.
+ */
+function setupGridResizeHandler() {
+  let debounceTimer = null;
+  window.addEventListener('resize', () => {
+    if (_pxPerDay !== ZOOM_YEAR || !_gridContainer || _gridContainer.hasAttribute('hidden')) return;
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      renderGrid(_weekMap, _data, _gridContainer);
+    }, 100);
+  });
+}
+
 // ── Devtools hook ─────────────────────────────────────────────────────────────
 //
 // Flip zoom level manually from the browser console:
@@ -642,14 +759,23 @@ function setBodyZoom(pxPerDay) {
 //   window.__timeline_setZoom(2)     // ZOOM_DAY (default)
 
 window.__timeline_setZoom = function (pxPerDay) {
-  if (!_data || !_controller) {
+  if (!_data) {
     console.warn('__timeline_setZoom: timeline not yet initialized');
     return;
   }
   _pxPerDay = pxPerDay;
-  const { layout, renderObjects } = buildRenderObjects(_data, pxPerDay);
   setBodyZoom(pxPerDay);
-  _controller.setRenderObjects(layout, renderObjects);
+  const svg = document.getElementById('timeline-svg');
+  if (pxPerDay === ZOOM_YEAR) {
+    svg.setAttribute('hidden', '');
+    _gridContainer.removeAttribute('hidden');
+    renderGrid(_weekMap, _data, _gridContainer);
+  } else {
+    _gridContainer.setAttribute('hidden', '');
+    svg.removeAttribute('hidden');
+    const { layout, renderObjects } = buildRenderObjects(_data, pxPerDay);
+    _controller.setRenderObjects(layout, renderObjects);
+  }
 };
 
 // ── Theme toggle ──────────────────────────────────────────────────────────────
@@ -683,9 +809,17 @@ function setupThemeToggle() {
  * from base_color_hsl) adapt to the new light/dark mode.
  */
 function rebuildForThemeChange() {
-  if (!_data || !_controller) return;
-  const { layout, renderObjects } = buildRenderObjects(_data, _pxPerDay);
-  _controller.setRenderObjects(layout, renderObjects);
+  if (!_data) return;
+  if (_pxPerDay === ZOOM_YEAR) {
+    // Rebuild the WeekMap (colors are baked in) then re-render the grid.
+    _weekMap = buildWeekMap(_data, hslColor);
+    if (_gridContainer && !_gridContainer.hasAttribute('hidden')) {
+      renderGrid(_weekMap, _data, _gridContainer);
+    }
+  } else {
+    const { layout, renderObjects } = buildRenderObjects(_data, _pxPerDay);
+    _controller.setRenderObjects(layout, renderObjects);
+  }
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────

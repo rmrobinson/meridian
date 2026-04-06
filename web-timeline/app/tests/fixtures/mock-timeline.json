@@ -65,6 +65,48 @@
   ],
   "events": [
     {
+      "id": "evt_reloc_edinburgh",
+      "family_id": "spine",
+      "line_key": "spine",
+      "type": "point",
+      "title": "Born in Edinburgh",
+      "icon": "mdi:home",
+      "date": "1990-04-12",
+      "location": {
+        "label": "Edinburgh, UK",
+        "lat": 55.9533,
+        "lng": -3.1883
+      },
+      "description": "Born and raised in Edinburgh.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": {
+        "milestone_type": "relocation"
+      }
+    },
+    {
+      "id": "evt_reloc_sf",
+      "family_id": "spine",
+      "line_key": "spine",
+      "type": "point",
+      "title": "Moved to San Francisco",
+      "icon": "mdi:home",
+      "date": "2015-06-01",
+      "location": {
+        "label": "San Francisco, CA",
+        "lat": 37.7749,
+        "lng": -122.4194
+      },
+      "description": "Relocated for work at Acme Corp.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": {
+        "milestone_type": "relocation"
+      }
+    },
+    {
       "id": "evt_birthday_30",
       "family_id": "spine",
       "line_key": "spine",

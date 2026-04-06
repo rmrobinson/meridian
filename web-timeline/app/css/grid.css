@@ -1,0 +1,106 @@
+/* grid.css — week grid layout, cell sizing, row labels, responsive breakpoints */
+
+/* ── Grid container ───────────────────────────────────────────────────────── */
+
+#week-grid-container {
+  padding: 16px;
+}
+
+.week-grid {
+  display: flex;
+  flex-direction: column;
+  /* Inter-year gap — visually separates each year group from the next. */
+  gap: 6px;
+}
+
+/* ── Year group wrapper ───────────────────────────────────────────────────── */
+
+/*
+ * Each year is a .grid-year div containing one or two .grid-row children.
+ * When all weeks fit in the available width, a single .grid-row--a holds all
+ * 52–53 weeks and no .grid-row--b is created. When the window is too narrow,
+ * --a holds W01–W26 and --b (indented) holds W27–end.
+ * The intra-year gap is intentionally smaller than the inter-year gap so the
+ * two half-rows read as a single visual unit.
+ */
+.grid-year {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;   /* intra-year gap — tighter than the 6px inter-year gap */
+}
+
+/* ── Row layout ───────────────────────────────────────────────────────────── */
+
+.grid-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.row-label {
+  width: 40px;
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  line-height: 1;
+  color: var(--color-year-label);
+  user-select: none;
+}
+
+/* ── Week cells ───────────────────────────────────────────────────────────── */
+
+.week-cell {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  /* Neutral cells (no data-week) use the surface color and are not interactive. */
+  background: var(--color-surface);
+}
+
+/* Only cells with data-week (non-null WeekMap entry) are clickable. */
+.week-cell[data-week] {
+  cursor: pointer;
+}
+
+.week-cell[data-week]:hover {
+  opacity: 0.75;
+  outline: 1px solid var(--color-border-strong);
+  outline-offset: 1px;
+}
+
+.week-cell[data-week]:focus-visible {
+  outline: 2px solid var(--color-btn-active-border);
+  outline-offset: 1px;
+}
+
+/* ── Mobile breakpoint ────────────────────────────────────────────────────── */
+
+@media (max-width: 479px) {
+  #week-grid-container {
+    padding: 8px;
+  }
+
+  .grid-row {
+    gap: 1px;
+  }
+
+  .row-label {
+    width: 30px;
+    font-size: 0.625rem;
+  }
+
+  .week-cell {
+    width: 8px;
+    height: 8px;
+    border-radius: 1px;
+  }
+
+  /* On mobile the second half-row is indented to visually link the pair. */
+  .grid-row--b {
+    padding-left: 12px;
+  }
+}
+
+/* .grid-row--b is only present in the DOM when the grid renders in split mode.
+   No CSS hide/show rule is needed — if all cells fit in one row, --b is simply
+   not created by renderGrid(). */
