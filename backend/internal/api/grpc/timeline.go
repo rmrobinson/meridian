@@ -64,13 +64,17 @@ func (s *Server) CreateEvent(ctx context.Context, req *pb.CreateEventRequest) (*
 		Date:          strPtr(req.Date),
 		StartDate:     strPtr(req.StartDate),
 		EndDate:       strPtr(req.EndDate),
-		ExternalURL:   strPtr(req.ExternalUrl),
-		HeroImageURL:  strPtr(req.HeroImageUrl),
-		Metadata:      extractCreateMetadata(req),
-		Visibility:    vis,
+		ExternalURL:  strPtr(req.ExternalUrl),
+		HeroImageURL: strPtr(req.HeroImageUrl),
+		Visibility:   vis,
 		SourceEventID: strPtr(req.SourceEventId),
-		CreatedAt:     now,
-		UpdatedAt:     now,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}
+	meta, metaType := extractCreateMetadata(req)
+	e.Metadata = meta
+	if metaType != "" {
+		e.MetadataType = &metaType
 	}
 	if req.Location != nil {
 		e.LocationLabel = strPtr(req.Location.Label)
@@ -78,7 +82,7 @@ func (s *Server) CreateEvent(ctx context.Context, req *pb.CreateEventRequest) (*
 		e.LocationLng = float64Ptr(req.Location.Lng)
 	}
 
-	if err := domain.ValidateMetadata(e.FamilyID, e); err != nil {
+	if err := domain.ValidateMetadata(derefStr(e.MetadataType), e); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid metadata: %v", err)
 	}
 
@@ -123,10 +127,14 @@ func (s *Server) UpdateEvent(ctx context.Context, req *pb.UpdateEventRequest) (*
 		Date:          strPtr(req.Date),
 		StartDate:     strPtr(req.StartDate),
 		EndDate:       strPtr(req.EndDate),
-		ExternalURL:   strPtr(req.ExternalUrl),
-		HeroImageURL:  strPtr(req.HeroImageUrl),
-		Metadata:      extractUpdateMetadata(req),
-		Visibility:    vis,
+		ExternalURL:  strPtr(req.ExternalUrl),
+		HeroImageURL: strPtr(req.HeroImageUrl),
+		Visibility:   vis,
+	}
+	updateMeta, updateMetaType := extractUpdateMetadata(req)
+	e.Metadata = updateMeta
+	if updateMetaType != "" {
+		e.MetadataType = &updateMetaType
 	}
 	if req.Location != nil {
 		e.LocationLabel = strPtr(req.Location.Label)
@@ -134,7 +142,7 @@ func (s *Server) UpdateEvent(ctx context.Context, req *pb.UpdateEventRequest) (*
 		e.LocationLng = float64Ptr(req.Location.Lng)
 	}
 
-	if err := domain.ValidateMetadata(e.FamilyID, e); err != nil {
+	if err := domain.ValidateMetadata(derefStr(e.MetadataType), e); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid metadata: %v", err)
 	}
 
@@ -229,9 +237,13 @@ func (s *Server) ImportEvents(ctx context.Context, req *pb.ImportEventsRequest) 
 						EndDate:       strPtr(evtReq.EndDate),
 						ExternalURL:   strPtr(evtReq.ExternalUrl),
 						HeroImageURL:  strPtr(evtReq.HeroImageUrl),
-						Metadata:      extractCreateMetadata(evtReq),
 						Visibility:    vis,
 						SourceEventID: strPtr(evtReq.SourceEventId),
+					}
+					importMeta, importMetaType := extractCreateMetadata(evtReq)
+					updated.Metadata = importMeta
+					if importMetaType != "" {
+						updated.MetadataType = &importMetaType
 					}
 					if req.SourceService != "" {
 						updated.SourceService = &req.SourceService
@@ -285,11 +297,15 @@ func (s *Server) ImportEvents(ctx context.Context, req *pb.ImportEventsRequest) 
 			EndDate:       strPtr(evtReq.EndDate),
 			ExternalURL:   strPtr(evtReq.ExternalUrl),
 			HeroImageURL:  strPtr(evtReq.HeroImageUrl),
-			Metadata:      extractCreateMetadata(evtReq),
 			Visibility:    vis,
 			SourceEventID: strPtr(evtReq.SourceEventId),
 			CreatedAt:     now,
 			UpdatedAt:     now,
+		}
+		newMeta, newMetaType := extractCreateMetadata(evtReq)
+		e.Metadata = newMeta
+		if newMetaType != "" {
+			e.MetadataType = &newMetaType
 		}
 		if req.SourceService != "" {
 			e.SourceService = &req.SourceService
@@ -300,7 +316,7 @@ func (s *Server) ImportEvents(ctx context.Context, req *pb.ImportEventsRequest) 
 			e.LocationLng = float64Ptr(evtReq.Location.Lng)
 		}
 
-		// Auto-merge: find a canonical event matching date + activity_type.
+		// Auto-merge: find a canonical event matching date + fitness activity.
 		if candidate, err := merge.FindMergeCandidates(ctx, s.db, e); err == nil && candidate != nil {
 			e.CanonicalID = &candidate.ID
 		}
@@ -328,10 +344,13 @@ func (s *Server) DeleteEvent(ctx context.Context, req *pb.DeleteEventRequest) (*
 	return &pb.DeleteEventResponse{}, nil
 }
 
-// enrich calls the appropriate enricher for the event's family, if one is configured.
+// enrich calls the appropriate enricher for the event's metadata type, if one is configured.
 func (s *Server) enrich(ctx context.Context, e *domain.Event) error {
-	switch e.FamilyID {
-	case "books":
+	if e.MetadataType == nil {
+		return nil
+	}
+	switch *e.MetadataType {
+	case "book":
 		if s.bookEnricher != nil {
 			return s.bookEnricher.Enrich(ctx, e)
 		}

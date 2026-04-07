@@ -163,91 +163,96 @@ func protoToPhotoVariant(v pb.PhotoVariant) domain.PhotoVariant {
 	}
 }
 
-// extractCreateMetadata converts the oneof metadata in a CreateEventRequest to a JSON string.
-func extractCreateMetadata(req *pb.CreateEventRequest) *string {
+// extractCreateMetadata converts the oneof metadata in a CreateEventRequest to a JSON string
+// and returns the metadata type name. The type is derived from the oneof arm — the single
+// point in the system where metadata type is unambiguously known without inference.
+func extractCreateMetadata(req *pb.CreateEventRequest) (*string, string) {
 	switch v := req.Metadata.(type) {
 	case *pb.CreateEventRequest_LifeMetadata:
 		return marshalMetadata(&domain.LifeMetadata{
 			MilestoneType: lifeMilestoneTypeFromProto(v.LifeMetadata.GetMilestoneType()),
 			From:          v.LifeMetadata.GetFrom(),
 			To:            v.LifeMetadata.GetTo(),
-		})
+		}), "life"
 	case *pb.CreateEventRequest_EmploymentMetadata:
 		return marshalMetadata(&domain.EmploymentMetadata{
 			Role:        v.EmploymentMetadata.GetRole(),
 			CompanyName: v.EmploymentMetadata.GetCompanyName(),
 			CompanyURL:  v.EmploymentMetadata.GetCompanyUrl(),
-		})
+		}), "employment"
 	case *pb.CreateEventRequest_EducationMetadata:
 		return marshalMetadata(&domain.EducationMetadata{
 			Institution: v.EducationMetadata.GetInstitution(),
 			Degree:      v.EducationMetadata.GetDegree(),
-		})
+		}), "education"
 	case *pb.CreateEventRequest_TravelMetadata:
 		return marshalMetadata(&domain.TravelMetadata{
 			Countries: v.TravelMetadata.GetCountries(),
 			Cities:    v.TravelMetadata.GetCities(),
-		})
+		}), "travel"
 	case *pb.CreateEventRequest_FlightMetadata:
-		return marshalMetadata(protoToFlightMetadata(v.FlightMetadata))
+		return marshalMetadata(protoToFlightMetadata(v.FlightMetadata)), "flight"
 	case *pb.CreateEventRequest_BookMetadata:
-		return marshalMetadata(protoToBookMetadata(v.BookMetadata))
+		return marshalMetadata(protoToBookMetadata(v.BookMetadata)), "book"
 	case *pb.CreateEventRequest_FilmTvMetadata:
-		return marshalMetadata(protoToFilmTVMetadata(v.FilmTvMetadata))
+		return marshalMetadata(protoToFilmTVMetadata(v.FilmTvMetadata)), "film_tv"
 	case *pb.CreateEventRequest_ConcertMetadata:
-		return marshalMetadata(protoToConcertMetadata(v.ConcertMetadata))
+		return marshalMetadata(protoToConcertMetadata(v.ConcertMetadata)), "concert"
 	case *pb.CreateEventRequest_FitnessMetadata:
-		return marshalMetadata(protoToFitnessMetadata(v.FitnessMetadata))
+		return marshalMetadata(protoToFitnessMetadata(v.FitnessMetadata)), "fitness"
 	}
-	return nil
+	return nil, ""
 }
 
-// extractUpdateMetadata converts the oneof metadata in an UpdateEventRequest to a JSON string.
-func extractUpdateMetadata(req *pb.UpdateEventRequest) *string {
+// extractUpdateMetadata converts the oneof metadata in an UpdateEventRequest to a JSON string
+// and returns the metadata type name.
+func extractUpdateMetadata(req *pb.UpdateEventRequest) (*string, string) {
 	switch v := req.Metadata.(type) {
 	case *pb.UpdateEventRequest_LifeMetadata:
 		return marshalMetadata(&domain.LifeMetadata{
 			MilestoneType: lifeMilestoneTypeFromProto(v.LifeMetadata.GetMilestoneType()),
 			From:          v.LifeMetadata.GetFrom(),
 			To:            v.LifeMetadata.GetTo(),
-		})
+		}), "life"
 	case *pb.UpdateEventRequest_EmploymentMetadata:
 		return marshalMetadata(&domain.EmploymentMetadata{
 			Role:        v.EmploymentMetadata.GetRole(),
 			CompanyName: v.EmploymentMetadata.GetCompanyName(),
 			CompanyURL:  v.EmploymentMetadata.GetCompanyUrl(),
-		})
+		}), "employment"
 	case *pb.UpdateEventRequest_EducationMetadata:
 		return marshalMetadata(&domain.EducationMetadata{
 			Institution: v.EducationMetadata.GetInstitution(),
 			Degree:      v.EducationMetadata.GetDegree(),
-		})
+		}), "education"
 	case *pb.UpdateEventRequest_TravelMetadata:
 		return marshalMetadata(&domain.TravelMetadata{
 			Countries: v.TravelMetadata.GetCountries(),
 			Cities:    v.TravelMetadata.GetCities(),
-		})
+		}), "travel"
 	case *pb.UpdateEventRequest_FlightMetadata:
-		return marshalMetadata(protoToFlightMetadata(v.FlightMetadata))
+		return marshalMetadata(protoToFlightMetadata(v.FlightMetadata)), "flight"
 	case *pb.UpdateEventRequest_BookMetadata:
-		return marshalMetadata(protoToBookMetadata(v.BookMetadata))
+		return marshalMetadata(protoToBookMetadata(v.BookMetadata)), "book"
 	case *pb.UpdateEventRequest_FilmTvMetadata:
-		return marshalMetadata(protoToFilmTVMetadata(v.FilmTvMetadata))
+		return marshalMetadata(protoToFilmTVMetadata(v.FilmTvMetadata)), "film_tv"
 	case *pb.UpdateEventRequest_ConcertMetadata:
-		return marshalMetadata(protoToConcertMetadata(v.ConcertMetadata))
+		return marshalMetadata(protoToConcertMetadata(v.ConcertMetadata)), "concert"
 	case *pb.UpdateEventRequest_FitnessMetadata:
-		return marshalMetadata(protoToFitnessMetadata(v.FitnessMetadata))
+		return marshalMetadata(protoToFitnessMetadata(v.FitnessMetadata)), "fitness"
 	}
-	return nil
+	return nil, ""
 }
 
 // jsonToEventMetadata parses e.Metadata JSON and sets the corresponding oneof field on out.
+// Dispatches on MetadataType (stored in the DB) rather than FamilyID so that the card
+// type is independent of which line the event is placed on.
 func jsonToEventMetadata(e *domain.Event, out *pb.Event) {
-	if e.Metadata == nil || *e.Metadata == "" {
+	if e.Metadata == nil || *e.Metadata == "" || e.MetadataType == nil {
 		return
 	}
-	switch e.FamilyID {
-	case "spine":
+	switch *e.MetadataType {
+	case "life":
 		m, err := domain.ParseMetadata[domain.LifeMetadata](e)
 		if err != nil {
 			return
@@ -285,7 +290,7 @@ func jsonToEventMetadata(e *domain.Event, out *pb.Event) {
 			Countries: m.Countries,
 			Cities:    m.Cities,
 		}}
-	case "flights":
+	case "flight":
 		m, err := domain.ParseMetadata[domain.FlightMetadata](e)
 		if err != nil {
 			return
@@ -302,7 +307,7 @@ func jsonToEventMetadata(e *domain.Event, out *pb.Event) {
 			ActualDeparture:    m.ActualDeparture,
 			ActualArrival:      m.ActualArrival,
 		}}
-	case "books":
+	case "book":
 		m, err := domain.ParseMetadata[domain.BookMetadata](e)
 		if err != nil {
 			return
@@ -336,7 +341,7 @@ func jsonToEventMetadata(e *domain.Event, out *pb.Event) {
 			pbMeta.SeasonsWatched = &v
 		}
 		out.Metadata = &pb.Event_FilmTvMetadata{FilmTvMetadata: pbMeta}
-	case "hobbies":
+	case "concert":
 		m, err := domain.ParseMetadata[domain.ConcertMetadata](e)
 		if err != nil {
 			return
@@ -707,6 +712,13 @@ func strPtr(s string) *string {
 		return nil
 	}
 	return &s
+}
+
+func derefStr(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }
 
 func float64Ptr(f float64) *float64 {

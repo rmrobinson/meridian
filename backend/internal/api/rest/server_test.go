@@ -463,3 +463,69 @@ func eventIDsFromMaps(events []map[string]any) []any {
 	}
 	return ids
 }
+
+// --- metadata_type field ---
+
+func seedEventWithMetadataType(t *testing.T, d *db.DB, id, familyID, metadataType, dateStr string, vis domain.Visibility) *domain.Event {
+	t.Helper()
+	now := time.Now().UTC()
+	e := &domain.Event{
+		ID:           id,
+		FamilyID:     familyID,
+		LineKey:      familyID + "-" + id,
+		Type:         domain.EventTypePoint,
+		Title:        "Event " + id,
+		Date:         &dateStr,
+		MetadataType: &metadataType,
+		Visibility:   vis,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}
+	if err := d.CreateEvent(context.Background(), e); err != nil {
+		t.Fatalf("seeding event %s: %v", id, err)
+	}
+	return e
+}
+
+func TestGetEvents_MetadataTypeIncludedInResponse(t *testing.T) {
+	env := newTestEnv(t)
+	seedEventWithMetadataType(t, env.db, "flight-evt", "flights", "flight", "2023-03-10", domain.VisibilityPublic)
+
+	resp := get(t, env.server, "/api/events", makeJWT(t, "owner"))
+	var events []map[string]any
+	decodeJSON(t, resp.Body, &events)
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(events))
+	}
+	if got := events[0]["metadata_type"]; got != "flight" {
+		t.Errorf("metadata_type: got %v, want flight", got)
+	}
+}
+
+func TestGetEvents_MetadataTypeOmittedWhenEmpty(t *testing.T) {
+	env := newTestEnv(t)
+	seedEvent(t, env.db, "no-meta", "travel", "2023-03-10", domain.VisibilityPublic)
+
+	resp := get(t, env.server, "/api/events", makeJWT(t, "owner"))
+	var events []map[string]any
+	decodeJSON(t, resp.Body, &events)
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(events))
+	}
+	// metadata_type should be absent (omitempty) when not set
+	if _, present := events[0]["metadata_type"]; present {
+		t.Errorf("metadata_type should be omitted when empty, but key was present")
+	}
+}
+
+func TestGetEventByID_MetadataTypeIncludedInResponse(t *testing.T) {
+	env := newTestEnv(t)
+	seedEventWithMetadataType(t, env.db, "book-evt", "books", "book", "2023-01-01", domain.VisibilityPublic)
+
+	resp := get(t, env.server, "/api/events/book-evt", "")
+	var event map[string]any
+	decodeJSON(t, resp.Body, &event)
+	if got := event["metadata_type"]; got != "book" {
+		t.Errorf("metadata_type: got %v, want book", got)
+	}
+}

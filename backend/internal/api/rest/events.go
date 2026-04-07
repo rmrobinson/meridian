@@ -25,25 +25,26 @@ type locationResponse struct {
 }
 
 type eventResponse struct {
-	ID            string              `json:"id"`
-	FamilyID      string              `json:"family_id"`
-	LineKey       string              `json:"line_key"`
-	ParentLineKey *string             `json:"parent_line_key,omitempty"`
-	Type          string              `json:"type"`
-	Title         string              `json:"title"`
-	Label         *string             `json:"label,omitempty"`
-	Icon          *string             `json:"icon,omitempty"`
-	EndIcon       *string             `json:"end_icon,omitempty"`
-	Description   *string             `json:"description,omitempty"`
-	Date          *string             `json:"date,omitempty"`
-	StartDate     *string             `json:"start_date,omitempty"`
-	EndDate       *string             `json:"end_date,omitempty"`
-	Location      *locationResponse   `json:"location,omitempty"`
-	ExternalURL   *string             `json:"external_url,omitempty"`
-	HeroImageURL  *string             `json:"hero_image_url,omitempty"`
-	Metadata      json.RawMessage     `json:"metadata,omitempty"`
-	Visibility    string              `json:"visibility"`
-	Photos        []photoResponse     `json:"photos"`
+	ID            string          `json:"id"`
+	FamilyID      string          `json:"family_id"`
+	LineKey       string          `json:"line_key"`
+	ParentLineKey *string         `json:"parent_line_key,omitempty"`
+	Type          string          `json:"type"`
+	Title         string          `json:"title"`
+	Label         *string         `json:"label,omitempty"`
+	Icon          *string         `json:"icon,omitempty"`
+	EndIcon       *string         `json:"end_icon,omitempty"`
+	Description   *string         `json:"description,omitempty"`
+	Date          *string         `json:"date,omitempty"`
+	StartDate     *string         `json:"start_date,omitempty"`
+	EndDate       *string         `json:"end_date,omitempty"`
+	Location      *locationResponse `json:"location,omitempty"`
+	ExternalURL   *string         `json:"external_url,omitempty"`
+	HeroImageURL  *string         `json:"hero_image_url,omitempty"`
+	Metadata      json.RawMessage `json:"metadata,omitempty"`
+	MetadataType  string          `json:"metadata_type,omitempty"`
+	Visibility    string          `json:"visibility"`
+	Photos        []photoResponse `json:"photos"`
 }
 
 func (s *Server) handleGetEvents(w http.ResponseWriter, r *http.Request) {
@@ -157,6 +158,9 @@ func toEventResponse(e *domain.Event, photos []*domain.Photo) eventResponse {
 	}
 	if e.Metadata != nil {
 		resp.Metadata = json.RawMessage(*e.Metadata)
+	}
+	if e.MetadataType != nil {
+		resp.MetadataType = *e.MetadataType
 	}
 	for _, p := range photos {
 		resp.Photos = append(resp.Photos, photoResponse{

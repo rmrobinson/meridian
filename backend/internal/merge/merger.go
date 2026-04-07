@@ -25,7 +25,7 @@ func New(sourcePriority []string) *Merger {
 // fitnessActivity returns the activity string from a fitness event's metadata,
 // or "" if the event is not a fitness event or has no activity set.
 func fitnessActivity(e *domain.Event) string {
-	if e.FamilyID != "fitness" {
+	if e.MetadataType == nil || *e.MetadataType != "fitness" {
 		return ""
 	}
 	m, err := domain.ParseMetadata[domain.FitnessMetadata](e)
@@ -55,9 +55,9 @@ func FindMergeCandidates(ctx context.Context, lister EventLister, incoming *doma
 	}
 
 	candidates, err := lister.ListEvents(ctx, db.ListEventsFilter{
-		FamilyID: "fitness",
-		From:     date,
-		To:       date,
+		MetadataType: "fitness",
+		From:         date,
+		To:           date,
 	})
 	if err != nil {
 		return nil, err

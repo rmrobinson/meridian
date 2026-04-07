@@ -19,20 +19,20 @@ var validFitnessActivities = map[string]bool{
 	"scuba": true, "climb": true, "golf": true, "squash": true,
 }
 
-// ValidateMetadata checks that metadata for the given family contains the
-// required fields. It returns nil for families with no required fields or for
+// ValidateMetadata checks that metadata for the given metadata type contains the
+// required fields. It returns nil for types with no required fields or for
 // events with empty metadata where no fields are required.
-func ValidateMetadata(familyID string, event *Event) error {
-	switch familyID {
-	case "books":
+func ValidateMetadata(metadataType string, event *Event) error {
+	switch metadataType {
+	case "book":
 		return validateBooksMetadata(event)
 	case "film_tv":
 		return validateFilmTVMetadata(event)
-	case "flights":
+	case "flight":
 		return validateFlightsMetadata(event)
 	case "fitness":
 		return validateFitnessMetadata(event)
-	case "spine":
+	case "life":
 		return validateSpineMetadata(event)
 	default:
 		return nil

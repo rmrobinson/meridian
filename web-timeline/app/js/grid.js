@@ -155,7 +155,7 @@ export function buildWeekMap(data, colorFn) {
 
   for (const evt of data.events ?? []) {
     if (evt.type !== 'span') continue;
-    const entry = { id: evt.id, start: new Date(evt.start_date), end: new Date(evt.end_date) };
+    const entry = { id: evt.id, start: new Date(evt.start_date), end: evt.end_date ? new Date(evt.end_date) : new Date() };
     if (evt.family_id === 'travel')     travelSpans.push(entry);
     if (evt.family_id === 'employment') employmentSpans.push(entry);
     if (evt.family_id === 'education')  educationSpans.push(entry);
@@ -433,7 +433,7 @@ export function eventsForWeek(weekKey, data) {
   for (const evt of data.events ?? []) {
     if (evt.type === 'span') {
       const start = new Date(evt.start_date);
-      const end   = new Date(evt.end_date);
+      const end   = evt.end_date ? new Date(evt.end_date) : new Date();
       if (start <= weekEn && end >= weekSt) results.push(evt);
     } else if (evt.type === 'point') {
       const d = new Date(evt.date);

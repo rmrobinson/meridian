@@ -13,14 +13,14 @@ func metaPtr(v any) *string {
 
 func TestValidateMetadata_Flight_Valid(t *testing.T) {
 	e := &Event{FamilyID: "flights", Metadata: metaPtr(FlightMetadata{Airline: "Air Canada", FlightNumber: "AC123"})}
-	if err := ValidateMetadata("flights", e); err != nil {
+	if err := ValidateMetadata("flight", e); err != nil {
 		t.Errorf("expected no error, got %v", err)
 	}
 }
 
 func TestValidateMetadata_Flight_MissingAirline(t *testing.T) {
 	e := &Event{FamilyID: "flights", Metadata: metaPtr(FlightMetadata{FlightNumber: "AC123"})}
-	if err := ValidateMetadata("flights", e); err == nil {
+	if err := ValidateMetadata("flight", e); err == nil {
 		t.Error("expected error for missing airline, got nil")
 	}
 }
@@ -104,7 +104,7 @@ func TestValidateMetadata_Fitness_UnknownActivity(t *testing.T) {
 
 func TestValidateMetadata_Spine_UnknownMilestoneType(t *testing.T) {
 	e := &Event{FamilyID: "spine", Metadata: metaPtr(LifeMetadata{MilestoneType: "cosmic-event"})}
-	if err := ValidateMetadata("spine", e); err == nil {
+	if err := ValidateMetadata("life", e); err == nil {
 		t.Error("expected error for unknown milestone_type, got nil")
 	}
 }

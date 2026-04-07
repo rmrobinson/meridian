@@ -67,6 +67,7 @@
     {
       "id": "evt_reloc_edinburgh",
       "family_id": "spine",
+      "metadata_type": "life",
       "line_key": "spine",
       "type": "point",
       "title": "Born in Edinburgh",
@@ -88,6 +89,7 @@
     {
       "id": "evt_reloc_sf",
       "family_id": "spine",
+      "metadata_type": "life",
       "line_key": "spine",
       "type": "point",
       "title": "Moved to San Francisco",
@@ -109,6 +111,7 @@
     {
       "id": "evt_birthday_30",
       "family_id": "spine",
+      "metadata_type": "life",
       "line_key": "spine",
       "type": "point",
       "title": "Turning 30",
@@ -126,6 +129,7 @@
     {
       "id": "evt_000",
       "family_id": "spine",
+      "metadata_type": "life",
       "line_key": "spine",
       "type": "point",
       "title": "Moved to London",
@@ -147,6 +151,7 @@
     {
       "id": "evt_001b",
       "family_id": "employment",
+      "metadata_type": "employment",
       "line_key": "globaltech-internship-2013",
       "type": "span",
       "title": "GlobalTech — Summer Internship",
@@ -168,8 +173,30 @@
       }
     },
     {
+      "id": "evt_001c",
+      "family_id": "employment",
+      "metadata_type": "employment",
+      "line_key": "meridian-systems",
+      "type": "span",
+      "title": "Meridian Systems",
+      "icon": "mdi:briefcase",
+      "start_date": "2019-03-01",
+      "end_date": null,
+      "location": {
+        "label": "Remote"
+      },
+      "description": "Staff engineer, currently ongoing.",
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": {
+        "role": "Staff Engineer"
+      }
+    },
+    {
       "id": "evt_001",
       "family_id": "employment",
+      "metadata_type": "employment",
       "line_key": "acme-corp",
       "type": "span",
       "title": "Acme Corp",
@@ -192,6 +219,7 @@
     {
       "id": "evt_002",
       "family_id": "travel",
+      "metadata_type": "travel",
       "line_key": "japan-2023",
       "type": "span",
       "title": "Japan Trip",
@@ -216,6 +244,7 @@
     {
       "id": "evt_002_tokyo_tower",
       "family_id": "travel",
+      "metadata_type": "travel",
       "line_key": "japan-2023",
       "type": "point",
       "title": "Tokyo Tower",
@@ -236,6 +265,7 @@
     {
       "id": "evt_002_fushimi",
       "family_id": "travel",
+      "metadata_type": "travel",
       "line_key": "japan-2023",
       "type": "point",
       "title": "Fushimi Inari",
@@ -256,6 +286,7 @@
     {
       "id": "evt_002b",
       "family_id": "travel",
+      "metadata_type": "travel",
       "line_key": "scotland-2024",
       "type": "span",
       "title": "Scotland Road Trip",
@@ -280,6 +311,7 @@
     {
       "id": "evt_002c",
       "family_id": "travel",
+      "metadata_type": "travel",
       "line_key": "lisbon-2025",
       "type": "span",
       "title": "Lisbon",
@@ -304,6 +336,7 @@
     {
       "id": "evt_003",
       "family_id": "books",
+      "metadata_type": "book",
       "line_key": "dune-2022",
       "type": "span",
       "title": "Dune",
@@ -324,6 +357,7 @@
     {
       "id": "evt_004",
       "family_id": "hobbies",
+      "metadata_type": "concert",
       "line_key": "glastonbury-2023",
       "type": "point",
       "title": "Glastonbury Festival",
@@ -343,12 +377,17 @@
         "https://your-cdn.com/glastonbury-2.jpg"
       ],
       "metadata": {
-        "activity": "concert"
+        "main_act": "Arctic Monkeys",
+        "opening_acts": ["Guns N' Roses", "Elton John"],
+        "venue": {
+          "label": "Worthy Farm, Pilton, Somerset"
+        }
       }
     },
     {
       "id": "evt_005",
       "family_id": "education",
+      "metadata_type": "education",
       "line_key": "university-2010",
       "type": "span",
       "title": "University of Edinburgh",
@@ -366,12 +405,14 @@
       "hero_image_url": null,
       "photos": [],
       "metadata": {
+        "institution": "University of Edinburgh",
         "degree": "BSc Computer Science"
       }
     },
     {
       "id": "evt_006",
       "family_id": "books",
+      "metadata_type": "book",
       "line_key": "midnight-library-2022",
       "type": "span",
       "title": "The Midnight Library",
@@ -392,6 +433,7 @@
     {
       "id": "evt_fit_001",
       "family_id": "fitness",
+      "metadata_type": "fitness",
       "line_key": "fitness",
       "type": "point",
       "title": "First Triathlon",
@@ -408,6 +450,7 @@
     {
       "id": "evt_fit_002",
       "family_id": "fitness",
+      "metadata_type": "fitness",
       "line_key": "fitness",
       "type": "point",
       "title": "Marathon — Edinburgh",
@@ -423,11 +466,15 @@
       "external_url": null,
       "hero_image_url": null,
       "photos": [],
-      "metadata": { "distance_km": 42.2 }
+      "metadata": {
+        "activity": "run",
+        "distance_km": 42.2
+      }
     },
     {
       "id": "evt_flight_001",
       "family_id": "flights",
+      "metadata_type": "flight",
       "line_key": "flight-lhr-nrt-2023",
       "type": "point",
       "title": "LHR → NRT",
@@ -439,11 +486,15 @@
       "external_url": null,
       "hero_image_url": null,
       "photos": [],
-      "metadata": { "origin": "LHR", "destination": "NRT" }
+      "metadata": {
+        "origin_iata": "LHR",
+        "destination_iata": "NRT"
+      }
     },
     {
       "id": "evt_flight_002",
       "family_id": "flights",
+      "metadata_type": "flight",
       "line_key": "flight-nrt-lhr-2023",
       "type": "point",
       "title": "NRT → LHR",
@@ -455,11 +506,15 @@
       "external_url": null,
       "hero_image_url": null,
       "photos": [],
-      "metadata": { "origin": "NRT", "destination": "LHR" }
+      "metadata": {
+        "origin_iata": "NRT",
+        "destination_iata": "LHR"
+      }
     },
     {
       "id": "evt_flight_003",
       "family_id": "flights",
+      "metadata_type": "flight",
       "line_key": "flight-lhr-lhr-2021",
       "type": "point",
       "title": "LHR → DUB",
@@ -471,7 +526,10 @@
       "external_url": null,
       "hero_image_url": null,
       "photos": [],
-      "metadata": { "origin": "LHR", "destination": "DUB" }
+      "metadata": {
+        "origin_iata": "LHR",
+        "destination_iata": "DUB"
+      }
     }
   ]
 }
