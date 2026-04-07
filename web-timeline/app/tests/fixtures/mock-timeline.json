@@ -487,8 +487,15 @@
       "hero_image_url": null,
       "photos": [],
       "metadata": {
+        "airline": "Japan Airlines",
+        "flight_number": "JL044",
+        "aircraft_type": "Boeing 787-9",
         "origin_iata": "LHR",
-        "destination_iata": "NRT"
+        "destination_iata": "NRT",
+        "scheduled_departure": "2023-03-10T13:25:00Z",
+        "scheduled_arrival": "2023-03-11T09:40:00+09:00",
+        "actual_departure": "2023-03-10T13:41:00Z",
+        "actual_arrival": "2023-03-11T09:55:00+09:00"
       }
     },
     {
@@ -507,8 +514,15 @@
       "hero_image_url": null,
       "photos": [],
       "metadata": {
+        "airline": "Japan Airlines",
+        "flight_number": "JL043",
+        "aircraft_type": "Boeing 787-9",
         "origin_iata": "NRT",
-        "destination_iata": "LHR"
+        "destination_iata": "LHR",
+        "scheduled_departure": "2023-03-24T11:05:00+09:00",
+        "scheduled_arrival": "2023-03-24T15:20:00Z",
+        "actual_departure": "2023-03-24T11:05:00+09:00",
+        "actual_arrival": "2023-03-24T15:08:00Z"
       }
     },
     {
@@ -527,8 +541,15 @@
       "hero_image_url": null,
       "photos": [],
       "metadata": {
+        "airline": "Aer Lingus",
+        "flight_number": "EI158",
+        "aircraft_type": "Airbus A320",
         "origin_iata": "LHR",
-        "destination_iata": "DUB"
+        "destination_iata": "DUB",
+        "scheduled_departure": "2021-03-15T07:15:00Z",
+        "scheduled_arrival": "2021-03-15T08:35:00Z",
+        "actual_departure": "2021-03-15T07:22:00Z",
+        "actual_arrival": "2021-03-15T08:28:00Z"
       }
     }
   ]
