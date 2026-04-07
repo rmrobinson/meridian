@@ -223,7 +223,7 @@ test.describe('Desktop — spine and year markers', () => {
     await page.dispatchEvent('[data-testid="station-evt_002"]', 'click');
 
     await expect(page.locator('#card-overlay')).not.toHaveAttribute('hidden');
-    await expect(page.locator('#card-content .card--trip')).toBeAttached();
+    await expect(page.locator('#card-content .card--travel')).toBeAttached();
     const link = page.locator('#card-content .card-read-more');
     await expect(link).toBeAttached();
     expect(await link.getAttribute('href')).toContain('japan-2023');
