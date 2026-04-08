@@ -6,12 +6,7 @@
  * milestone_type: "birthday" on the same date replace the auto-generated entry.
  */
 
-// Can be overridden at runtime by setting window.TIMELINE_API_URL before the
-// module loads — useful for pointing at a backend on a different origin during
-// local development without changing source code.
-const TIMELINE_URL = (typeof window !== 'undefined' && window.TIMELINE_API_URL)
-  ? window.TIMELINE_API_URL
-  : '/api/timeline';
+const TIMELINE_URL = '/api/timeline';
 
 /**
  * Extract the `token` query parameter from a URL search string.

@@ -7,7 +7,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:update": "playwright test --update-snapshots",
-    "serve": "npx serve app -p 3000",
+    "serve": "vite",
     "gen-perf-fixture": "node scripts/gen-perf-fixture.js",
     "check-icons": "node scripts/check-icons.js"
   },
@@ -15,6 +15,7 @@
     "@mdi/svg": "^7.4.47",
     "@playwright/test": "^1.48.0",
     "happy-dom": "^20.8.9",
+    "vite": "^5.4.21",
     "vitest": "^2.1.0"
   }
 }

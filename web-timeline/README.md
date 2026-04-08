@@ -13,27 +13,19 @@ npm install
 npm run serve        # serves app/ on http://localhost:3000
 ```
 
-By default the app fetches from `/api/timeline` on the same origin. When
-running locally you have two options:
+By default `npm run serve` intercepts `GET /api/timeline` and returns the
+mock fixture at `app/tests/fixtures/mock-timeline.json` — no backend needed.
 
-### Option 1 — Point at a live backend
+To point at a live backend instead, create `web-timeline/.env.local`
+(already gitignored) with:
 
-The backend's CORS config already allows `http://localhost:3000`. Add one line
-to `app/index.html` before the `<script type="module">` tag to override the
-API URL at runtime:
-
-```html
-<script>window.TIMELINE_API_URL = 'http://localhost:8080/api/timeline';</script>
-<script type="module" src="js/main.js"></script>
+```
+BACKEND_URL=http://localhost:8080
 ```
 
-Remove that line before committing — it is for local development only.
-
-### Option 2 — Use the mock fixture (default with `npm run serve`)
-
-`app/serve.json` rewrites `GET /api/timeline` to the mock fixture, so
-`npm run serve` works out of the box with no backend running. No code
-changes needed.
+Vite will proxy all `/api/*` requests to that origin server-side, so there
+are no CORS issues and no source files need to be changed. Delete the file
+or leave `BACKEND_URL` unset to switch back to the mock fixture.
 
 ## Tests
 

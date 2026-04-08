@@ -29,7 +29,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npx serve app -p 3000',
+    command: 'npx vite',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
   },
