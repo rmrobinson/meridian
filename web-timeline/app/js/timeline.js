@@ -160,6 +160,12 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
     for (const obj of stationObjects) {
       if (obj.y > yMax) break;
       if (obj.y >= yMin && !liveStations.has(obj.id)) {
+        // The terminating end station of a branch has no visual meaning when
+        // its parent secondary spine is collapsed — skip it entirely.
+        // Other branch stations (point events, departure dot) still collapse
+        // to the main spine normally.
+        if (obj.terminal && collapsedLaneOffsets.has(obj.parentOffset)) continue;
+
         // Collapse to the main spine when:
         //   a) the station belongs to a secondary-spine family (point events), or
         //   b) the station sits on a secondary-spine lane that has collapsed
