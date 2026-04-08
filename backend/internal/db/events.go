@@ -15,9 +15,10 @@ var ErrNotFound = errors.New("not found")
 
 // ListEventsFilter constrains the results returned by ListEvents.
 type ListEventsFilter struct {
-	FamilyID    string
-	From        string // ISO 8601 date, inclusive
-	To          string // ISO 8601 date, inclusive
+	FamilyID     string
+	MetadataType string
+	From         string // ISO 8601 date, inclusive
+	To           string // ISO 8601 date, inclusive
 	Visibilities []domain.Visibility
 }
 
@@ -27,13 +28,13 @@ func (d *DB) CreateEvent(ctx context.Context, e *domain.Event) error {
 		INSERT INTO events (
 			id, family_id, line_key, parent_line_key, type, title, label, icon, end_icon,
 			description, date, start_date, end_date, location_label, location_lat, location_lng,
-			external_url, hero_image_url, metadata, visibility,
+			external_url, hero_image_url, metadata, metadata_type, visibility,
 			source_service, source_event_id, canonical_id, created_at, updated_at
-		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		e.ID, e.FamilyID, e.LineKey, e.ParentLineKey, string(e.Type), e.Title,
 		e.Label, e.Icon, e.EndIcon, e.Description, e.Date, e.StartDate, e.EndDate,
 		e.LocationLabel, e.LocationLat, e.LocationLng,
-		e.ExternalURL, e.HeroImageURL, e.Metadata, string(e.Visibility),
+		e.ExternalURL, e.HeroImageURL, e.Metadata, e.MetadataType, string(e.Visibility),
 		e.SourceService, e.SourceEventID, e.CanonicalID,
 		e.CreatedAt.UTC().Format(time.RFC3339Nano),
 		e.UpdatedAt.UTC().Format(time.RFC3339Nano),
@@ -49,7 +50,7 @@ func (d *DB) GetEventByID(ctx context.Context, id string) (*domain.Event, error)
 	row := d.db.QueryRowContext(ctx, `
 		SELECT id, family_id, line_key, parent_line_key, type, title, label, icon, end_icon,
 		       description, date, start_date, end_date, location_label, location_lat, location_lng,
-		       external_url, hero_image_url, metadata, visibility,
+		       external_url, hero_image_url, metadata, metadata_type, visibility,
 		       source_service, source_event_id, canonical_id, created_at, updated_at, deleted_at
 		FROM events
 		WHERE id = ? AND deleted_at IS NULL`, id)
@@ -66,7 +67,7 @@ func (d *DB) ListEvents(ctx context.Context, f ListEventsFilter) ([]*domain.Even
 	query := `
 		SELECT id, family_id, line_key, parent_line_key, type, title, label, icon, end_icon,
 		       description, date, start_date, end_date, location_label, location_lat, location_lng,
-		       external_url, hero_image_url, metadata, visibility,
+		       external_url, hero_image_url, metadata, metadata_type, visibility,
 		       source_service, source_event_id, canonical_id, created_at, updated_at, deleted_at
 		FROM events
 		WHERE deleted_at IS NULL
@@ -77,6 +78,10 @@ func (d *DB) ListEvents(ctx context.Context, f ListEventsFilter) ([]*domain.Even
 	if f.FamilyID != "" {
 		query += " AND family_id = ?"
 		args = append(args, f.FamilyID)
+	}
+	if f.MetadataType != "" {
+		query += " AND metadata_type = ?"
+		args = append(args, f.MetadataType)
 	}
 	if f.From != "" {
 		query += " AND COALESCE(start_date, date) >= ?"
@@ -120,14 +125,14 @@ func (d *DB) UpdateEvent(ctx context.Context, e *domain.Event) error {
 			family_id = ?, line_key = ?, parent_line_key = ?, type = ?, title = ?,
 			label = ?, icon = ?, end_icon = ?, description = ?, date = ?, start_date = ?, end_date = ?,
 			location_label = ?, location_lat = ?, location_lng = ?,
-			external_url = ?, hero_image_url = ?, metadata = ?, visibility = ?,
+			external_url = ?, hero_image_url = ?, metadata = ?, metadata_type = ?, visibility = ?,
 			source_service = ?, source_event_id = ?, canonical_id = ?,
 			updated_at = ?
 		WHERE id = ? AND deleted_at IS NULL`,
 		e.FamilyID, e.LineKey, e.ParentLineKey, string(e.Type), e.Title,
 		e.Label, e.Icon, e.EndIcon, e.Description, e.Date, e.StartDate, e.EndDate,
 		e.LocationLabel, e.LocationLat, e.LocationLng,
-		e.ExternalURL, e.HeroImageURL, e.Metadata, string(e.Visibility),
+		e.ExternalURL, e.HeroImageURL, e.Metadata, e.MetadataType, string(e.Visibility),
 		e.SourceService, e.SourceEventID, e.CanonicalID,
 		time.Now().UTC().Format(time.RFC3339Nano),
 		e.ID,
@@ -170,7 +175,7 @@ func (d *DB) GetEventBySourceID(ctx context.Context, sourceService, sourceEventI
 	row := d.db.QueryRowContext(ctx, `
 		SELECT id, family_id, line_key, parent_line_key, type, title, label, icon, end_icon,
 		       description, date, start_date, end_date, location_label, location_lat, location_lng,
-		       external_url, hero_image_url, metadata, visibility,
+		       external_url, hero_image_url, metadata, metadata_type, visibility,
 		       source_service, source_event_id, canonical_id, created_at, updated_at, deleted_at
 		FROM events
 		WHERE source_service = ? AND source_event_id = ? AND deleted_at IS NULL
@@ -230,7 +235,7 @@ func (d *DB) GetEventWithLinked(ctx context.Context, id string) (*domain.Event, 
 	rows, err := d.db.QueryContext(ctx, `
 		SELECT id, family_id, line_key, parent_line_key, type, title, label, icon, end_icon,
 		       description, date, start_date, end_date, location_label, location_lat, location_lng,
-		       external_url, hero_image_url, metadata, visibility,
+		       external_url, hero_image_url, metadata, metadata_type, visibility,
 		       source_service, source_event_id, canonical_id, created_at, updated_at, deleted_at
 		FROM events
 		WHERE canonical_id = ? AND deleted_at IS NULL`, id)
@@ -272,6 +277,7 @@ func scanEvent(s scanner) (*domain.Event, error) {
 		externalURL   sql.NullString
 		heroImageURL  sql.NullString
 		metadata      sql.NullString
+		metadataType  sql.NullString
 		sourceService sql.NullString
 		sourceEventID sql.NullString
 		canonicalID   sql.NullString
@@ -286,7 +292,7 @@ func scanEvent(s scanner) (*domain.Event, error) {
 		&e.ID, &e.FamilyID, &e.LineKey, &parentLineKey, &eventType, &e.Title,
 		&label, &icon, &endIcon, &description, &date, &startDate, &endDate,
 		&locationLabel, &locationLat, &locationLng,
-		&externalURL, &heroImageURL, &metadata, &visibility,
+		&externalURL, &heroImageURL, &metadata, &metadataType, &visibility,
 		&sourceService, &sourceEventID, &canonicalID,
 		&createdAt, &updatedAt, &deletedAt,
 	)
@@ -338,6 +344,9 @@ func scanEvent(s scanner) (*domain.Event, error) {
 	}
 	if metadata.Valid {
 		e.Metadata = &metadata.String
+	}
+	if metadataType.Valid {
+		e.MetadataType = &metadataType.String
 	}
 	if sourceService.Valid {
 		e.SourceService = &sourceService.String

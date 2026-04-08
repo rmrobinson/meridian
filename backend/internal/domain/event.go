@@ -61,8 +61,9 @@ type Event struct {
 	LocationLng   *float64
 	ExternalURL   *string
 	HeroImageURL  *string
-	Metadata      *string // raw JSON
-	Visibility    Visibility
+	Metadata     *string // raw JSON
+	MetadataType *string // e.g. "life", "flight", "fitness"; nil when no metadata
+	Visibility   Visibility
 	SourceService  *string
 	SourceEventID  *string
 	CanonicalID    *string

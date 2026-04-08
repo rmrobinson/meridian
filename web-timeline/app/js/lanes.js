@@ -90,7 +90,7 @@ export function assignLanes(events, line_families) {
       family,
     });
     sweepEvents.push({
-      ms:   new Date(evt.end_date).getTime(),
+      ms:   evt.end_date ? new Date(evt.end_date).getTime() : Date.now(),
       kind: 'end',
       evt,
       family,

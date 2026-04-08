@@ -82,7 +82,7 @@ export function normalize(raw) {
 function injectBirthdayAge(events, birthDateStr) {
   const birth = new Date(birthDateStr);
   for (const evt of events) {
-    if (evt.family_id !== 'spine' || evt.metadata?.milestone_type !== 'birthday') continue;
+    if (evt.metadata_type !== 'life' || evt.metadata?.milestone_type !== 'birthday') continue;
     if (typeof evt.metadata.age === 'number') continue; // already set
     const evtDate = new Date(evt.date);
     evt.metadata.age = evtDate.getUTCFullYear() - birth.getUTCFullYear();
@@ -146,6 +146,7 @@ function normalizeEvent(evt) {
   return {
     id: evt.id,
     family_id: evt.family_id,
+    metadata_type: evt.metadata_type ?? null,
     line_key: evt.line_key,
     type: evt.type,
     title: evt.title,
@@ -200,12 +201,12 @@ export function generateBirthdays(birthDateStr, existingEvents = []) {
   const birth = new Date(birthDateStr);
   const today = new Date();
 
-  // Dates of explicit birthday spine events (ISO strings) — these win.
+  // Dates of explicit birthday life events (ISO strings) — these win.
   const explicitDates = new Set(
     existingEvents
       .filter(
         (e) =>
-          e.family_id === 'spine' && e.metadata?.milestone_type === 'birthday',
+          e.metadata_type === 'life' && e.metadata?.milestone_type === 'birthday',
       )
       .map((e) => e.date),
   );
@@ -222,6 +223,7 @@ export function generateBirthdays(birthDateStr, existingEvents = []) {
     birthdays.push({
       id: `auto_birthday_${age}`,
       family_id: 'spine',
+      metadata_type: 'life',
       line_key: 'spine',
       parent_line_key: null,
       type: 'point',

@@ -107,7 +107,7 @@ export function filterForYearZoom(events) {
     result.push(evt);
 
     const startMs = new Date(evt.start_date).getTime();
-    const endMs   = new Date(evt.end_date).getTime();
+    const endMs   = evt.end_date ? new Date(evt.end_date).getTime() : Date.now();
     const midDate = new Date((startMs + endMs) / 2).toISOString().slice(0, 10);
 
     result.push({

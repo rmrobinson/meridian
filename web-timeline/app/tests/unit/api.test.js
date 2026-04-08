@@ -26,6 +26,7 @@ describe('generateBirthdays()', () => {
     const existingEvents = [
       {
         family_id: 'spine',
+        metadata_type: 'life',
         date: explicitDate,
         metadata: { milestone_type: 'birthday' },
       },
@@ -142,6 +143,7 @@ describe('normalize()', () => {
         {
           id: 'b30',
           family_id: 'spine',
+          metadata_type: 'life',
           line_key: 'spine',
           type: 'point',
           title: '30th Birthday',
@@ -165,6 +167,7 @@ describe('normalize()', () => {
         {
           id: 'b30',
           family_id: 'spine',
+          metadata_type: 'life',
           line_key: 'spine',
           type: 'point',
           title: '30th Birthday Party',
@@ -427,5 +430,80 @@ describe('resolveFlights()', () => {
     const flight = result.events.find((e) => e.id === 'solo_flight');
     expect(flight.family_id).toBe('spine');
     expect(flight.line_key).toBe('spine');
+  });
+});
+
+// ── metadata_type passthrough ─────────────────────────────────────────────────
+
+describe('metadata_type passthrough', () => {
+  function rawEvent(overrides = {}) {
+    return {
+      person: { name: 'Test', birth_date: BIRTH },
+      line_families: [],
+      events: [
+        {
+          id: 'e1',
+          family_id: 'travel',
+          line_key: 'trip-a',
+          type: 'point',
+          title: 'Event',
+          date: '2023-01-01',
+          ...overrides,
+        },
+      ],
+    };
+  }
+
+  it('passes metadata_type from the raw event through normalizeEvent', () => {
+    const result = normalize(rawEvent({ metadata_type: 'travel' }));
+    expect(result.events.find((e) => e.id === 'e1').metadata_type).toBe('travel');
+  });
+
+  it('sets metadata_type to null when absent from the raw event', () => {
+    const result = normalize(rawEvent());
+    expect(result.events.find((e) => e.id === 'e1').metadata_type).toBeNull();
+  });
+
+  it('preserves an unknown metadata_type value unchanged', () => {
+    const result = normalize(rawEvent({ metadata_type: 'future_type' }));
+    expect(result.events.find((e) => e.id === 'e1').metadata_type).toBe('future_type');
+  });
+
+  it('resolveFlights preserves metadata_type: flight after reassigning family_id to travel', () => {
+    const span = {
+      id: 'trip', type: 'span', family_id: 'travel', line_key: 'japan-2023',
+      start_date: '2023-03-10', end_date: '2023-03-24',
+      title: 'Japan', date: null, metadata_type: 'travel',
+      label: null, icon: null, end_icon: null, location: null,
+      description: null, external_url: null, hero_image_url: null, photos: [], metadata: {},
+    };
+    const flight = {
+      id: 'f1', type: 'point', family_id: 'flights', line_key: 'lhr-nrt',
+      date: '2023-03-15', title: 'LHR→NRT', metadata_type: 'flight',
+      label: null, icon: 'mdi:airplane-takeoff', end_icon: null, start_date: null, end_date: null,
+      location: null, description: null, external_url: null, hero_image_url: null, photos: [], metadata: {},
+    };
+    const result = resolveFlights([span, flight]);
+    const resolved = result.find((e) => e.id === 'f1');
+    expect(resolved.family_id).toBe('travel');
+    expect(resolved.metadata_type).toBe('flight');
+  });
+
+  it('resolveFlights preserves metadata_type: flight when flight is promoted to spine', () => {
+    const flight = {
+      id: 'f_solo', type: 'point', family_id: 'flights', line_key: 'lhr-dub',
+      date: '2021-03-15', title: 'LHR→DUB', metadata_type: 'flight',
+      label: null, icon: 'mdi:airplane-takeoff', end_icon: null, start_date: null, end_date: null,
+      location: null, description: null, external_url: null, hero_image_url: null, photos: [], metadata: {},
+    };
+    const result = resolveFlights([flight]);
+    const resolved = result.find((e) => e.id === 'f_solo');
+    expect(resolved.family_id).toBe('spine');
+    expect(resolved.metadata_type).toBe('flight');
+  });
+
+  it('generateBirthdays() sets metadata_type: life on all generated events', () => {
+    const birthdays = generateBirthdays(BIRTH);
+    expect(birthdays.every((b) => b.metadata_type === 'life')).toBe(true);
   });
 });

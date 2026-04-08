@@ -191,7 +191,7 @@ function buildRenderObjects(data, pxPerDay) {
     if (!info) continue;
 
     const yStart = yFor(evt.start_date);
-    const yEnd   = yFor(evt.end_date);
+    const yEnd   = evt.end_date ? yFor(evt.end_date) : 0;
 
     // Skip spans entirely outside the canvas.
     if (yEnd < 0 || yStart > totalHeight) continue;
