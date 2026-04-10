@@ -108,6 +108,55 @@
   color: var(--color-label-secondary);
 }
 
+/* ── Flight card ────────────────────────────────────────────────────────────── */
+
+.card--flight .card-flight-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.card--flight .card-route {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.card--flight .card-flight-number {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--color-label-secondary);
+  margin: 0;
+}
+
+.card--flight .card-airline {
+  font-size: 0.875rem;
+  color: var(--color-label-secondary);
+  margin: 0;
+}
+
+.card--flight .card-aircraft {
+  font-size: 0.8rem;
+  color: var(--color-label-tertiary);
+  margin: 0;
+}
+
+.card--flight .card-flight-times {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.card--flight .card-departure,
+.card--flight .card-arrival {
+  font-size: 0.75rem;
+  color: var(--color-label-tertiary);
+  margin: 0;
+}
+
 /* ── Standard card ───────────────────────────────────────────────────────────── */
 
 /* .card--standard has no type-specific rules — the shared elements

@@ -212,24 +212,43 @@ function flightCard(event) {
     scheduled_arrival, actual_arrival,
   } = event.metadata ?? {};
 
+  // Route + flight number header
+  const header = document.createElement('div');
+  header.className = 'card-flight-header';
+
   if (origin_iata && destination_iata) {
-    wrap.appendChild(el('p', 'card-route', `${origin_iata} → ${destination_iata}`));
+    header.appendChild(el('p', 'card-route', `${origin_iata} → ${destination_iata}`));
   }
+  if (flight_number) {
+    header.appendChild(el('p', 'card-flight-number', flight_number));
+  }
+
+  if (header.children.length > 0) {
+    wrap.appendChild(header);
+  }
+
   if (airline) wrap.appendChild(el('p', 'card-airline', airline));
-  if (flight_number) wrap.appendChild(el('p', 'card-flight-number', flight_number));
   if (aircraft_type) wrap.appendChild(el('p', 'card-aircraft', aircraft_type));
+
+  // Times section
+  const times = document.createElement('div');
+  times.className = 'card-flight-times';
 
   if (scheduled_departure || actual_departure) {
     const dep = scheduled_departure ? formatTime(scheduled_departure) : '';
     const depActual = actual_departure && actual_departure !== scheduled_departure
-      ? ` (actual ${formatTime(actual_departure)})` : '';
-    wrap.appendChild(el('p', 'card-departure', `Dep: ${dep}${depActual}`));
+      ? ` (${formatTime(actual_departure)})` : '';
+    times.appendChild(el('p', 'card-departure', `${dep}${depActual}`));
   }
   if (scheduled_arrival || actual_arrival) {
     const arr = scheduled_arrival ? formatTime(scheduled_arrival) : '';
     const arrActual = actual_arrival && actual_arrival !== scheduled_arrival
-      ? ` (actual ${formatTime(actual_arrival)})` : '';
-    wrap.appendChild(el('p', 'card-arrival', `Arr: ${arr}${arrActual}`));
+      ? ` (${formatTime(actual_arrival)})` : '';
+    times.appendChild(el('p', 'card-arrival', `${arr}${arrActual}`));
+  }
+
+  if (times.children.length > 0) {
+    wrap.appendChild(times);
   }
 
   return wrap;

@@ -255,6 +255,7 @@ function buildRenderObjects(data, pxPerDay) {
           label:   null,
           icon:    evt.end_icon ?? null,
           arrival: true,  // CSS hides icon at compressed zooms
+          terminal: true,
         };
         renderObjects.push(endStation);
         endStationById.set(evt.id, endStation);
@@ -266,6 +267,7 @@ function buildRenderObjects(data, pxPerDay) {
           y: clampedYEnd, laneOffset, parentOffset, color, event: evt, isMajor: false,
           label: null,
           icon:  null,
+          terminal: true,
         };
         renderObjects.push(endStation);
         endStationById.set(evt.id, endStation);
