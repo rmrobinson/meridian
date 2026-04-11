@@ -30,7 +30,7 @@ const ICON_GAP  = 4;
  * @returns {SVGGElement}
  */
 export function buildStation(obj, spineX) {
-  const { id, event, y, isMajor, laneOffset, color, label, icon } = obj;
+  const { id, event, y, laneOffset, color, label, icon } = obj;
   const onSpine = laneOffset === 0;
   const cx_abs  = spineX + laneOffset;
   const cx_svg  = onSpine ? '50%' : String(cx_abs);
@@ -38,7 +38,7 @@ export function buildStation(obj, spineX) {
   // Right-side and spine: icon to the right, label to the left (inner side).
   // Left-side: icon to the left, label to the right (inner side).
   const isRight = laneOffset >= 0;
-  const dotR    = isMajor ? 7 : 4;
+  const dotR    = 4;
 
   const iconPath = icon ? getIconPath(icon) : null;
 
@@ -98,8 +98,7 @@ export function buildStation(obj, spineX) {
       : cx_abs + dotR + LABEL_GAP;
 
     const text = svgEl('text');
-    text.setAttribute('class',
-      `station-label${isMajor ? ' station-label--major' : ''}`);
+    text.setAttribute('class', 'station-label');
     text.setAttribute('x',                 String(labelX));
     text.setAttribute('y',                 String(y));
     text.setAttribute('text-anchor',       isRight ? 'end' : 'start');
@@ -107,6 +106,97 @@ export function buildStation(obj, spineX) {
     text.textContent = label;
     g.appendChild(text);
   }
+
+  return g;
+}
+
+/**
+ * Build a cluster station <g> element.
+ *
+ * A cluster station renders as a plain dot with no icon, and a count pill on
+ * the label side (inner side, between dot and spine) showing the member count.
+ *
+ * @param {object} obj     - Cluster render object from clustering pass.
+ * @param {number} spineX  - Absolute pixel X of the spine centre.
+ * @returns {SVGGElement}
+ */
+export function buildClusterStation(obj, spineX) {
+  const { id, y, laneOffset, color, count, familyId } = obj;
+  const onSpine = laneOffset === 0;
+  const cx_abs = spineX + laneOffset;
+  const cx_svg = onSpine ? '50%' : String(cx_abs);
+  const isRight = laneOffset >= 0;
+  const dotR = 4;
+
+  const g = svgEl('g');
+  g.setAttribute('class', `station station--${familyId}`);
+  g.setAttribute('data-testid', `cluster-${id}`);
+  g.setAttribute('role', 'button');
+  g.setAttribute('tabindex', '0');
+  g.setAttribute('aria-label', `${count} events`);
+  g.dataset.id = id;
+  g.dataset.familyId = familyId;
+
+  // ── Hit area — minimum 44×44px touch target ───────────────────────────────
+  const hit = svgEl('circle');
+  hit.setAttribute('class', 'station-hit');
+  hit.setAttribute('cx', cx_svg);
+  hit.setAttribute('cy', y);
+  hit.setAttribute('r', '22');
+  g.appendChild(hit);
+
+  // ── Dot ───────────────────────────────────────────────────────────────────
+  const dot = svgEl('circle');
+  dot.setAttribute('class', 'station-dot');
+  dot.setAttribute('cx', cx_svg);
+  dot.setAttribute('cy', y);
+  dot.setAttribute('r', dotR);
+  if (color) dot.setAttribute('fill', color);
+  g.appendChild(dot);
+
+  // ── Count pill ────────────────────────────────────────────────────────────
+  // Positioned on the label side (inner side). Pill is a rounded rect with
+  // low-opacity family color fill, and count text in muted color.
+  const LABEL_GAP = 6;
+  const pillX = isRight
+    ? cx_abs - dotR - LABEL_GAP
+    : cx_abs + dotR + LABEL_GAP;
+  const pillY = y;
+
+  // Text width is estimated (~10px per digit + padding); adjust as needed.
+  const countStr = String(count);
+  const textWidthEst = countStr.length * 6 + 8;
+  const pillWidth = textWidthEst;
+  const pillHeight = 18;
+  const pillRx = 4;
+
+  // Rect: centered on the label position, with border and semi-opaque fill.
+  const rect = svgEl('rect');
+  rect.setAttribute('class', 'cluster-pill-bg');
+  rect.setAttribute('x', String(isRight ? pillX - pillWidth : pillX));
+  rect.setAttribute('y', String(pillY - pillHeight / 2));
+  rect.setAttribute('width', String(pillWidth));
+  rect.setAttribute('height', String(pillHeight));
+  rect.setAttribute('rx', String(pillRx));
+  rect.setAttribute('fill', color ?? 'var(--color-label)');
+  rect.setAttribute('fill-opacity', '0.3');
+  rect.setAttribute('stroke', color ?? 'var(--color-label)');
+  rect.setAttribute('stroke-width', '1.5');
+  rect.setAttribute('stroke-opacity', '0.6');
+  g.appendChild(rect);
+
+  // Text: count in the pill, using label typography.
+  // Position at the center of the rect (accounting for rect offset).
+  const textX = isRight ? pillX - pillWidth / 2 : pillX + pillWidth / 2;
+  const text = svgEl('text');
+  text.setAttribute('class', 'cluster-pill-text');
+  text.setAttribute('x', String(textX));
+  text.setAttribute('y', String(pillY));
+  text.setAttribute('text-anchor', 'middle');
+  text.setAttribute('dominant-baseline', 'central');
+  text.setAttribute('fill', 'var(--color-label-muted)');
+  text.textContent = countStr;
+  g.appendChild(text);
 
   return g;
 }

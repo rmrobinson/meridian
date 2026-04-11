@@ -6,6 +6,8 @@
  * milestone_type: "birthday" on the same date replace the auto-generated entry.
  */
 
+import { getIconPngUrl } from './icons.js';
+
 const TIMELINE_URL = '/api/timeline';
 
 /**
@@ -138,6 +140,7 @@ export function resolveFlights(events) {
 // ---------------------------------------------------------------------------
 
 function normalizeEvent(evt) {
+  const icon = evt.icon ?? null;
   return {
     id: evt.id,
     family_id: evt.family_id,
@@ -146,7 +149,8 @@ function normalizeEvent(evt) {
     type: evt.type,
     title: evt.title,
     label: evt.label ?? null,   // short display string; falls back to truncated title if null
-    icon: evt.icon ?? null,       // icon shown at the departure station (start of span / point event)
+    icon,       // icon shown at the departure station (start of span / point event)
+    icon_png_url: getIconPngUrl(icon), // PNG version of icon for card display
     end_icon: evt.end_icon ?? null, // icon shown at the arrival station (merge end of span only)
     // Span fields
     start_date: evt.start_date ?? null,

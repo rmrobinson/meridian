@@ -122,12 +122,12 @@ test.describe('Grid — desktop (1280×800)', () => {
     await activateYearZoom(page);
     await page.locator('.week-cell[data-week="2023-W11"]').click();
     await expect(page.locator('#card-overlay')).not.toHaveAttribute('hidden');
-    // Card should contain a .card--week element.
-    await expect(page.locator('#card-content .card--week')).toBeAttached();
+    // Card should contain a .card--week-cluster element.
+    await expect(page.locator('#card-content .card--week-cluster')).toBeAttached();
     // Should have at least one group label.
-    await expect(page.locator('.card-week-group-label').first()).toBeAttached();
+    await expect(page.locator('.cluster-group-label').first()).toBeAttached();
     // Should have at least one tappable event item.
-    await expect(page.locator('.week-event-item').first()).toBeAttached();
+    await expect(page.locator('.cluster-member-item').first()).toBeAttached();
   });
 
   test('clicking a neutral cell does not open the card overlay', async ({ page }) => {
@@ -148,16 +148,16 @@ test.describe('Grid — desktop (1280×800)', () => {
     await expect(page.locator('#card-overlay')).not.toHaveAttribute('hidden');
 
     // Click the first event item.
-    const firstItem = page.locator('.week-event-item').first();
+    const firstItem = page.locator('.cluster-member-item').first();
     await expect(firstItem).toBeAttached();
     await firstItem.click();
 
     // Card content should now show an individual event card (not the week card).
-    // The week card (card--week) should have been replaced.
+    // The week-cluster card should have been replaced by an individual event card.
     // Individual cards have classes like card--trip, card--milestone, card--standard etc.
     const content = page.locator('#card-content');
-    const hasWeekCard = await content.locator('.card--week').count();
-    expect(hasWeekCard).toBe(0);
+    const hasWeekClusterCard = await content.locator('.card--week-cluster').count();
+    expect(hasWeekClusterCard).toBe(0);
   });
 
   test('close button dismisses the week card', async ({ page }) => {

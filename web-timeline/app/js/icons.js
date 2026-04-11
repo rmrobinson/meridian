@@ -37,6 +37,18 @@ export function getIconPath(iconId) {
   return iconCache.get(iconId) ?? null;
 }
 
+/**
+ * Return the PNG URL for an MDI icon, or null if not an MDI icon.
+ *
+ * @param {string} iconId - e.g. "mdi:airplane-takeoff" or "emoji:airplane"
+ * @returns {string|null} - e.g. "/icons/airplane-takeoff.png" or null for non-mdi icons
+ */
+export function getIconPngUrl(iconId) {
+  if (!iconId?.startsWith('mdi:')) return null;
+  const name = iconId.replace(/^mdi:/, '');
+  return `/icons/${name}.png`;
+}
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------

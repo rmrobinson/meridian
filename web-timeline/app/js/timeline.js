@@ -17,7 +17,7 @@
  */
 
 import { branchBezier, mergeBezier, straightSegment } from './lines.js';
-import { buildStation } from './stations.js';
+import { buildStation, buildClusterStation } from './stations.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -170,13 +170,19 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
         //   a) the station belongs to a secondary-spine family (point events), or
         //   b) the station sits on a secondary-spine lane that has collapsed
         //      (departure/arrival stations of child span branches).
-        const stationObj =
-          collapsedSecondarySpines.has(obj.event?.family_id) ||
-          collapsedLaneOffsets.has(obj.laneOffset) ||
-          collapsedLaneOffsets.has(obj.parentOffset)
-            ? { ...obj, laneOffset: 0 }
-            : obj;
-        liveStations.set(obj.id, stationsLayer.appendChild(buildStation(stationObj, spineX)));
+        // Clusters are never collapsed (they contain no secondary-spine logic).
+        const stationObj = obj.type === 'cluster'
+          ? obj
+          : (collapsedSecondarySpines.has(obj.event?.family_id) ||
+             collapsedLaneOffsets.has(obj.laneOffset) ||
+             collapsedLaneOffsets.has(obj.parentOffset)
+              ? { ...obj, laneOffset: 0 }
+              : obj);
+
+        const element = obj.type === 'cluster'
+          ? buildClusterStation(stationObj, spineX)
+          : buildStation(stationObj, spineX);
+        liveStations.set(obj.id, stationsLayer.appendChild(element));
       }
     }
 
@@ -223,7 +229,7 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
     // below the visible window. Lookup maps enable O(1) eviction in pass 1.
     spanObjects    = newRenderObjects.filter((o) => o.type === 'span-line');
     spanObjects.sort((a, b) => a.yEnd - b.yEnd);       // yEnd is the top (smaller Y)
-    stationObjects = newRenderObjects.filter((o) => o.type === 'station');
+    stationObjects = newRenderObjects.filter((o) => o.type === 'station' || o.type === 'cluster');
     stationObjects.sort((a, b) => a.y - b.y);
     spanObjectById    = new Map(spanObjects.map((o) => [o.id, o]));
     stationObjectById = new Map(stationObjects.map((o) => [o.id, o]));

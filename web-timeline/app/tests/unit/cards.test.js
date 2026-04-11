@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { buildCardContent } from '../../js/cards.js';
+import { buildCardContent, buildClusterCardContent } from '../../js/cards.js';
 
 // ── Fixture helpers ───────────────────────────────────────────────────────────
 
@@ -665,29 +665,86 @@ describe('concert card', () => {
 // ── Aggregate card ────────────────────────────────────────────────────────────
 
 describe('aggregate card', () => {
-  it('renders the aggregate title', () => {
+  it('renders the aggregate title with family label and date range', () => {
     const frag = buildCardContent(base({
-      type: 'aggregate', title: '3 Books', year_month: '2022-08',
+      type: 'aggregate', title: '3 Books', family_id: 'books', year_month: '2022-08',
       events: [base({ title: 'Dune' }), base({ title: 'Foundation' }), base({ title: 'Neuromancer' })],
     }));
-    expect(getRoot(frag).querySelector('.card-title').textContent).toBe('3 Books');
+    const title = getRoot(frag).querySelector('.card-title').textContent;
+    expect(title).toContain('Books');
+    expect(title).toContain('2022');
   });
 
-  it('renders one list item per source event', () => {
-    const events = [base({ title: 'Dune' }), base({ title: 'Foundation' })];
-    const frag = buildCardContent(base({ type: 'aggregate', title: '2 Books', year_month: '2022-08', events }));
-    const items = getRoot(frag).querySelectorAll('.card-aggregate-list li');
-    expect(items.length).toBe(2);
-    expect(items[0].textContent).toBe('Dune');
-    expect(items[1].textContent).toBe('Foundation');
+  it('renders one tappable button per source event', () => {
+    const events = [
+      base({ id: 'evt-1', title: 'Dune' }),
+      base({ id: 'evt-2', title: 'Foundation' }),
+    ];
+    const frag = buildCardContent(base({ type: 'aggregate', title: '2 Books', family_id: 'books', year_month: '2022-08', events }));
+    const buttons = getRoot(frag).querySelectorAll('.cluster-member-item');
+    expect(buttons.length).toBe(2);
+    expect(buttons[0].dataset.id).toBe('evt-1');
+    expect(buttons[1].dataset.id).toBe('evt-2');
   });
 
-  it('renders the formatted month/year in dates', () => {
+  it('renders the formatted month/year in the header', () => {
     const frag = buildCardContent(base({
-      type: 'aggregate', title: '2 runs', year_month: '2023-06', events: [],
+      type: 'aggregate', title: '2 runs', family_id: 'fitness', year_month: '2023-06', events: [],
     }));
-    const text = getRoot(frag).querySelector('.card-dates').textContent;
+    const text = getRoot(frag).querySelector('.card-title').textContent;
     expect(text).toContain('2023');
     expect(text.toLowerCase()).toContain('june');
+  });
+});
+
+describe('cluster card', () => {
+  it('renders a day-zoom cluster with family and date range', () => {
+    const frag = buildClusterCardContent({
+      type: 'cluster',
+      familyId: 'fitness',
+      startDate: '2024-01-01',
+      endDate: '2024-01-06',
+      count: 5,
+      members: [
+        base({ id: 'evt-1', title: 'Run 1', date: '2024-01-01' }),
+        base({ id: 'evt-2', title: 'Run 2', date: '2024-01-03' }),
+      ],
+    });
+    const title = getRoot(frag).querySelector('.card-title').textContent;
+    expect(title).toContain('Fitness');
+    expect(title).toContain('2024');
+  });
+
+  it('renders tappable member rows with correct data-id', () => {
+    const frag = buildClusterCardContent({
+      type: 'cluster',
+      familyId: 'fitness',
+      startDate: '2024-01-01',
+      endDate: '2024-01-06',
+      members: [
+        base({ id: 'evt-a', title: 'Run 1', date: '2024-01-01' }),
+        base({ id: 'evt-b', title: 'Run 2', date: '2024-01-03' }),
+      ],
+    });
+    const buttons = getRoot(frag).querySelectorAll('.cluster-member-item');
+    expect(buttons.length).toBe(2);
+    expect(buttons[0].dataset.id).toBe('evt-a');
+    expect(buttons[1].dataset.id).toBe('evt-b');
+  });
+
+  it('renders week cluster with family grouping', () => {
+    const frag = buildClusterCardContent({
+      type: 'week-cluster',
+      startDate: '2024-01-01',
+      endDate: '2024-01-07',
+      members: [
+        base({ id: 'evt-1', title: 'Run', family_id: 'fitness', date: '2024-01-01' }),
+        base({ id: 'evt-2', title: 'Book', family_id: 'books', date: '2024-01-02' }),
+      ],
+    });
+    const title = getRoot(frag).querySelector('.card-title').textContent;
+    expect(title).toContain('Week');
+    const buttons = getRoot(frag).querySelectorAll('.cluster-member-item');
+    expect(buttons.length).toBe(2);
   });
 });
