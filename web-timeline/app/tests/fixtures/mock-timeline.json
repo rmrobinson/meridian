@@ -8,7 +8,7 @@
       "id": "books",
       "label": "Books",
       "base_color_hsl": [20, 65, 80],
-      "side": "left",
+      "side": "right",
       "on_end": "terminate",
       "spawn_behavior": "per_event",
       "parent_family_id": "hobbies"
