@@ -26,6 +26,7 @@ export const CLUSTER_MAX_SPAN_DAYS = 14;
 export function clusterPointEvents(pointStations, pxPerDay) {
   const gapPx = CLUSTER_GAP_DAYS * pxPerDay;
   const maxSpanPx = CLUSTER_MAX_SPAN_DAYS * pxPerDay;
+  const epsilon = 0.1; // floating-point tolerance for span comparisons
 
   // Group stations by line_key (same line = same family + family spawn behavior).
   const lineGroups = new Map();
@@ -60,7 +61,7 @@ export function clusterPointEvents(pointStations, pxPerDay) {
         // Check span threshold: distance from first to next.
         const spanStart = lineStations[runStart];
         const spanSoFar = Math.abs(next.y - spanStart.y);
-        if (spanSoFar > maxSpanPx) break;
+        if (spanSoFar > maxSpanPx + epsilon) break;
 
         runMembers.push(next);
         i++;

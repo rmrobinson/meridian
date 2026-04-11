@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { aggregateByMonth, filterForYearZoom } from '../../js/zoom.js';
+import { aggregateByMonth } from '../../js/zoom.js';
 
 // ── Fixture helpers ────────────────────────────────────────────────────────────
 
@@ -104,68 +104,5 @@ describe('aggregateByMonth()', () => {
 
   it('returns empty array when given empty input', () => {
     expect(aggregateByMonth([], [])).toEqual([]);
-  });
-});
-
-// ── filterForYearZoom() ───────────────────────────────────────────────────────
-
-describe('filterForYearZoom()', () => {
-  it('removes all raw point events', () => {
-    const events = [
-      makePoint('e1', 'books',   'k1',      '2023-03-15'),
-      makePoint('e2', 'fitness', 'fitness',  '2023-04-01'),
-    ];
-    const result = filterForYearZoom(events);
-    // No event whose id matches the original point events should remain.
-    expect(result.find((e) => e.id === 'e1')).toBeUndefined();
-    expect(result.find((e) => e.id === 'e2')).toBeUndefined();
-  });
-
-  it('retains all span events', () => {
-    const events = [
-      makeSpan('s1', 'books',  'k1', '2023-03-01', '2023-03-31'),
-      makeSpan('s2', 'travel', 'k2', '2022-07-01', '2022-07-14'),
-    ];
-    const result = filterForYearZoom(events);
-    expect(result.filter((e) => e.type === 'span')).toHaveLength(2);
-  });
-
-  it('adds exactly one synthetic midpoint station per span', () => {
-    const events = [
-      makeSpan('s1', 'books',  'k1', '2023-03-01', '2023-03-31'),
-      makeSpan('s2', 'travel', 'k2', '2022-07-01', '2022-07-14'),
-    ];
-    const result = filterForYearZoom(events);
-    const midpoints = result.filter((e) => e.metadata?._synthetic_midpoint);
-    expect(midpoints).toHaveLength(2);
-  });
-
-  it('midpoint date falls strictly between start_date and end_date', () => {
-    const span   = makeSpan('s1', 'books', 'k1', '2023-03-01', '2023-03-31');
-    const result = filterForYearZoom([span]);
-    const mid    = result.find((e) => e.metadata?._synthetic_midpoint);
-    const midMs  = new Date(mid.date).getTime();
-    expect(midMs).toBeGreaterThan(new Date(span.start_date).getTime());
-    expect(midMs).toBeLessThan(new Date(span.end_date).getTime());
-  });
-
-  it('midpoint station inherits family_id and line_key from its span', () => {
-    const span   = makeSpan('s1', 'books', 'book-key-1', '2023-03-01', '2023-03-31');
-    const result = filterForYearZoom([span]);
-    const mid    = result.find((e) => e.metadata?._synthetic_midpoint);
-    expect(mid.family_id).toBe('books');
-    expect(mid.line_key).toBe('book-key-1');
-  });
-
-  it('midpoint station id is derived from span id', () => {
-    const span   = makeSpan('s1', 'books', 'k1', '2023-03-01', '2023-03-31');
-    const result = filterForYearZoom([span]);
-    const mid    = result.find((e) => e.metadata?._synthetic_midpoint);
-    expect(mid.id).toBe('midpoint-s1');
-  });
-
-  it('returns empty array when given only point events', () => {
-    const events = [makePoint('e1', 'fitness', 'fitness', '2023-03-15')];
-    expect(filterForYearZoom(events)).toHaveLength(0);
   });
 });

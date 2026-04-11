@@ -13,7 +13,7 @@
 
 :root {
   /* Layout */
-  --zoom-bar-height: 48px;
+  --zoom-bar-height: 96px;  /* Two rows: 48px each */
 
   /* Backgrounds */
   --color-bg:      #0d0d0d;
@@ -24,6 +24,7 @@
   --color-label:           #e8e8e8;
   --color-label-secondary: #cccccc;
   --color-label-tertiary:  #aaaaaa;
+  --color-label-muted:     #ffffff;
 
   /* Borders & separators */
   --color-border:        rgba(255, 255, 255, 0.08);  /* subtle dividers, year ticks */
@@ -67,6 +68,7 @@
     --color-label:           #111111;
     --color-label-secondary: #555555;
     --color-label-tertiary:  #777777;
+    --color-label-muted:     #000000;
 
     --color-border:        rgba(0, 0, 0, 0.08);
     --color-border-strong: rgba(0, 0, 0, 0.20);
@@ -103,6 +105,7 @@
   --color-label:           #e8e8e8;
   --color-label-secondary: #cccccc;
   --color-label-tertiary:  #aaaaaa;
+  --color-label-muted:     #ffffff;
 
   --color-border:        rgba(255, 255, 255, 0.08);
   --color-border-strong: rgba(255, 255, 255, 0.20);
@@ -138,6 +141,7 @@
   --color-label:           #111111;
   --color-label-secondary: #555555;
   --color-label-tertiary:  #777777;
+  --color-label-muted:     #000000;
 
   --color-border:        rgba(0, 0, 0, 0.08);
   --color-border-strong: rgba(0, 0, 0, 0.20);
@@ -196,13 +200,64 @@ html, body {
   height: var(--zoom-bar-height);
   z-index: 100;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
   background: var(--color-overlay);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--color-border);
 }
 
+/* Row structure — each row is 48px */
+.zoom-bar__row {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  gap: 16px;
+}
+
+/* Primary row — always visible, contains view switcher + theme toggle */
+.zoom-bar__row--primary {
+  position: relative;
+}
+
+/* Zoom row — conditionally hidden in grid view */
+.zoom-bar__row--zoom {
+  border-top: 1px solid var(--color-border);
+}
+
+.zoom-bar__row--zoom[hidden] {
+  display: none;
+}
+
+/* View switcher — primary navigation control, centered */
+.view-switcher {
+  display: flex;
+  gap: 4px;
+}
+
+.view-btn {
+  padding: 6px 16px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 20px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background 0.15s, color 0.15s;
+}
+
+.view-btn--active {
+  background: var(--color-btn-active-bg);
+  border-color: var(--color-btn-active-border);
+}
+
+.view-btn:hover:not(.view-btn--active) {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border);
+}
+
+/* Zoom controls — centered in their own row */
 .zoom-controls {
   display: flex;
   gap: 4px;

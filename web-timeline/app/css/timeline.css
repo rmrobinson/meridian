@@ -9,45 +9,63 @@
   pointer-events: none;
 }
 
-/* Icons: hover/tap only at ZOOM_MONTH, hidden at ZOOM_YEAR (matches label behaviour). */
+/* Icons: visible at ZOOM_DAY, hover/tap only at ZOOM_WEEK and ZOOM_MONTH. */
+body.zoom-day .station-icon {
+  display: block !important;
+}
+
+body.zoom-week .station-icon {
+  display: none !important;
+}
+
+body.zoom-week .station:hover .station-icon,
+body.zoom-week .station:focus-within .station-icon {
+  display: block !important;
+}
+
 body.zoom-month .station-icon {
-  display: none;
+  display: none !important;
 }
 
 body.zoom-month .station:hover .station-icon,
 body.zoom-month .station:focus-within .station-icon {
-  display: block;
-}
-
-body.zoom-year .station-icon {
-  display: none;
+  display: block !important;
 }
 
 /* Hovering the span line bridge: reveal label + icon on both departure and
-   arrival stations. Applies at zoom-month (where direct station hover already
-   works) and zoom-year (which otherwise has no hover reveal). */
-body.zoom-month .station--span-hover .station-icon,
-body.zoom-year  .station--span-hover .station-icon {
+   arrival stations. Applies at zoom-week and zoom-month (where direct station hover already
+   works). */
+body.zoom-week .station--span-hover .station-icon,
+body.zoom-month .station--span-hover .station-icon {
   display: block;
 }
 
-/* Labels: always visible at ZOOM_DAY; hover/tap-only at ZOOM_MONTH; hidden at ZOOM_YEAR. */
+/* Labels: always visible at ZOOM_DAY; hover/tap-only at ZOOM_WEEK and ZOOM_MONTH. */
+body.zoom-day .station-label {
+  display: block !important;
+}
+
+body.zoom-week .station-label {
+  display: none !important;
+}
+
+body.zoom-week .station:hover .station-label,
+body.zoom-week .station:focus-within .station-label {
+  display: block;
+}
+
 body.zoom-month .station-label {
-  display: none;
+  display: none !important;
 }
 
 body.zoom-month .station:hover .station-label,
 body.zoom-month .station:focus-within .station-label {
-  display: block;
+  display: block !important;
 }
 
-body.zoom-year .station-label {
-  display: none;
-}
-
-body.zoom-month .station--span-hover .station-label,
-body.zoom-year  .station--span-hover .station-label {
-  display: block;
+body.zoom-week .station--span-hover .station-label,
+body.zoom-month .station--span-hover .station-label {
+  display: block !important;
 }
 
 /* ── Spine ────────────────────────────────────────────────────────────────── */

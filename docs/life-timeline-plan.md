@@ -22,15 +22,17 @@ The visual grammar is intentionally subway-map-like: straight vertical segments,
 
 ## Zoom Levels
 
-Inspired by the "life in weeks" framework, the timeline has three zoom levels that change both the visual density and what information is shown.
+The subway view has three zoom levels that change both the visual density and what information is shown.
 
 | Level | Scale | What's visible |
 |---|---|---|
 | **Day** | ~2px per day | Every event as a full station with label |
-| **Month** | Compressed | Events aggregated per month per line (e.g. "8 runs in March") |
-| **Year** | Very compressed | Span lines only + major milestones; resembles "life in weeks" grid |
+| **Week** | ~0.55px per day | Events aggregated per week per line (e.g. "3 runs this week") |
+| **Month** | ~0.25px per day | Events aggregated per month per line (e.g. "8 runs in March") |
 
-Zoom is controlled by a toggle in the UI or scroll-wheel modifier. The SVG `viewBox` re-scales and station labels show/hide via CSS classes. Animated transitions between zoom levels.
+Zoom is controlled by a Day / Week / Month segmented control that appears in the top bar when the subway view is active. The SVG `viewBox` re-scales and station labels show/hide via CSS classes. Animated transitions between zoom levels.
+
+The top bar also contains a **view switcher** (subway / grid) as the primary navigation control. The grid view is the "life in weeks" HTML/CSS Grid visualization. The zoom control is hidden when grid view is active, as the grid has no sub-controls of its own.
 
 ---
 
@@ -390,8 +392,7 @@ No framework. No build step. ES modules via `type="module"` for clean file separ
     lanes.js          — lane assignment algorithm
     lines.js          — SVG path generation (segments + bezier curves)
     stations.js       — event dot rendering + hover/click targets
-    clusters.js       — post-layout clustering pass; produces cluster render objects from per-line point events
-    cards.js          — detail card renderer registry + navigation stack
+    cards.js          — detail card renderer registry
     zoom.js           — zoom level state, viewBox transitions
   /tests
     unit/
@@ -399,8 +400,6 @@ No framework. No build step. ES modules via `type="module"` for clean file separ
       lines.test.js
       api.test.js
       zoom.test.js
-      clusters.test.js
-      stations.test.js
     integration/
       desktop.spec.js
       mobile.spec.js
@@ -452,7 +451,15 @@ The result is a tree of X positions. The spine is the root at X = center. A univ
 
 Multiple spans from the same family can be active simultaneously (two books being read at once, two jobs during a transition period). The lane algorithm handles these like any other concurrent spans — each gets its own lane — but with one additional rule: **sibling lanes from the same family are placed adjacent to each other**, innermost first. This keeps concurrent books visually grouped rather than scattered across the canvas.
 
-On desktop (sufficient width), each sibling gets its own lane at normal line weight. On mobile (collapsed lane view), siblings from the same family that are concurrent are **merged into a single bolder line** at a fixed stroke weight — multiplicity is not communicated through weight scaling, as the cluster count pill handles density signalling. When one sibling ends while others remain active, its termination station renders at the correct Y position and the merged line continues unchanged for the remaining siblings. If the last sibling ends, the line terminates normally. The collapsed line is tappable and opens a cluster card listing all currently active siblings, from which you can tap into an individual event's detail card.
+On desktop (sufficient width), each sibling gets its own lane at normal line weight. On mobile (collapsed lane view), siblings from the same family that are concurrent are **merged into a single bolder line** whose stroke weight scales with the number of active siblings:
+
+```
+1 active:  stroke-width: 3px  (normal)
+2 active:  stroke-width: 5px  (bold, indicating multiplicity)
+3 active:  stroke-width: 7px
+```
+
+When one sibling ends while others remain active, its termination station renders at the correct Y position, then the merged line continues at the reduced weight for the remaining count. If the last sibling ends, the line terminates normally. The collapsed line is tappable and opens a summary card listing all currently active siblings, from which you can tap into an individual event's detail card.
 
 ### Step 3 — Path Generation
 
@@ -473,16 +480,16 @@ C parentX, branchY+15, laneX, branchY+15, laneX, branchY+30
 
 Place `<circle>` elements at the correct `(laneX, timeToY(date))` for each visible event. Each station has three visual components whose presence depends on zoom level:
 
-**Station dot** — always rendered at day zoom. At month and year zoom, replaced by the icon if one is set; if no icon is set the dot remains.
+**Station dot** — always rendered at day zoom. At week and month zoom, replaced by the icon if one is set; if no icon is set the dot remains.
 
 **Icon** — rendered as an inline SVG symbol referenced from the central sprite sheet. Placement is zoom-dependent:
 - `ZOOM_DAY`: icon sits beside the station dot, to the outer side (away from spine), vertically centred on the dot. Label appears on the other side or below.
-- `ZOOM_MONTH` / `ZOOM_YEAR`: icon replaces the station dot entirely, sized to approximately the same footprint (~16×16px). No separate dot rendered.
+- `ZOOM_MONTH` / `ZOOM_WEEK`: icon replaces the station dot entirely, sized to approximately the same footprint (~16×16px). No separate dot rendered.
 
 **Label** — the short `label` string (or truncated `title` if absent) rendered as a `<text>` element:
 - `ZOOM_DAY`: always visible, positioned beside the station.
 - `ZOOM_MONTH`: visible on hover/tap only, to avoid overlapping aggregate labels.
-- `ZOOM_YEAR`: hidden entirely — only icons or dots visible at this density.
+- `ZOOM_WEEK`: hidden entirely — only icons or dots visible at this density.
 
 On hover/tap, the full label always appears regardless of zoom level, overriding the suppressed state. Detail card opens on click/tap as before.
 
@@ -490,7 +497,7 @@ On hover/tap, the full label always appears regardless of zoom level, overriding
 
 At month zoom: group point events by `(family_id, year-month)` bucket. Replace clusters with a single aggregate station labeled "8 runs" or "3 books finished". Span events are never aggregated — they always render as continuous lines.
 
-At year zoom: hide all point events entirely. Show only span lines and a single milestone station per span at its midpoint.
+At week zoom: group point events by `(family_id, year-week)` bucket. Replace clusters with a single aggregate station. Span events are never aggregated — they always render as continuous lines.
 
 ---
 
@@ -528,67 +535,7 @@ New icons are added to the sprite sheet centrally. Events reference them by ID s
 |---|---|---|---|
 | Day | Beside dot, outer side | Visible | Always visible |
 | Month | Replaces dot | Hidden | Hover/tap only |
-| Year | Replaces dot | Hidden | Hidden |
-
----
-
-## Cluster Stations
-
-At day zoom, point events on the same line that fall close together in time are collapsed into a **cluster station** to prevent overlapping icons, labels, and hit targets.
-
-### Clustering Rules
-
-Clustering is computed per line (not globally) after lane assignment, as a post-processing pass over each line's sorted point events:
-
-- Start a cluster when two consecutive events on the same line are within **`CLUSTER_GAP_DAYS`** of each other
-- Extend the cluster while each successive event is within `CLUSTER_GAP_DAYS` of the previous member
-- Close the cluster and start a new one if the gap to the next event exceeds `CLUSTER_GAP_DAYS`, or if the cluster's total date span exceeds **`CLUSTER_MAX_SPAN_DAYS`**
-- A cluster with only one member is a normal station — no special rendering
-
-```js
-const CLUSTER_GAP_DAYS = 7;      // max gap between consecutive events to extend cluster
-const CLUSTER_MAX_SPAN_DAYS = 14; // hard cap on total cluster duration
-```
-
-The cluster's Y position is the midpoint of its first and last member event.
-
-Span events are never clustered — they render as continuous lines regardless of point event density around them.
-
-### Cluster Station Rendering
-
-A cluster station renders as a plain dot in the line's family color (no icon). In place of a label, a **count pill** is shown on the label side of the dot (same side as labels on normal stations, opposite the icon side). The pill is a rounded rect with a low-opacity fill using the family color, containing the event count in the same typography as station labels:
-
-```
-● [3]      ← count pill on label side, no icon
-```
-
-The pill communicates multiplicity without ambiguity. It uses `--color-label-muted` for the number and a semi-transparent family color fill so it reads as a count rather than a label.
-
-### Cluster Card
-
-Tapping a cluster station opens a **Cluster card** — a new card type in the card registry. The card shows:
-
-- Header: family name + date range of the cluster (e.g. "Fitness · Jun 3–Jun 9")
-- Time-ordered list of member events, each as a tappable row: icon + label + date
-- Tapping a row opens that event's individual detail card
-
-The cluster card is a reusable primitive shared across three contexts:
-
-| Context | Source of event list |
-|---|---|
-| Day zoom proximity cluster | Events within `CLUSTER_GAP_DAYS` / `CLUSTER_MAX_SPAN_DAYS` on a single line |
-| Month zoom aggregate | All point events in a `(family_id, year-month)` bucket |
-| Week grid cell (Phase 3.5) | All events in a calendar week |
-
-### Card Navigation Stack
-
-Cards support a simple history stack for drill-down navigation:
-
-- Each card open pushes a frame onto the stack
-- Back navigation (chevron in card header, Android back button, iOS swipe-back) pops the stack
-- The stack resets when the card is fully dismissed
-- Navigation into a cluster card and then into a member event card produces the stack: `cluster card → event card → (back) → cluster card → (dismiss) → timeline`
-- Exits from a card (external links, location pins) are not stack pushes — they leave the card flow entirely
+| Week | Replaces dot | Hidden | Hidden |
 
 ---
 
@@ -598,7 +545,6 @@ Cards are HTML `<div>` overlays that appear on station click. The card renderer 
 
 | Condition | Card Type |
 |---|---|
-| Station is a cluster | **Cluster card** — family name + date range header, time-ordered list of member events as tappable rows; tapping a row pushes that event's detail card onto the navigation stack |
 | `family_id === "spine"` | **Milestone card** — icon by milestone_type, title (auto-derived for birthdays), date, age (for birthdays), location, description, photos if present |
 | `external_url` is set | **Trip card** — hero image, title, dates, description, location, "Read post →" button |
 | `photos.length > 0` | **Gallery card** — photo grid, title, date, location, map pin |
@@ -818,24 +764,11 @@ These test the logic modules in isolation with no DOM dependency.
 
 **`stations.test.js`**
 - Station with icon renders `<use>` element at day zoom beside dot
-- Station with icon replaces dot at month and year zoom
+- Station with icon replaces dot at month and week zoom
 - Station without icon always renders dot regardless of zoom
-- Label visible at day zoom, hover-only at month zoom, hidden at year zoom
+- Label visible at day zoom, hover-only at month zoom, hidden at week zoom
 - Unknown icon ID renders station without icon, no error thrown
 - Label falls back to truncated title when `label` field is absent
-- Cluster station renders plain dot with no icon
-- Cluster count pill appears on label side of dot
-- Cluster count pill reflects correct member count
-
-**`clusters.test.js`**
-- Two events within `CLUSTER_GAP_DAYS` on the same line are grouped into one cluster
-- Gap exceeding `CLUSTER_GAP_DAYS` closes the current cluster and starts a new one
-- Cluster spanning more than `CLUSTER_MAX_SPAN_DAYS` is split at the boundary
-- A trip with daily events over 20 days produces two clusters, not one
-- Single-member cluster is treated as a normal station
-- Events on different lines are never clustered together
-- Span events are never included in a cluster regardless of proximity
-- Cluster Y position is the midpoint of first and last member event Y values
 
 **`lanes.test.js`**
 - Single span assigned to correct preferred side
@@ -843,6 +776,7 @@ These test the logic modules in isolation with no DOM dependency.
 - Concurrent spans from the same family assigned to adjacent sibling lanes
 - Lane freed correctly when a span ends
 - Overflow to opposite side when preferred side is full
+- Sibling count tracked correctly as concurrent spans start and end
 - Nested branch assigned outward from parent line X, not from spine X
 - Nested branch merge-back returns to parent X, not spine X
 - Nested branch during an inactive parent is flagged as a data error
@@ -863,7 +797,7 @@ These test the logic modules in isolation with no DOM dependency.
 - Month aggregation groups point events correctly by `(family_id, year-month)`
 - Aggregation label reflects correct count ("8 runs", "3 books finished")
 - Span events are never included in aggregation
-- Year zoom hides all point events and shows only span midpoint stations
+- Week zoom hides all point events and shows aggregate stations per week bucket
 
 ### Integration & Visual Tests (Playwright)
 
@@ -876,18 +810,14 @@ These run in a real browser against the served app using a fixed mock dataset so
 - Two concurrent book spans render as adjacent sibling lanes on the right
 - Nested branch (placement job off education line) renders outward from education line, not from spine
 - Clicking a station opens the correct card type (trip card, book card, etc.)
-- Dense daily events on a trip line collapse into a cluster station with a count pill
-- Clicking a cluster station opens a cluster card listing member events in time order
-- Tapping a member event row in a cluster card pushes the event detail card onto the stack
-- Back navigation from event card returns to cluster card; dismissing cluster card returns to timeline
 - Zoom toggle switches between Day / Month / Year and updates visible stations
 - Birthday stations render at correct Y positions for each year
 - Explicit birthday event replaces auto-generated station at that date
 
 **Mobile viewport (390×844 — iPhone 14)**
 - Canvas renders within viewport width with no horizontal overflow
-- Two concurrent book spans collapse into a single bolder line at fixed stroke weight
-- When one book ends, its termination station renders and the merged line continues unchanged
+- Two concurrent book spans collapse into a single bolder line
+- When one book ends, its termination station renders and the line continues at reduced weight
 - Tapping a station opens a bottom sheet card (not a floating card)
 - Bottom sheet dismisses on swipe down or close tap
 - Zoom segmented control is visible and pinned at top
@@ -930,13 +860,11 @@ npx playwright test --update-snapshots
 ### Phase 2 — Full Line Rendering
 - All 7 line families implemented
 - Lane assignment algorithm handling concurrent and sibling spans
-- Concurrent sibling collapse on mobile (fixed-weight bold line, termination stations render per sibling)
+- Concurrent sibling collapse on mobile (bold line + weight transitions)
 - Color family generation (HSL variants per family)
 - Station labels rendered beside each station at day zoom, using `label` field with `title` fallback
 - Icon sprite sheet created with starter icon set; icons render beside dot at day zoom
-- Clustering pass in `clusters.js`: post-processes each line's sorted point events after lane assignment, grouping by `CLUSTER_GAP_DAYS` / `CLUSTER_MAX_SPAN_DAYS` rules; produces cluster render objects with member lists and midpoint Y
-- Cluster station rendering: plain dot + count pill on label side
-- Unit tests: full lane assignment suite, sibling grouping, mobile collapse logic, clustering rules
+- Unit tests: full lane assignment suite, sibling grouping, mobile collapse logic
 
 ### Phase 2.5 — Zoom Infrastructure
 
@@ -944,31 +872,28 @@ This phase exists to wire zoom into the coordinate system before interactivity i
 
 - Create `zoom.js` with the three zoom level definitions and their pixels-per-day values:
   ```
-  ZOOM_DAY:   2px per day   (~51,100px total for a 35-year life)
+  ZOOM_DAY:   2px per day    (~51,100px total for a 35-year life)
+  ZOOM_WEEK:  0.55px per day (~14,000px total)
   ZOOM_MONTH: 0.25px per day (~6,400px total)
-  ZOOM_YEAR:  0.07px per day (~1,800px total)
   ```
 - Refactor `timeToY(date)` in `lines.js` to accept zoom level as a parameter rather than using a hardcoded scale. All existing callers updated to pass the current zoom state.
 - Refactor the virtualized renderer in `timeline.js` to re-compute the render window and total canvas height when zoom level changes. A `setZoom(level)` function triggers a full re-layout from the pre-computed render objects — no API re-fetch needed.
 - Implement aggregation logic in `zoom.js`:
+  - At `ZOOM_WEEK`: group point events by `(family_id, year-week)` bucket, replace with a single aggregate station. Span events always render as continuous lines regardless of zoom.
   - At `ZOOM_MONTH`: group point events by `(family_id, year-month)` bucket, replace with a single aggregate station labeled "8 runs" or "3 books finished". Span events always render as continuous lines regardless of zoom.
-  - At `ZOOM_YEAR`: suppress all point events entirely. Render only span line segments and a single midpoint station per span.
-- Implement zoom-dependent icon and label behaviour: icons replace dot at month/year zoom; labels suppress at month zoom (hover only) and year zoom (hidden)
-- Unit tests: `timeToY()` returns correct values at all three zoom levels for known dates; aggregation groups point events correctly by bucket; aggregation never includes span events; year zoom suppresses all point events.
+- Implement zoom-dependent icon and label behaviour: icons replace dot at week/month zoom; labels suppress at month zoom (hover only) and week zoom (hidden)
+- Unit tests: `timeToY()` returns correct values at all three zoom levels for known dates; aggregation groups point events correctly by bucket; aggregation never includes span events; week zoom suppresses point event labels.
 - Manual verification: flip the hardcoded zoom constant between all three levels and confirm the canvas rescales correctly, year markers reposition, and aggregation behaves as expected on the mock dataset.
 
 ### Phase 3 — Interactivity
 - Hover state on stations (desktop) and tap state (mobile)
 - Click/tap to open detail cards — floating on desktop, bottom sheet on mobile
-- Card navigation stack: history array supporting push/pop; back chevron in card header; Android back button and iOS swipe-back gesture pop the stack; stack resets on full dismiss
-- All card types rendered (standard, trip, gallery, book, show, milestone, cluster)
-- Cluster card: family + date range header, time-ordered member list, tap-to-drill into event detail card via navigation stack
-- Month zoom aggregate stations reuse cluster card with `(family_id, year-month)` member list
+- All card types rendered (standard, trip, gallery, book, show, milestone)
 - S3 image loading with lazy thumbnails and lightbox for originals
 - Zoom level toggle — button group on desktop, segmented control on mobile
 - Smooth animated zoom transitions
 - Line family filter — sidebar on desktop, bottom drawer on mobile
-- Integration tests: all card types, cluster drill-down and back navigation, zoom switching, mobile bottom sheet, touch targets
+- Integration tests: all card types, zoom switching, mobile bottom sheet, touch targets
 
 ### Phase 4 — Live API
 - Swap mock JSON for real REST API calls
@@ -988,6 +913,35 @@ This phase exists to wire zoom into the coordinate system before interactivity i
 - Click location pin → see event on interactive map
 - Travel events show route/waypoints if coordinates are available
 
+### Phase 7 — View Switcher & Zoom Rework
+
+This phase reworks the top bar controls and integrates the grid view as a first-class peer to the subway view.
+
+**Top bar restructure**
+- Replace the existing zoom toggle with a **view switcher** (subway / grid) as the primary top bar control
+- The Day / Week / Month zoom segmented control appears below or adjacent to the view switcher, visible only when subway view is active; hidden when grid view is active
+- The grid view has no sub-controls of its own
+
+**Zoom level changes**
+- Remove `ZOOM_YEAR` constant and all associated behavior from `zoom.js`:
+  - Remove the year-zoom suppression logic (hide all point events, show only span midpoints)
+  - Remove the `ZOOM_YEAR` case from `timeToY()`, the virtualized renderer, and all aggregation switches
+  - Remove year zoom from the unit test suite
+- Add `ZOOM_WEEK` at 0.55px/day (~14,000px total for a 35-year life):
+  - Aggregation: group point events by `(family_id, year-week)` bucket
+  - Icon behavior: replaces dot (same as month zoom)
+  - Label behavior: hidden (same as month zoom)
+- Update the zoom constant ordering to `ZOOM_DAY → ZOOM_WEEK → ZOOM_MONTH`
+
+**Grid view integration**
+- Wire the grid view switcher to show/hide the existing life-in-weeks HTML/CSS Grid component
+- Subway SVG canvas is hidden when grid view is active; grid is hidden when subway view is active
+- View selection persisted to `localStorage` so the app reopens in the last-used view
+
+**Tests**
+- Unit: `ZOOM_WEEK` aggregates by year-week bucket correctly; `ZOOM_YEAR` constants and tests removed
+- Integration: view switcher toggles correctly between subway and grid; zoom control absent in grid view; zoom control present in subway view; week zoom renders aggregate stations and hides labels
+
 ---
 
 ## Open Questions
@@ -1006,4 +960,4 @@ These are not blockers for Phase 1 but should be decided before Phase 2:
 
 ---
 
-*Last updated: planning phase, pre-build. Revised to include framework rationale, mobile design, spine events, concurrent span rendering, birthday auto-generation, S3 photo hosting, performance strategy, testing strategy, nested branching, zoom infrastructure phase, light/dark mode, station labels and icons, and cluster stations with card navigation stack.*
+*Last updated: planning phase, pre-build. Revised to include framework rationale, mobile design, spine events, concurrent span rendering, birthday auto-generation, S3 photo hosting, performance strategy, testing strategy, nested branching, zoom infrastructure phase, light/dark mode, station labels and icons, view switcher, week zoom level, and grid view integration (Phase 7).*

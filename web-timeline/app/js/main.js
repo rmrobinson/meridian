@@ -12,7 +12,7 @@
  *
  * Devtools hook:
  *   window.__timeline_setZoom(pxPerDay)
- *   e.g. window.__timeline_setZoom(0.07)  // ZOOM_YEAR
+ *   e.g. window.__timeline_setZoom(0.55)  // ZOOM_WEEK
  */
 
 import { fetchTimeline } from './api.js';
@@ -23,8 +23,8 @@ import { CURVE_HEIGHT, timeToY } from './lines.js';
 import { assignLanes } from './lanes.js';
 import { initTimeline } from './timeline.js';
 import {
-  ZOOM_DAY, ZOOM_MONTH, ZOOM_YEAR,
-  aggregateByMonth, filterForYearZoom,
+  ZOOM_DAY, ZOOM_WEEK, ZOOM_MONTH,
+  aggregateByMonth,
 } from './zoom.js';
 import { buildWeekMap, renderGrid, eventsForWeek } from './grid.js';
 
@@ -90,7 +90,7 @@ async function init() {
   // Build the WeekMap once — reused every time Year zoom is activated.
   _weekMap = buildWeekMap(_data, hslColor);
 
-  setupZoomButtons(svg);
+  setupZoomButtons();
   setupThemeToggle();
   setupCardInteraction(svg);
   setupGridCardInteraction();
@@ -104,7 +104,7 @@ async function init() {
  * Pure function of (data, pxPerDay) — safe to call multiple times.
  *
  * @param {object} data      - Normalized API response from fetchTimeline().
- * @param {number} pxPerDay  - One of ZOOM_DAY, ZOOM_MONTH, or ZOOM_YEAR.
+ * @param {number} pxPerDay  - One of ZOOM_DAY, ZOOM_WEEK, or ZOOM_MONTH.
  * @returns {{ layout: object, renderObjects: object[] }}
  */
 function buildRenderObjects(data, pxPerDay) {
@@ -125,9 +125,9 @@ function buildRenderObjects(data, pxPerDay) {
   const familyById = new Map(data.line_families.map((f) => [f.id, f]));
 
   // ── Apply zoom-level event transformation ─────────────────────────────────
-  // ZOOM_DAY: all events as-is.
+  // ZOOM_DAY: all events as-is, then cluster nearby point events.
+  // ZOOM_WEEK: all events as-is, then cluster nearby point events (same as day).
   // ZOOM_MONTH: point events aggregated per (family_id, year-month).
-  // ZOOM_YEAR: point events dropped; one synthetic midpoint per span.
 
   let events = data.events;
   if (pxPerDay === ZOOM_MONTH) {
@@ -138,7 +138,6 @@ function buildRenderObjects(data, pxPerDay) {
     );
   } else {
     _aggregateById = new Map();
-    if (pxPerDay === ZOOM_YEAR) events = filterForYearZoom(events);
   }
 
   // ── Lane assignment ────────────────────────────────────────────────────────
@@ -367,11 +366,11 @@ function buildRenderObjects(data, pxPerDay) {
 
   // ── Pass 3 — Clustering pass (day zoom only) ──────────────────────────────
   //
-  // At day zoom, group nearby point events on the same line into clusters to
+  // At day and week zoom, group nearby point events on the same line into clusters to
   // prevent overlapping dots and labels. Clusters are rendered with a count pill.
-  // At other zoom levels, clusters don't apply (month has aggregates, year has no points).
+  // At month zoom, aggregates handle grouping instead. No clustering applies.
 
-  if (pxPerDay === ZOOM_DAY) {
+  if (pxPerDay === ZOOM_DAY || pxPerDay === ZOOM_WEEK) {
     // Extract only point-event stations (not aggregates, not span start/end stations).
     const pointStations = renderObjects.filter(
       (o) => o.type === 'station' && o.event?.type === 'point',
@@ -389,7 +388,7 @@ function buildRenderObjects(data, pxPerDay) {
       }
     }
   } else {
-    // Non-day zoom: no clustering.
+    // Month zoom and beyond: no clustering (aggregates used instead).
     _clusterById = new Map();
   }
 
@@ -399,18 +398,13 @@ function buildRenderObjects(data, pxPerDay) {
 // ── Zoom button wiring ────────────────────────────────────────────────────────
 
 /**
- * Attach click listeners to the Day / Month / Year buttons in the zoom bar.
+ * Attach click listeners to the Day / Week / Month buttons in the zoom bar.
  * Toggles `zoom-btn--active` class and `aria-pressed` attribute on each press.
  *
- * Year zoom activates the week grid instead of the subway map SVG.
- * Day / Month zoom return to the subway map (restoring its prior zoom state).
- *
  * Called once after first render so _data and _controller are guaranteed set.
- *
- * @param {SVGElement} svg - The #timeline-svg element (toggled hidden for grid view).
  */
-function setupZoomButtons(svg) {
-  const ZOOM_BY_NAME = { day: ZOOM_DAY, month: ZOOM_MONTH, year: ZOOM_YEAR };
+function setupZoomButtons() {
+  const ZOOM_BY_NAME = { day: ZOOM_DAY, week: ZOOM_WEEK, month: ZOOM_MONTH };
   const buttons = Array.from(document.querySelectorAll('.zoom-btn'));
 
   // Initialise aria-pressed to match the visually-active button.
@@ -432,19 +426,10 @@ function setupZoomButtons(svg) {
 
       _pxPerDay = pxPerDay;
       setBodyZoom(pxPerDay);
-
-      if (pxPerDay === ZOOM_YEAR) {
-        // Switch to grid view.
-        svg.setAttribute('hidden', '');
-        _gridContainer.removeAttribute('hidden');
-        renderGrid(_weekMap, _data, _gridContainer);
-      } else {
-        // Return to subway map.
-        _gridContainer.setAttribute('hidden', '');
-        svg.removeAttribute('hidden');
-        const { layout, renderObjects } = buildRenderObjects(_data, pxPerDay);
-        _controller.setRenderObjects(layout, renderObjects);
-      }
+      // Grid view is now controlled by the view switcher, not zoom buttons.
+      // Always rebuild subway map render objects.
+      const { layout, renderObjects } = buildRenderObjects(_data, pxPerDay);
+      _controller.setRenderObjects(layout, renderObjects);
     });
   });
 }
@@ -850,7 +835,7 @@ function truncate(str, max = 22) {
 function setBodyZoom(pxPerDay) {
   document.body.classList.remove('zoom-day', 'zoom-month', 'zoom-year');
   if (pxPerDay === ZOOM_MONTH)     document.body.classList.add('zoom-month');
-  else if (pxPerDay === ZOOM_YEAR) document.body.classList.add('zoom-year');
+  else if (pxPerDay === ZOOM_WEEK) document.body.classList.add('zoom-week');
   else                             document.body.classList.add('zoom-day');
 }
 
@@ -867,7 +852,8 @@ function setBodyZoom(pxPerDay) {
 function setupGridResizeHandler() {
   let debounceTimer = null;
   window.addEventListener('resize', () => {
-    if (_pxPerDay !== ZOOM_YEAR || !_gridContainer || _gridContainer.hasAttribute('hidden')) return;
+    // Only re-render grid if it's currently visible
+    if (!_gridContainer || _gridContainer.hasAttribute('hidden')) return;
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       renderGrid(_weekMap, _data, _gridContainer);
@@ -879,7 +865,7 @@ function setupGridResizeHandler() {
 //
 // Flip zoom level manually from the browser console:
 //   window.__timeline_setZoom(0.25)  // ZOOM_MONTH
-//   window.__timeline_setZoom(0.07)  // ZOOM_YEAR
+//   window.__timeline_setZoom(0.55)  // ZOOM_WEEK
 //   window.__timeline_setZoom(2)     // ZOOM_DAY (default)
 
 window.__timeline_setZoom = function (pxPerDay) {
@@ -889,17 +875,10 @@ window.__timeline_setZoom = function (pxPerDay) {
   }
   _pxPerDay = pxPerDay;
   setBodyZoom(pxPerDay);
-  const svg = document.getElementById('timeline-svg');
-  if (pxPerDay === ZOOM_YEAR) {
-    svg.setAttribute('hidden', '');
-    _gridContainer.removeAttribute('hidden');
-    renderGrid(_weekMap, _data, _gridContainer);
-  } else {
-    _gridContainer.setAttribute('hidden', '');
-    svg.removeAttribute('hidden');
-    const { layout, renderObjects } = buildRenderObjects(_data, pxPerDay);
-    _controller.setRenderObjects(layout, renderObjects);
-  }
+  // Grid view is controlled by the view switcher, not zoom level.
+  // Always rebuild subway render objects.
+  const { layout, renderObjects } = buildRenderObjects(_data, pxPerDay);
+  _controller.setRenderObjects(layout, renderObjects);
 };
 
 // ── Theme toggle ──────────────────────────────────────────────────────────────
@@ -934,16 +913,14 @@ function setupThemeToggle() {
  */
 function rebuildForThemeChange() {
   if (!_data) return;
-  if (_pxPerDay === ZOOM_YEAR) {
-    // Rebuild the WeekMap (colors are baked in) then re-render the grid.
+  // If grid view is visible, rebuild the WeekMap (colors are baked in) then re-render.
+  if (_gridContainer && !_gridContainer.hasAttribute('hidden')) {
     _weekMap = buildWeekMap(_data, hslColor);
-    if (_gridContainer && !_gridContainer.hasAttribute('hidden')) {
-      renderGrid(_weekMap, _data, _gridContainer);
-    }
-  } else {
-    const { layout, renderObjects } = buildRenderObjects(_data, _pxPerDay);
-    _controller.setRenderObjects(layout, renderObjects);
+    renderGrid(_weekMap, _data, _gridContainer);
   }
+  // Always rebuild subway render objects (even if grid is visible, in case user switches back).
+  const { layout, renderObjects } = buildRenderObjects(_data, _pxPerDay);
+  _controller.setRenderObjects(layout, renderObjects);
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────

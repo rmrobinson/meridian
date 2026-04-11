@@ -105,6 +105,8 @@ All API contracts live in `proto/meridian/v1/timeline.proto`. Generated code is 
 
 Zoom levels (Day/Month/Year) trigger `buildRenderObjects()` re-computation with aggregation — no re-fetch. The zoom function aggregates point events per (family_id, year-month) at ZOOM_MONTH and drops them entirely at ZOOM_YEAR.
 
+**Styling**: All CSS and color choices in `web-timeline/` must support both light and dark mode. Use CSS variables (or equivalent) to define colors and ensure all components are styled appropriately in both themes.
+
 ### Backend Tests
 
 gRPC integration tests use **in-memory SQLite** (`file:<name>?mode=memory&cache=shared`) and an in-process **`bufconn`** listener — no real network, no mocks of the database. The `domain.Enricher` interface is mocked via a lightweight `mockEnricher` struct defined in the test file. See `backend/internal/api/grpc/grpc_test.go` for the `newTestEnv` helper pattern to follow when adding new tests.

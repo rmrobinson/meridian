@@ -2,16 +2,16 @@
  * zoom.js — Zoom level constants and aggregation logic.
  *
  * Three zoom levels, each defined by their pixels-per-day scale:
- *   ZOOM_DAY:   2px/day  (~51 100px total for a 35-year life)
- *   ZOOM_MONTH: 0.25px/day (~6 400px total)
- *   ZOOM_YEAR:  0.07px/day (~1 800px total)
+ *   ZOOM_DAY:   2px/day    (~51 100px total for a 35-year life)
+ *   ZOOM_WEEK:  0.55px/day (~14 200px total; uses clustering like day view)
+ *   ZOOM_MONTH: 0.25px/day (~6 400px total; uses month-based aggregation)
  *
- * All aggregation functions are pure — no DOM dependency, no side effects.
+ * Aggregation functions are pure — no DOM dependency, no side effects.
  */
 
-export const ZOOM_DAY   = 2;     // px per day
-export const ZOOM_MONTH = 0.25;  // px per day
-export const ZOOM_YEAR  = 0.07;  // px per day
+export const ZOOM_DAY   = 2;      // px per day
+export const ZOOM_WEEK  = 0.55;   // px per day
+export const ZOOM_MONTH = 0.25;   // px per day
 
 /**
  * Aggregate point events by (family_id, year-month) bucket.
@@ -86,50 +86,4 @@ export function aggregateByMonth(events, line_families = []) {
   }
 
   return [...passThrough, ...aggregates];
-}
-
-/**
- * Filter events for year zoom: retain only span events, and emit a synthetic
- * midpoint station for each span so the canvas remains interactive.
- *
- * Point events are dropped entirely. The midpoint station carries the span's
- * title and metadata so the detail card can still be shown.
- *
- * @param {object[]} events - Raw events array.
- * @returns {object[]}      - Span events interleaved with one midpoint point per span.
- */
-export function filterForYearZoom(events) {
-  const result = [];
-
-  for (const evt of events) {
-    if (evt.type !== 'span') continue;
-
-    result.push(evt);
-
-    const startMs = new Date(evt.start_date).getTime();
-    const endMs   = evt.end_date ? new Date(evt.end_date).getTime() : Date.now();
-    const midDate = new Date((startMs + endMs) / 2).toISOString().slice(0, 10);
-
-    result.push({
-      id:              `midpoint-${evt.id}`,
-      type:            'point',
-      family_id:       evt.family_id,
-      line_key:        evt.line_key,
-      parent_line_key: evt.parent_line_key ?? null,
-      date:            midDate,
-      start_date:      null,
-      end_date:        null,
-      title:           evt.title,
-      label:           evt.label           ?? null,
-      icon:            evt.icon            ?? null,
-      location:        evt.location        ?? null,
-      description:     evt.description     ?? null,
-      external_url:    evt.external_url    ?? null,
-      hero_image_url:  evt.hero_image_url  ?? null,
-      photos:          evt.photos          ?? [],
-      metadata:        { ...(evt.metadata ?? {}), _synthetic_midpoint: true },
-    });
-  }
-
-  return result;
 }

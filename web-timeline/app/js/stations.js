@@ -12,7 +12,7 @@
  * and rebuilds live stations whenever spineX changes.
  *
  * Icon visibility by zoom level is driven by CSS body classes (zoom-day /
- * zoom-month / zoom-year) rather than JS, so no re-render is needed on zoom.
+ * zoom-week / zoom-month) rather than JS, so no re-render is needed on zoom.
  */
 
 import { getIconPath } from './icons.js';
@@ -194,7 +194,9 @@ export function buildClusterStation(obj, spineX) {
   text.setAttribute('y', String(pillY));
   text.setAttribute('text-anchor', 'middle');
   text.setAttribute('dominant-baseline', 'central');
-  text.setAttribute('fill', 'var(--color-label-muted)');
+  text.setAttribute('font-size', '11px');
+  text.setAttribute('font-weight', '600');
+  text.setAttribute('fill', 'var(--color-label-secondary)');
   text.textContent = countStr;
   g.appendChild(text);
 

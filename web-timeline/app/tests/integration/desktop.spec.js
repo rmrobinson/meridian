@@ -256,16 +256,16 @@ test.describe('Desktop — spine and year markers', () => {
     await expect(page.locator('body')).toHaveClass(/zoom-day/);
     await expect(page.locator('.zoom-btn[data-zoom="day"]')).toHaveClass(/zoom-btn--active/);
 
+    // Switch to Week.
+    await page.locator('.zoom-btn[data-zoom="week"]').click();
+    await expect(page.locator('body')).toHaveClass(/zoom-week/);
+    await expect(page.locator('.zoom-btn[data-zoom="week"]')).toHaveClass(/zoom-btn--active/);
+    await expect(page.locator('.zoom-btn[data-zoom="day"]')).not.toHaveClass(/zoom-btn--active/);
+
     // Switch to Month.
     await page.locator('.zoom-btn[data-zoom="month"]').click();
     await expect(page.locator('body')).toHaveClass(/zoom-month/);
     await expect(page.locator('.zoom-btn[data-zoom="month"]')).toHaveClass(/zoom-btn--active/);
-    await expect(page.locator('.zoom-btn[data-zoom="day"]')).not.toHaveClass(/zoom-btn--active/);
-
-    // Switch to Year.
-    await page.locator('.zoom-btn[data-zoom="year"]').click();
-    await expect(page.locator('body')).toHaveClass(/zoom-year/);
-    await expect(page.locator('.zoom-btn[data-zoom="year"]')).toHaveClass(/zoom-btn--active/);
   });
 
   test('switching to Month zoom renders aggregate stations', async ({ page }) => {

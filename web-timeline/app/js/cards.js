@@ -27,6 +27,8 @@
  *     The card type class (e.g. card--travel) is set on the returned element.
  */
 
+import { isLightMode } from './main.js';
+
 /**
  * Build the content element for the given event.
  *
@@ -451,7 +453,11 @@ export function buildClusterCardContent(clusterOrAggregate) {
         if (evt.icon_png_url) {
           const iconImg = document.createElement('img');
           iconImg.className = 'cluster-member-icon';
-          iconImg.src = evt.icon_png_url;
+          // Use dark variant if dark mode is active
+          const isDarkMode = !isLightMode();
+          iconImg.src = isDarkMode
+            ? evt.icon_png_url.replace('.png', '-dark.png')
+            : evt.icon_png_url;
           iconImg.alt = '';
           iconImg.loading = 'lazy';
           btn.appendChild(iconImg);
@@ -490,7 +496,11 @@ export function buildClusterCardContent(clusterOrAggregate) {
       if (evt.icon_png_url) {
         const iconImg = document.createElement('img');
         iconImg.className = 'cluster-member-icon';
-        iconImg.src = evt.icon_png_url;
+        // Use dark variant if dark mode is active
+        const isDarkMode = !isLightMode();
+        iconImg.src = isDarkMode
+          ? evt.icon_png_url.replace('.png', '-dark.png')
+          : evt.icon_png_url;
         iconImg.alt = '';
         iconImg.loading = 'lazy';
         btn.appendChild(iconImg);

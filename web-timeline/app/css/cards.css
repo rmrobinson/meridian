@@ -13,6 +13,7 @@
   font-weight: 700;
   line-height: 1.3;
   margin-right: 24px; /* room for close button */
+  color: var(--color-label);
 }
 
 .card-dates {
@@ -270,6 +271,20 @@
   .cluster-member-item {
     background: rgba(0, 0, 0, 0.05);
   }
+
+  .cluster-member-label {
+    color: var(--color-label);
+  }
+}
+
+/* Dark mode (manual override) — ensure label text is white */
+:root[data-theme="dark"] .cluster-member-label {
+  color: var(--color-label);
+}
+
+/* Light mode (manual override) — ensure label text is dark */
+:root[data-theme="light"] .cluster-member-label {
+  color: var(--color-label);
 }
 
 /* ── Cluster grouping (for week clusters) ────────────────────────────────── */

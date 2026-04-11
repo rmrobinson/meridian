@@ -2,16 +2,16 @@ import { test, expect } from '@playwright/test';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Switch to Year zoom and wait for the grid container to be visible. */
-async function activateYearZoom(page) {
-  await page.locator('.zoom-btn[data-zoom="year"]').click();
+/** Switch to grid view and wait for the grid container to be visible. */
+async function activateGridView(page) {
+  await page.locator('.view-btn[data-view="grid"]').click();
   await expect(page.locator('#week-grid-container')).not.toHaveAttribute('hidden');
   await expect(page.locator('.week-grid')).toBeAttached();
 }
 
-/** Switch back to Day zoom and wait for the SVG to be visible. */
-async function activateDayZoom(page) {
-  await page.locator('.zoom-btn[data-zoom="day"]').click();
+/** Switch back to subway view and wait for the SVG to be visible. */
+async function activateSubwayView(page) {
+  await page.locator('.view-btn[data-view="subway"]').click();
   await expect(page.locator('#timeline-svg')).not.toHaveAttribute('hidden');
 }
 
@@ -30,7 +30,7 @@ test.describe('Grid — desktop (1280×800)', () => {
   // ── Layout ──────────────────────────────────────────────────────────────────
 
   test('grid renders one .grid-year row per year from birth year to current year', async ({ page }) => {
-    await activateYearZoom(page);
+    await activateGridView(page);
 
     const currentYear = new Date().getFullYear();
     // Mock fixture birth_date is 1990-04-12.
@@ -42,7 +42,7 @@ test.describe('Grid — desktop (1280×800)', () => {
   });
 
   test('birth year row has neutral cells (no data-week) before the birth week', async ({ page }) => {
-    await activateYearZoom(page);
+    await activateGridView(page);
 
     // Birth is 1990-04-12 → ISO week 15 of 1990.
     // Week 14 of 1990 should be in the row but have no data-week (neutral).
@@ -60,7 +60,7 @@ test.describe('Grid — desktop (1280×800)', () => {
   });
 
   test('current year row has no cells after the current ISO week', async ({ page }) => {
-    await activateYearZoom(page);
+    await activateGridView(page);
 
     const currentYear = new Date().getFullYear();
     const currentYearRow = page.locator(`.grid-year[data-year="${currentYear}"] .grid-row--a`);
@@ -88,7 +88,7 @@ test.describe('Grid — desktop (1280×800)', () => {
   });
 
   test('a week covered by a travel span has a coloured cell (non-neutral)', async ({ page }) => {
-    await activateYearZoom(page);
+    await activateGridView(page);
     // Japan trip: 2023-03-10 → 2023-03-28 covers 2023-W11.
     const cell = page.locator('.week-cell[data-week="2023-W11"]');
     await expect(cell).toBeAttached();
@@ -99,7 +99,7 @@ test.describe('Grid — desktop (1280×800)', () => {
   });
 
   test('a week with only residence data has a coloured cell', async ({ page }) => {
-    await activateYearZoom(page);
+    await activateGridView(page);
     // 2000-W10: no spans in fixture, residence = Edinburgh (relocation 1990-04-12).
     const cell = page.locator('.week-cell[data-week="2000-W10"]');
     await expect(cell).toBeAttached();
@@ -110,7 +110,7 @@ test.describe('Grid — desktop (1280×800)', () => {
   // ── Click interaction ────────────────────────────────────────────────────────
 
   test('clicking a coloured week cell opens the card overlay', async ({ page }) => {
-    await activateYearZoom(page);
+    await activateGridView(page);
     // 2023-W11: covered by Japan trip.
     const cell = page.locator('.week-cell[data-week="2023-W11"]');
     await expect(cell).toBeAttached();
@@ -119,7 +119,7 @@ test.describe('Grid — desktop (1280×800)', () => {
   });
 
   test('week card lists events grouped by family', async ({ page }) => {
-    await activateYearZoom(page);
+    await activateGridView(page);
     await page.locator('.week-cell[data-week="2023-W11"]').click();
     await expect(page.locator('#card-overlay')).not.toHaveAttribute('hidden');
     // Card should contain a .card--week-cluster element.
@@ -131,7 +131,7 @@ test.describe('Grid — desktop (1280×800)', () => {
   });
 
   test('clicking a neutral cell does not open the card overlay', async ({ page }) => {
-    await activateYearZoom(page);
+    await activateGridView(page);
     // Find a neutral cell in the birth year row (no data-week).
     const neutralCell = page.locator(
       '.grid-year[data-year="1990"] .grid-row--a .week-cell:not([data-week])',
@@ -143,7 +143,7 @@ test.describe('Grid — desktop (1280×800)', () => {
   });
 
   test('tapping an event item in the week card opens its individual detail card', async ({ page }) => {
-    await activateYearZoom(page);
+    await activateGridView(page);
     await page.locator('.week-cell[data-week="2023-W11"]').click();
     await expect(page.locator('#card-overlay')).not.toHaveAttribute('hidden');
 
@@ -161,7 +161,7 @@ test.describe('Grid — desktop (1280×800)', () => {
   });
 
   test('close button dismisses the week card', async ({ page }) => {
-    await activateYearZoom(page);
+    await activateGridView(page);
     await page.locator('.week-cell[data-week="2023-W11"]').click();
     await expect(page.locator('#card-overlay')).not.toHaveAttribute('hidden');
     await page.locator('#card-close').click();
@@ -169,7 +169,7 @@ test.describe('Grid — desktop (1280×800)', () => {
   });
 
   test('Escape key dismisses the week card', async ({ page }) => {
-    await activateYearZoom(page);
+    await activateGridView(page);
     await page.locator('.week-cell[data-week="2023-W11"]').click();
     await expect(page.locator('#card-overlay')).not.toHaveAttribute('hidden');
     await page.keyboard.press('Escape');
@@ -179,35 +179,40 @@ test.describe('Grid — desktop (1280×800)', () => {
   // ── Zoom state ───────────────────────────────────────────────────────────────
 
   test('selecting Year zoom shows the grid and hides the SVG', async ({ page }) => {
-    await activateYearZoom(page);
+    await activateGridView(page);
     await expect(page.locator('#timeline-svg')).toHaveAttribute('hidden', '');
     await expect(page.locator('#week-grid-container')).not.toHaveAttribute('hidden');
   });
 
   test('selecting Day zoom from Year returns to the subway map', async ({ page }) => {
-    await activateYearZoom(page);
-    await activateDayZoom(page);
+    await activateGridView(page);
+    await activateSubwayView(page);
     await expect(page.locator('#week-grid-container')).toHaveAttribute('hidden', '');
     await expect(page.locator('#timeline-svg')).not.toHaveAttribute('hidden');
     await expect(page.locator('body')).toHaveClass(/zoom-day/);
   });
 
-  test('selecting Month zoom from Year returns to the subway map', async ({ page }) => {
-    await activateYearZoom(page);
-    await page.locator('.zoom-btn[data-zoom="month"]').click();
-    await expect(page.locator('#week-grid-container')).toHaveAttribute('hidden', '');
-    await expect(page.locator('#timeline-svg')).not.toHaveAttribute('hidden');
-    await expect(page.locator('body')).toHaveClass(/zoom-month/);
+  test('returning to subway view restores the zoom button visibility', async ({ page }) => {
+    // Zoom controls row should be visible initially.
+    await expect(page.locator('#zoom-controls-row')).not.toHaveAttribute('hidden');
+
+    // Switch to grid view — zoom controls row should be hidden.
+    await activateGridView(page);
+    await expect(page.locator('#zoom-controls-row')).toHaveAttribute('hidden', '');
+
+    // Switch back to subway view — zoom controls row should reappear.
+    await activateSubwayView(page);
+    await expect(page.locator('#zoom-controls-row')).not.toHaveAttribute('hidden');
   });
 
-  test('Day zoom state is restored after returning from grid view', async ({ page }) => {
+  test('zoom state is restored after switching between views', async ({ page }) => {
     // Start in Month zoom so the zoom level has changed from default.
     await page.locator('.zoom-btn[data-zoom="month"]').click();
     await expect(page.locator('body')).toHaveClass(/zoom-month/);
 
-    // Switch to Year (grid), then back to Month.
-    await activateYearZoom(page);
-    await page.locator('.zoom-btn[data-zoom="month"]').click();
+    // Switch to grid view, then back to subway view.
+    await activateGridView(page);
+    await activateSubwayView(page);
 
     // Month zoom should still be active; the grid should be hidden.
     await expect(page.locator('body')).toHaveClass(/zoom-month/);
@@ -219,7 +224,7 @@ test.describe('Grid — desktop (1280×800)', () => {
   // ── No horizontal overflow ───────────────────────────────────────────────────
 
   test('grid has no horizontal overflow at 1280px', async ({ page }) => {
-    await activateYearZoom(page);
+    await activateGridView(page);
     const overflow = await page.evaluate(() => {
       const container = document.getElementById('timeline-container');
       return container.scrollWidth <= container.clientWidth + 1; // +1 for sub-pixel rounding
@@ -241,7 +246,7 @@ test.describe('Grid — mobile (390×844)', () => {
   });
 
   test('grid fits within viewport width with no horizontal overflow', async ({ page }) => {
-    await activateYearZoom(page);
+    await activateGridView(page);
     const overflow = await page.evaluate(() => {
       const container = document.getElementById('timeline-container');
       return container.scrollWidth <= container.clientWidth + 1;
@@ -250,7 +255,7 @@ test.describe('Grid — mobile (390×844)', () => {
   });
 
   test('cells are at minimum 8×8px on mobile', async ({ page }) => {
-    await activateYearZoom(page);
+    await activateGridView(page);
     // Sample cells from a mid-life year that should have data-week entries.
     const cells = page.locator('.week-cell[data-week]');
     const count = await cells.count();
@@ -266,7 +271,7 @@ test.describe('Grid — mobile (390×844)', () => {
   });
 
   test('each year has two half-rows (grid-row--a and grid-row--b) on mobile', async ({ page }) => {
-    await activateYearZoom(page);
+    await activateGridView(page);
     // Pick a year with 53 weeks to ensure both rows are rendered.
     const yearGroup = page.locator('.grid-year[data-year="2020"]');
     await expect(yearGroup).toBeAttached();
@@ -275,13 +280,13 @@ test.describe('Grid — mobile (390×844)', () => {
   });
 
   test('second half-row (grid-row--b) is visible on mobile', async ({ page }) => {
-    await activateYearZoom(page);
+    await activateGridView(page);
     const rowB = page.locator('.grid-year[data-year="2020"] .grid-row--b');
     await expect(rowB).toBeVisible();
   });
 
   test('clicking a coloured week cell opens a bottom sheet', async ({ page }) => {
-    await activateYearZoom(page);
+    await activateGridView(page);
     const cell = page.locator('.week-cell[data-week="2023-W11"]');
     await expect(cell).toBeAttached();
     await cell.click();
@@ -292,7 +297,7 @@ test.describe('Grid — mobile (390×844)', () => {
   });
 
   test('bottom sheet dismisses on close button tap', async ({ page }) => {
-    await activateYearZoom(page);
+    await activateGridView(page);
     await page.locator('.week-cell[data-week="2023-W11"]').click();
     await expect(page.locator('#card-overlay')).not.toHaveAttribute('hidden');
     await page.locator('#card-close').click();
