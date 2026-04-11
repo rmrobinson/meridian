@@ -216,7 +216,7 @@ html, body {
   gap: 16px;
 }
 
-/* Primary row — always visible, contains view switcher + theme toggle */
+/* Primary row — always visible, contains title + view switcher + theme toggle */
 .zoom-bar__row--primary {
   position: relative;
 }
@@ -228,6 +228,28 @@ html, body {
 
 .zoom-bar__row--zoom[hidden] {
   display: none;
+}
+
+/* Title branding — shows icon + person's name on the left */
+.title-branding {
+  position: absolute;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.title-branding__icon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.title-branding__name {
+  font-weight: 500;
+  font-size: 0.95rem;
+  color: var(--color-label);
+  white-space: nowrap;
 }
 
 /* View switcher — primary navigation control, centered */

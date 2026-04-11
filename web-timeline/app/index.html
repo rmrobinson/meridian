@@ -26,8 +26,12 @@
 
     <!-- View switcher, zoom control, and theme toggle -->
     <header class="zoom-bar" role="toolbar" aria-label="Timeline controls">
-      <!-- Row 1: View switcher + theme toggle (always visible) -->
+      <!-- Row 1: Title + View switcher + theme toggle (always visible) -->
       <div class="zoom-bar__row zoom-bar__row--primary">
+        <div class="title-branding">
+          <img src="icon.svg" alt="Meridian icon" class="title-branding__icon" />
+          <span class="title-branding__name" id="person-name">Timeline</span>
+        </div>
         <div class="view-switcher">
           <button class="view-btn view-btn--active" data-view="subway" aria-label="Subway timeline view">
             Subway

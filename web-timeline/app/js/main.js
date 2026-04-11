@@ -73,6 +73,12 @@ async function init() {
   _data = await fetchTimeline();
   loadingEl.remove();
 
+  // Update the person's name in the title bar
+  const personNameEl = document.getElementById('person-name');
+  if (personNameEl && _data.person?.name) {
+    personNameEl.textContent = _data.person.name;
+  }
+
   // Pre-load all icon files into the cache before any rendering begins.
   // getIconPath() is called synchronously during scroll; the cache must be
   // fully populated first.
