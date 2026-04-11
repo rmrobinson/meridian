@@ -13,6 +13,20 @@ npm install
 npm run serve        # serves app/ on http://localhost:3000
 ```
 
+### Capturing Screenshots
+
+To capture screenshots of the mock timeline (useful for documentation):
+
+```sh
+# In one terminal, start the dev server:
+npm run serve
+
+# In another terminal, capture the day view and grid view:
+npm run capture-screenshots
+```
+
+Screenshots are saved to `web-timeline/screenshots/` (not committed to git).
+
 By default `npm run serve` intercepts `GET /api/timeline` and returns the
 mock fixture at `app/tests/fixtures/mock-timeline.json` — no backend needed.
 
