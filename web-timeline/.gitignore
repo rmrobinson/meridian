@@ -1,0 +1,3 @@
+# Allow .env.test — the root .gitignore has *.test for Go binaries,
+# which would otherwise ignore this Vite mode env file.
+!.env.test

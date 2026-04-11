@@ -5,7 +5,7 @@ export default defineConfig({
   fullyParallel: true,
   retries: 0,
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: 'http://localhost:3100',
   },
   projects: [
     {
@@ -29,8 +29,11 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npx vite',
-    url: 'http://localhost:3000',
+    // Run on port 3100 in --mode test so it uses .env.test (BACKEND_URL=),
+    // serving the mock fixture instead of proxying to a live backend.
+    // Port 3100 avoids conflicts with the dev server on port 3000.
+    command: 'npx vite --mode test --port 3100',
+    url: 'http://localhost:3100',
     reuseExistingServer: !process.env.CI,
   },
 });

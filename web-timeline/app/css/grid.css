@@ -3,6 +3,8 @@
 /* ── Grid container ───────────────────────────────────────────────────────── */
 
 #week-grid-container {
+  display: flex;
+  justify-content: center;
   padding: 16px;
 }
 

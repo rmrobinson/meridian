@@ -109,33 +109,26 @@ body.zoom-month .station--span-hover .cluster-pill-text {
 
 /* ── Spine ────────────────────────────────────────────────────────────────── */
 
-/* Border line sits behind the main spine at a wider stroke-width. */
-.spine-border {
-  stroke: var(--color-spine-border);
-  stroke-width: 11;
-  stroke-linecap: round;
-  pointer-events: none;
-}
-
-/* CSS drop-shadow adapts to light/dark via --color-shadow; avoids the SVG
-   filter whose objectBoundingBox percentages collapse on zero-width lines. */
+/* CSS drop-shadow provides depth and contrast against the background.
+   Adapts to light/dark via --color-shadow. */
 .spine-path {
   stroke: var(--color-spine);
   stroke-width: 7;
   stroke-linecap: round;
-  filter: drop-shadow(0 2px 3px var(--color-shadow));
+  filter: drop-shadow(0 2px 4px var(--color-shadow));
+  pointer-events: none;
 }
 
 /* ── Secondary spines ─────────────────────────────────────────────────────── */
 
 /* Thinner than the main spine — secondary spines are supporting infrastructure,
-   not the primary visual axis. */
+   not the primary visual axis. Border uses the family color at reduced opacity
+   to create a shaded fade-out effect. */
 .secondary-spine-border {
-  stroke: var(--color-spine-border);
   stroke-width: 7;
   stroke-linecap: round;
   pointer-events: none;
-  opacity: 0.5;
+  opacity: 0.3;
 }
 
 .secondary-spine-path {
@@ -178,9 +171,10 @@ body.zoom-month .station--span-hover .cluster-pill-text {
 
 /* ── Span lines ───────────────────────────────────────────────────────────── */
 
-/* Color is set via the stroke attribute in JS (from base_color_hsl). */
+/* Color is set via the stroke attribute in JS (from base_color_hsl).
+   CSS drop-shadow naturally adapts to the stroke color, unlike the SVG filter. */
 .span-line {
-  filter: url(#span-line-style);
+  filter: drop-shadow(0 2px 3px var(--color-shadow));
 }
 
 .span-branch,
@@ -283,6 +277,13 @@ body.zoom-month .station--span-hover .cluster-pill-text {
 }
 
 /* ── Station labels (Phase 3) ─────────────────────────────────────────────── */
+
+.station-label-bg {
+  fill: var(--color-bg);
+  fill-opacity: 0.7;
+  stroke: none;
+  pointer-events: none;
+}
 
 .station-label {
   font-size: 11px;

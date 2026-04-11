@@ -61,19 +61,9 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
   const linesLayer           = appendGroup(svg, 'lines-layer');
   const stationsLayer        = appendGroup(svg, 'stations-layer');
 
-  // ── Spine (border + main line, always in DOM) ─────────────────────────────
-  // The border line is rendered first (behind) at a wider stroke-width.
-  // A CSS drop-shadow() filter is used for the shadow instead of the SVG
-  // filter used on span lines — the SVG filter collapses on zero-width
-  // bounding boxes (perfectly vertical <line> elements).
-  const spineLineBorder = svgEl('line');
-  spineLineBorder.setAttribute('class', 'spine-border');
-  spineLineBorder.setAttribute('x1', '50%');
-  spineLineBorder.setAttribute('y1', '0');
-  spineLineBorder.setAttribute('x2', '50%');
-  spineLineBorder.setAttribute('y2', totalHeight);
-  spineLayer.appendChild(spineLineBorder);
-
+  // ── Spine (main line, always in DOM) ──────────────────────────────────────
+  // CSS drop-shadow provides the shadow effect, avoiding the complexity of
+  // a separate border element.
   const spineLine = svgEl('line');
   spineLine.setAttribute('class', 'spine-path');
   spineLine.setAttribute('data-testid', 'spine-path');
@@ -204,7 +194,6 @@ export function initTimeline({ svg, scrollContainer, layout, renderObjects }) {
 
     // Resize canvas and spine to match the new scale.
     svg.setAttribute('height', newHeight);
-    spineLineBorder.setAttribute('y2', newHeight);
     spineLine.setAttribute('y2', newHeight);
 
     // Rebuild year markers (always non-virtualized).
@@ -314,6 +303,7 @@ function buildSecondarySpineLine(obj, spineX, totalHeight) {
   border.setAttribute('x2', x);
   border.setAttribute('y1', '0');
   border.setAttribute('y2', String(totalHeight));
+  if (obj.color) border.setAttribute('stroke', obj.color);
 
   const line = svgEl('line');
   line.setAttribute('class', 'secondary-spine-path');

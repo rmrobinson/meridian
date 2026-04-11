@@ -49,12 +49,19 @@ fi
 
 # Web-timeline tests (run if web-timeline or proto files changed)
 if [ "$WEB_TIMELINE_CHANGED" -gt 0 ] || [ "$PROTO_CHANGED" -gt 0 ]; then
-  echo "  → Web-timeline or proto files changed, running tests..."
+  echo "  → Web-timeline or proto files changed, running unit tests..."
   if ! (cd web-timeline && npm test 2>&1); then
-    echo "✗ Web-timeline tests failed"
+    echo "✗ Web-timeline unit tests failed"
     exit 1
   fi
-  echo "  ✓ Web-timeline tests passed"
+  echo "  ✓ Web-timeline unit tests passed"
+
+  echo "  → Running Playwright integration tests..."
+  if ! (cd web-timeline && npx playwright test 2>&1); then
+    echo "✗ Web-timeline integration tests failed"
+    exit 1
+  fi
+  echo "  ✓ Web-timeline integration tests passed"
 fi
 
 echo "✓ Pre-commit checks passed!"

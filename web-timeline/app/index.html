@@ -23,46 +23,15 @@
     </script>
   </head>
   <body>
-    <!-- Hidden SVG defs — span-line filter only; icons are loaded from /assets/icons/ -->
-    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg"
-         style="position:absolute;width:0;height:0;overflow:hidden">
-      <defs>
-
-        <!--
-          Span line filter — applied to every .span-line group.
-          Layers (bottom → top):
-            1. Drop shadow  — blurred alpha of the source, offset down
-            2. Dark border  — dilated source masked with semi-transparent black
-            3. Source       — the colored stroke at full brightness
-        -->
-        <filter id="span-line-style" x="-10%" y="-10%" width="120%" height="120%">
-          <!-- Drop shadow — flood-color references the theme token so the
-               shadow is strong in dark mode and subtle in light mode. -->
-          <feGaussianBlur in="SourceAlpha" stdDeviation="2.5" result="blur"/>
-          <feOffset in="blur" dy="2" result="offset-blur"/>
-          <feFlood flood-color="var(--color-shadow)" result="shadow-flood"/>
-          <feComposite in="shadow-flood" in2="offset-blur" operator="in" result="drop-shadow"/>
-
-          <!-- Dark border: dilate source, then mask with semi-transparent black -->
-          <feMorphology operator="dilate" radius="2" in="SourceGraphic" result="border-shape"/>
-          <feFlood flood-color="black" flood-opacity="0.45" result="dark"/>
-          <feComposite in="dark" in2="border-shape" operator="in" result="border"/>
-
-          <!-- Composite: shadow → border → original -->
-          <feMerge>
-            <feMergeNode in="drop-shadow"/>
-            <feMergeNode in="border"/>
-            <feMergeNode in="SourceGraphic"/>
-          </feMerge>
-        </filter>
-
-      </defs>
-    </svg>
 
     <!-- View switcher, zoom control, and theme toggle -->
     <header class="zoom-bar" role="toolbar" aria-label="Timeline controls">
-      <!-- Row 1: View switcher + theme toggle (always visible) -->
+      <!-- Row 1: Title + View switcher + theme toggle (always visible) -->
       <div class="zoom-bar__row zoom-bar__row--primary">
+        <div class="title-branding">
+          <img src="icon.svg" alt="Meridian icon" class="title-branding__icon" />
+          <span class="title-branding__name" id="person-name">Timeline</span>
+        </div>
         <div class="view-switcher">
           <button class="view-btn view-btn--active" data-view="subway" aria-label="Subway timeline view">
             Subway

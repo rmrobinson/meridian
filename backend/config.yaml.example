@@ -56,36 +56,36 @@ line_families:
 
   - id: employment
     label: Employment
-    base_color_hsl: [210, 70, 50]
+    base_color_hsl: [200, 55, 78]
     side: left
     on_end: merge
     spawn_behavior: per_event
 
   - id: education
     label: Education
-    base_color_hsl: [270, 60, 55]
+    base_color_hsl: [260, 45, 80]
     side: left
     on_end: merge
     spawn_behavior: per_event
 
   - id: hobbies
     label: Hobbies
-    base_color_hsl: [180, 55, 45]
+    base_color_hsl: [160, 45, 75]
     side: right
     on_end: terminate
     spawn_behavior: secondary_spine
 
   - id: travel
     label: Travel
-    base_color_hsl: [50, 85, 50]
+    base_color_hsl: [45, 70, 78]
     side: right
     on_end: merge
     spawn_behavior: per_event
 
   - id: books
     label: Books
-    base_color_hsl: [30, 70, 50]
-    side: right
+    base_color_hsl: [20, 65, 80]
+    side: left
     on_end: terminate
     spawn_behavior: per_event
     # parent_family_id causes branches to depart from the hobbies secondary spine
@@ -94,7 +94,7 @@ line_families:
 
   - id: film_tv
     label: Film & TV
-    base_color_hsl: [300, 60, 55]
+    base_color_hsl: [330, 55, 78]
     side: right
     on_end: terminate
     spawn_behavior: per_event
@@ -102,7 +102,7 @@ line_families:
 
   - id: fitness
     label: Fitness & Health
-    base_color_hsl: [140, 65, 45]
+    base_color_hsl: [10, 70, 76]
     side: left
     on_end: terminate
     spawn_behavior: secondary_spine

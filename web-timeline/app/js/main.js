@@ -1,3 +1,4 @@
+
 /**
  * main.js — Bootstrap, pre-computation pipeline, wires modules together.
  *
@@ -22,6 +23,7 @@ import { preloadIcons } from './icons.js';
 import { CURVE_HEIGHT, timeToY } from './lines.js';
 import { assignLanes } from './lanes.js';
 import { initTimeline } from './timeline.js';
+import { isLightMode } from './theme.js';
 import {
   ZOOM_DAY, ZOOM_WEEK, ZOOM_MONTH,
   aggregateByMonth,
@@ -70,6 +72,12 @@ async function init() {
 
   _data = await fetchTimeline();
   loadingEl.remove();
+
+  // Update the person's name in the title bar
+  const personNameEl = document.getElementById('person-name');
+  if (personNameEl && _data.person?.name) {
+    personNameEl.textContent = _data.person.name;
+  }
 
   // Pre-load all icon files into the cache before any rendering begins.
   // getIconPath() is called synchronously during scroll; the cache must be
@@ -832,16 +840,6 @@ function setupSwipeDismiss(sheet, overlay) {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-/**
- * True when the current active theme is light.
- * Checks explicit data-theme override first, then the system preference.
- */
-export function isLightMode() {
-  const theme = document.documentElement.getAttribute('data-theme');
-  if (theme === 'light') return true;
-  if (theme === 'dark')  return false;
-  return !window.matchMedia('(prefers-color-scheme: dark)').matches;
-}
 
 /**
  * Adjust HSL lightness for the current theme.
@@ -936,6 +934,10 @@ window.__timeline_setZoom = function (pxPerDay) {
 function setupThemeToggle() {
   const btn = document.getElementById('theme-toggle');
   if (!btn) return;
+
+  // Prevent duplicate listener registration if this function is called multiple times.
+  if (btn._themeListenerAttached) return;
+  btn._themeListenerAttached = true;
 
   btn.addEventListener('click', () => {
     const current = document.documentElement.getAttribute('data-theme');
