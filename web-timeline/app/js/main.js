@@ -12,18 +12,19 @@
  *
  * Devtools hook:
  *   window.__timeline_setZoom(pxPerDay)
- *   e.g. window.__timeline_setZoom(0.07)  // ZOOM_YEAR
+ *   e.g. window.__timeline_setZoom(0.55)  // ZOOM_WEEK
  */
 
 import { fetchTimeline } from './api.js';
-import { buildCardContent, buildWeekCardContent } from './cards.js';
+import { buildCardContent, buildClusterCardContent } from './cards.js';
+import { clusterPointEvents } from './clusters.js';
 import { preloadIcons } from './icons.js';
 import { CURVE_HEIGHT, timeToY } from './lines.js';
 import { assignLanes } from './lanes.js';
 import { initTimeline } from './timeline.js';
 import {
-  ZOOM_DAY, ZOOM_MONTH, ZOOM_YEAR,
-  aggregateByMonth, filterForYearZoom,
+  ZOOM_DAY, ZOOM_WEEK, ZOOM_MONTH,
+  aggregateByMonth,
 } from './zoom.js';
 import { buildWeekMap, renderGrid, eventsForWeek } from './grid.js';
 
@@ -50,9 +51,14 @@ let _gridContainer = null;
  * _eventById covers all original + birthday events.
  * _aggregateById is rebuilt on every ZOOM_MONTH render (aggregates are
  * zoom-level-specific synthetic objects).
+ * _clusterById is rebuilt on every ZOOM_DAY render (clusters are zoom-level-specific).
  */
 let _eventById     = new Map();
 let _aggregateById = new Map();
+let _clusterById   = new Map();
+
+/** Card navigation stack — history of opened cards for back-navigation. */
+let _cardStack = [];
 
 async function init() {
   const container = document.getElementById('timeline-container');
@@ -84,7 +90,8 @@ async function init() {
   // Build the WeekMap once — reused every time Year zoom is activated.
   _weekMap = buildWeekMap(_data, hslColor);
 
-  setupZoomButtons(svg);
+  setupZoomButtons();
+  setupViewButtons();
   setupThemeToggle();
   setupCardInteraction(svg);
   setupGridCardInteraction();
@@ -98,7 +105,7 @@ async function init() {
  * Pure function of (data, pxPerDay) — safe to call multiple times.
  *
  * @param {object} data      - Normalized API response from fetchTimeline().
- * @param {number} pxPerDay  - One of ZOOM_DAY, ZOOM_MONTH, or ZOOM_YEAR.
+ * @param {number} pxPerDay  - One of ZOOM_DAY, ZOOM_WEEK, or ZOOM_MONTH.
  * @returns {{ layout: object, renderObjects: object[] }}
  */
 function buildRenderObjects(data, pxPerDay) {
@@ -119,9 +126,9 @@ function buildRenderObjects(data, pxPerDay) {
   const familyById = new Map(data.line_families.map((f) => [f.id, f]));
 
   // ── Apply zoom-level event transformation ─────────────────────────────────
-  // ZOOM_DAY: all events as-is.
+  // ZOOM_DAY: all events as-is, then cluster nearby point events.
+  // ZOOM_WEEK: all events as-is, then cluster nearby point events (same as day).
   // ZOOM_MONTH: point events aggregated per (family_id, year-month).
-  // ZOOM_YEAR: point events dropped; one synthetic midpoint per span.
 
   let events = data.events;
   if (pxPerDay === ZOOM_MONTH) {
@@ -132,14 +139,13 @@ function buildRenderObjects(data, pxPerDay) {
     );
   } else {
     _aggregateById = new Map();
-    if (pxPerDay === ZOOM_YEAR) events = filterForYearZoom(events);
   }
 
   // ── Lane assignment ────────────────────────────────────────────────────────
 
   const laneMap = assignLanes(events, data.line_families);
 
-  const renderObjects = [];
+  let renderObjects = [];
 
   // ── Secondary spine lines ─────────────────────────────────────────────────
   //
@@ -350,16 +356,41 @@ function buildRenderObjects(data, pxPerDay) {
       ? variantColor(family.base_color_hsl, laneInfo.colorIndex)
       : null;
 
-    const isMajor =
-      evt.family_id === 'spine' &&
-      evt.metadata?.milestone_type !== 'birthday';
-
     renderObjects.push({
       type: 'station', id: evt.id,
-      y, laneOffset, color, event: evt, isMajor,
+      y, laneOffset, color, event: evt,
       label: evt.label ?? truncate(evt.title),
       icon:  evt.icon ?? null,
+      icon_png_url: evt.icon_png_url ?? null,
     });
+  }
+
+  // ── Pass 3 — Clustering pass (day zoom only) ──────────────────────────────
+  //
+  // At day and week zoom, group nearby point events on the same line into clusters to
+  // prevent overlapping dots and labels. Clusters are rendered with a count pill.
+  // At month zoom, aggregates handle grouping instead. No clustering applies.
+
+  if (pxPerDay === ZOOM_DAY || pxPerDay === ZOOM_WEEK) {
+    // Extract only point-event stations (not aggregates, not span start/end stations).
+    const pointStations = renderObjects.filter(
+      (o) => o.type === 'station' && o.event?.type === 'point',
+    );
+    // Run clustering and splice results back into renderObjects.
+    const clustered = clusterPointEvents(pointStations, pxPerDay);
+    // Replace point stations with cluster results (single runs pass through unchanged).
+    const pointStationIds = new Set(pointStations.map((o) => o.id));
+    const nonPointObjects = renderObjects.filter((o) => !pointStationIds.has(o.id));
+    renderObjects = [...nonPointObjects, ...clustered];
+    // Build cluster lookup for click handlers.
+    for (const obj of clustered) {
+      if (obj.type === 'cluster') {
+        _clusterById.set(obj.id, obj);
+      }
+    }
+  } else {
+    // Month zoom and beyond: no clustering (aggregates used instead).
+    _clusterById = new Map();
   }
 
   return { layout, renderObjects };
@@ -368,18 +399,13 @@ function buildRenderObjects(data, pxPerDay) {
 // ── Zoom button wiring ────────────────────────────────────────────────────────
 
 /**
- * Attach click listeners to the Day / Month / Year buttons in the zoom bar.
+ * Attach click listeners to the Day / Week / Month buttons in the zoom bar.
  * Toggles `zoom-btn--active` class and `aria-pressed` attribute on each press.
  *
- * Year zoom activates the week grid instead of the subway map SVG.
- * Day / Month zoom return to the subway map (restoring its prior zoom state).
- *
  * Called once after first render so _data and _controller are guaranteed set.
- *
- * @param {SVGElement} svg - The #timeline-svg element (toggled hidden for grid view).
  */
-function setupZoomButtons(svg) {
-  const ZOOM_BY_NAME = { day: ZOOM_DAY, month: ZOOM_MONTH, year: ZOOM_YEAR };
+function setupZoomButtons() {
+  const ZOOM_BY_NAME = { day: ZOOM_DAY, week: ZOOM_WEEK, month: ZOOM_MONTH };
   const buttons = Array.from(document.querySelectorAll('.zoom-btn'));
 
   // Initialise aria-pressed to match the visually-active button.
@@ -401,18 +427,58 @@ function setupZoomButtons(svg) {
 
       _pxPerDay = pxPerDay;
       setBodyZoom(pxPerDay);
+      // Grid view is now controlled by the view switcher, not zoom buttons.
+      // Always rebuild subway map render objects.
+      const { layout, renderObjects } = buildRenderObjects(_data, pxPerDay);
+      _controller.setRenderObjects(layout, renderObjects);
+    });
+  });
+}
 
-      if (pxPerDay === ZOOM_YEAR) {
-        // Switch to grid view.
-        svg.setAttribute('hidden', '');
+/**
+ * Attach click listeners to the Subway / Grid view buttons in the view switcher.
+ * Toggles `view-btn--active` class to switch between subway map and week grid views.
+ * Also toggles visibility of the zoom controls row (hidden in grid view) and adjusts
+ * the zoom-bar height and timeline-container top position accordingly.
+ *
+ * Called once after first render so _data, _controller, and _weekMap are guaranteed set.
+ */
+function setupViewButtons() {
+  const buttons = Array.from(document.querySelectorAll('.view-btn'));
+  const zoomBar = document.querySelector('.zoom-bar');
+  const zoomControlsRow = document.getElementById('zoom-controls-row');
+  const svg = document.getElementById('timeline-svg');
+  const timelineContainer = document.getElementById('timeline-container');
+
+  buttons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const view = btn.dataset.view;
+      if (!view) return;
+
+      // Update active button state
+      buttons.forEach((b) => {
+        b.classList.remove('view-btn--active');
+      });
+      btn.classList.add('view-btn--active');
+
+      if (view === 'grid') {
+        // Show grid, hide subway map and zoom controls
         _gridContainer.removeAttribute('hidden');
+        svg.toggleAttribute('hidden', true);
+        zoomControlsRow.toggleAttribute('hidden', true);
+        // Adjust zoom-bar height and timeline-container position for single-row header
+        zoomBar.style.height = '48px';
+        timelineContainer.style.top = '48px';
+        // Render the grid with the current WeekMap
         renderGrid(_weekMap, _data, _gridContainer);
-      } else {
-        // Return to subway map.
-        _gridContainer.setAttribute('hidden', '');
-        svg.removeAttribute('hidden');
-        const { layout, renderObjects } = buildRenderObjects(_data, pxPerDay);
-        _controller.setRenderObjects(layout, renderObjects);
+      } else if (view === 'subway') {
+        // Show subway map and zoom controls, hide grid
+        svg.toggleAttribute('hidden', false);
+        zoomControlsRow.toggleAttribute('hidden', false);
+        _gridContainer.toggleAttribute('hidden', true);
+        // Restore zoom-bar height and timeline-container position for two-row header
+        zoomBar.style.height = '';
+        timelineContainer.style.top = '';
       }
     });
   });
@@ -422,6 +488,7 @@ function setupZoomButtons(svg) {
 
 /**
  * Wire delegated click on the SVG → open card, close button, backdrop, Escape.
+ * Also wire cluster member row clicks for drill-down navigation.
  * Must be called after initTimeline() so the SVG layers exist.
  */
 function setupCardInteraction(svg) {
@@ -446,6 +513,16 @@ function setupCardInteraction(svg) {
     handleActivate(el, null, overlay, sheet, content);
   });
 
+  // Cluster member row clicks — drill into event detail card.
+  // Delegates on the content div since member rows are rendered inside it.
+  content.addEventListener('click', (e) => {
+    const btn = e.target.closest('.cluster-member-item');
+    if (!btn) return;
+    const event = _eventById.get(btn.dataset.id);
+    if (!event) return;
+    pushCard(event, null, null, overlay, sheet, content);
+  });
+
   closeBtn.addEventListener('click', () => closeCard(overlay));
 
   // Clicking the backdrop (overlay itself, not the sheet) dismisses.
@@ -465,11 +542,12 @@ function setupCardInteraction(svg) {
  * Wire click interaction for the week grid view.
  *
  * Two levels of delegation on #week-grid-container:
- *   .week-cell[data-week]  → open a week summary card listing all events that week.
- *   .week-event-item       → open the individual event detail card.
+ *   .week-cell[data-week]  → open a week summary card (as a cluster card with drill-down).
+ *   .cluster-member-item   → open the individual event detail card (navigation stack).
  *
  * Both use the same #card-overlay / #card-sheet / #card-content elements as the
  * subway map, so close / Escape / backdrop dismiss work without extra wiring.
+ * Cluster member rows and back-navigation are wired in setupCardInteraction.
  */
 function setupGridCardInteraction() {
   const overlay = document.getElementById('card-overlay');
@@ -481,21 +559,39 @@ function setupGridCardInteraction() {
     const cell = e.target.closest('.week-cell[data-week]');
     if (!cell) return;
 
-    const weekKey      = cell.dataset.week;
-    const events       = eventsForWeek(weekKey, _data);
-    const entry        = _weekMap[weekKey];
-    const residenceLabel = entry?.family === 'residence' ? entry.label : null;
+    const weekKey = cell.dataset.week;
+    const events  = eventsForWeek(weekKey, _data);
 
-    content.innerHTML = '';
-    content.appendChild(buildWeekCardContent(weekKey, events, residenceLabel));
+    // Extract start and end dates from the week key.
+    // Week key format: "YYYY-Www" (ISO 8601 week date)
+    // We'll compute the Monday of that week as startDate, Sunday as endDate.
+    const [yearStr, weekStr] = weekKey.split('-W');
+    const year = Number(yearStr);
+    const week = Number(weekStr);
 
-    if (window.innerWidth >= 480) positionCard(cell, e, sheet);
-    else {
-      sheet.style.top  = '';
-      sheet.style.left = '';
-    }
+    // ISO week 1 is the week with January 4th.
+    // Find the Monday of week 1 (always in the previous year).
+    const jan4 = new Date(Date.UTC(year, 0, 4));
+    const weekStart = new Date(jan4);
+    weekStart.setUTCDate(jan4.getUTCDate() - jan4.getUTCDay());
+    const monday = new Date(weekStart);
+    monday.setUTCDate(weekStart.getUTCDate() + (week - 1) * 7);
+    const sunday = new Date(monday);
+    sunday.setUTCDate(monday.getUTCDate() + 6);
 
-    overlay.removeAttribute('hidden');
+    // Create a synthetic week-cluster object to render via the cluster card.
+    const weekCluster = {
+      type: 'week-cluster',
+      id: `week-${weekKey}`,
+      members: events,
+      count: events.length,
+      startDate: monday.toISOString().split('T')[0],
+      endDate: sunday.toISOString().split('T')[0],
+    };
+
+    // Reset stack and push the week cluster.
+    _cardStack = [weekCluster];
+    renderCardStack(cell, e, overlay, sheet, content);
   });
 
   // Keyboard activation on week cells.
@@ -504,48 +600,95 @@ function setupGridCardInteraction() {
     const cell = e.target.closest('.week-cell[data-week]');
     if (!cell) return;
     e.preventDefault();
-    const weekKey      = cell.dataset.week;
-    const events       = eventsForWeek(weekKey, _data);
-    const entry        = _weekMap[weekKey];
-    const residenceLabel = entry?.family === 'residence' ? entry.label : null;
-    content.innerHTML = '';
-    content.appendChild(buildWeekCardContent(weekKey, events, residenceLabel));
-    sheet.style.top  = '';
-    sheet.style.left = '';
-    overlay.removeAttribute('hidden');
-  });
 
-  // Week event item clicks — delegated on the overlay, since .week-event-item
-  // buttons are rendered inside #card-content (a child of #card-overlay),
-  // not inside #week-grid-container.
-  overlay.addEventListener('click', (e) => {
-    const itemBtn = e.target.closest('.week-event-item');
-    if (!itemBtn) return;
-    const event = _eventById.get(itemBtn.dataset.id);
-    if (!event) return;
-    content.innerHTML = '';
-    content.appendChild(buildCardContent(event));
-    if (window.innerWidth >= 480) positionCard(itemBtn, e, sheet);
+    const weekKey = cell.dataset.week;
+    const events  = eventsForWeek(weekKey, _data);
+
+    const [yearStr, weekStr] = weekKey.split('-W');
+    const year = Number(yearStr);
+    const week = Number(weekStr);
+    const jan4 = new Date(Date.UTC(year, 0, 4));
+    const weekStart = new Date(jan4);
+    weekStart.setUTCDate(jan4.getUTCDate() - jan4.getUTCDay());
+    const monday = new Date(weekStart);
+    monday.setUTCDate(weekStart.getUTCDate() + (week - 1) * 7);
+    const sunday = new Date(monday);
+    sunday.setUTCDate(monday.getUTCDate() + 6);
+
+    const weekCluster = {
+      type: 'week-cluster',
+      id: `week-${weekKey}`,
+      members: events,
+      count: events.length,
+      startDate: monday.toISOString().split('T')[0],
+      endDate: sunday.toISOString().split('T')[0],
+    };
+
+    _cardStack = [weekCluster];
+    renderCardStack(null, null, overlay, sheet, content);
   });
+  // Note: cluster member row clicks are already delegated in setupCardInteraction(),
+  // so no additional wiring needed here.
 }
 
 function handleActivate(el, mouseEvent, overlay, sheet, content) {
   const eventId = el.dataset.id;
-  const event = _aggregateById.get(eventId) ?? _eventById.get(eventId);
+  // Resolve cluster, aggregate, or event (try in order of likelihood).
+  const event = _clusterById.get(eventId)
+    ?? _aggregateById.get(eventId)
+    ?? _eventById.get(eventId);
   if (!event) return;
-  openCard(event, el, mouseEvent, overlay, sheet, content);
+  // Reset stack and push the new event (clicking from timeline starts a fresh stack).
+  _cardStack = [event];
+  renderCardStack(el, mouseEvent, overlay, sheet, content);
 }
 
-function openCard(event, el, mouseEvent, overlay, sheet, content) {
-  // Populate content.
+/**
+ * Push a new event onto the navigation stack and render it.
+ * Used when drilling into a member event from within a cluster/aggregate card.
+ */
+function pushCard(event, anchorEl, mouseEvent, overlay, sheet, content) {
+  _cardStack.push(event);
+  renderCardStack(anchorEl, mouseEvent, overlay, sheet, content);
+}
+
+/**
+ * Render the top event from the navigation stack.
+ * Injects a back button if stack depth > 1.
+ */
+function renderCardStack(anchorEl, mouseEvent, overlay, sheet, content) {
+  if (_cardStack.length === 0) {
+    closeCard(overlay);
+    return;
+  }
+
+  const event = _cardStack[_cardStack.length - 1];
+
+  // Populate content with the appropriate card type.
   content.innerHTML = '';
   content.appendChild(buildCardContent(event));
 
+  // Inject back button in the card header if this is not the first card in the stack.
+  if (_cardStack.length > 1) {
+    const cardTitle = content.querySelector('.card-title');
+    if (cardTitle) {
+      const backBtn = document.createElement('button');
+      backBtn.className = 'card-back-btn';
+      backBtn.setAttribute('aria-label', 'Back');
+      backBtn.textContent = '←';
+      backBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        goBack(overlay, sheet, content);
+      });
+      cardTitle.parentElement.insertBefore(backBtn, cardTitle);
+    }
+  }
+
   // Position (desktop only — mobile is handled entirely by CSS bottom-sheet).
   if (window.innerWidth >= 480) {
-    positionCard(el, mouseEvent, sheet);
+    positionCard(anchorEl, mouseEvent, sheet);
   } else {
-    // Remove any inline positioning set by a prior desktop open.
+    // Remove any inline positioning set by a prior open.
     sheet.style.top  = '';
     sheet.style.left = '';
   }
@@ -553,7 +696,21 @@ function openCard(event, el, mouseEvent, overlay, sheet, content) {
   overlay.removeAttribute('hidden');
 }
 
+/**
+ * Pop the top card from the stack and re-render.
+ * If stack becomes empty, close the card entirely.
+ */
+function goBack(overlay, sheet, content) {
+  _cardStack.pop();
+  if (_cardStack.length === 0) {
+    closeCard(overlay);
+  } else {
+    renderCardStack(null, null, overlay, sheet, content);
+  }
+}
+
 function closeCard(overlay) {
+  _cardStack = [];
   overlay.setAttribute('hidden', '');
 }
 
@@ -726,9 +883,9 @@ function truncate(str, max = 22) {
  * zoom-state rules (label visibility, icon placement) can use simple selectors.
  */
 function setBodyZoom(pxPerDay) {
-  document.body.classList.remove('zoom-day', 'zoom-month', 'zoom-year');
+  document.body.classList.remove('zoom-day', 'zoom-week', 'zoom-month');
   if (pxPerDay === ZOOM_MONTH)     document.body.classList.add('zoom-month');
-  else if (pxPerDay === ZOOM_YEAR) document.body.classList.add('zoom-year');
+  else if (pxPerDay === ZOOM_WEEK) document.body.classList.add('zoom-week');
   else                             document.body.classList.add('zoom-day');
 }
 
@@ -745,7 +902,8 @@ function setBodyZoom(pxPerDay) {
 function setupGridResizeHandler() {
   let debounceTimer = null;
   window.addEventListener('resize', () => {
-    if (_pxPerDay !== ZOOM_YEAR || !_gridContainer || _gridContainer.hasAttribute('hidden')) return;
+    // Only re-render grid if it's currently visible
+    if (!_gridContainer || _gridContainer.hasAttribute('hidden')) return;
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       renderGrid(_weekMap, _data, _gridContainer);
@@ -757,7 +915,7 @@ function setupGridResizeHandler() {
 //
 // Flip zoom level manually from the browser console:
 //   window.__timeline_setZoom(0.25)  // ZOOM_MONTH
-//   window.__timeline_setZoom(0.07)  // ZOOM_YEAR
+//   window.__timeline_setZoom(0.55)  // ZOOM_WEEK
 //   window.__timeline_setZoom(2)     // ZOOM_DAY (default)
 
 window.__timeline_setZoom = function (pxPerDay) {
@@ -767,17 +925,10 @@ window.__timeline_setZoom = function (pxPerDay) {
   }
   _pxPerDay = pxPerDay;
   setBodyZoom(pxPerDay);
-  const svg = document.getElementById('timeline-svg');
-  if (pxPerDay === ZOOM_YEAR) {
-    svg.setAttribute('hidden', '');
-    _gridContainer.removeAttribute('hidden');
-    renderGrid(_weekMap, _data, _gridContainer);
-  } else {
-    _gridContainer.setAttribute('hidden', '');
-    svg.removeAttribute('hidden');
-    const { layout, renderObjects } = buildRenderObjects(_data, pxPerDay);
-    _controller.setRenderObjects(layout, renderObjects);
-  }
+  // Grid view is controlled by the view switcher, not zoom level.
+  // Always rebuild subway render objects.
+  const { layout, renderObjects } = buildRenderObjects(_data, pxPerDay);
+  _controller.setRenderObjects(layout, renderObjects);
 };
 
 // ── Theme toggle ──────────────────────────────────────────────────────────────
@@ -812,16 +963,14 @@ function setupThemeToggle() {
  */
 function rebuildForThemeChange() {
   if (!_data) return;
-  if (_pxPerDay === ZOOM_YEAR) {
-    // Rebuild the WeekMap (colors are baked in) then re-render the grid.
+  // If grid view is visible, rebuild the WeekMap (colors are baked in) then re-render.
+  if (_gridContainer && !_gridContainer.hasAttribute('hidden')) {
     _weekMap = buildWeekMap(_data, hslColor);
-    if (_gridContainer && !_gridContainer.hasAttribute('hidden')) {
-      renderGrid(_weekMap, _data, _gridContainer);
-    }
-  } else {
-    const { layout, renderObjects } = buildRenderObjects(_data, _pxPerDay);
-    _controller.setRenderObjects(layout, renderObjects);
+    renderGrid(_weekMap, _data, _gridContainer);
   }
+  // Always rebuild subway render objects (even if grid is visible, in case user switches back).
+  const { layout, renderObjects } = buildRenderObjects(_data, _pxPerDay);
+  _controller.setRenderObjects(layout, renderObjects);
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────

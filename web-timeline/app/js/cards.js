@@ -27,6 +27,8 @@
  *     The card type class (e.g. card--travel) is set on the returned element.
  */
 
+import { isLightMode } from './main.js';
+
 /**
  * Build the content element for the given event.
  *
@@ -34,7 +36,10 @@
  * @returns {HTMLElement}
  */
 export function buildCardContent(event) {
-  if (event.type === 'aggregate') return aggregateCard(event);
+  // Cluster and aggregate cards use the same rendering (list of tappable members).
+  if (event.type === 'cluster' || event.type === 'aggregate' || event.type === 'week-cluster') {
+    return buildClusterCardContent(event);
+  }
   switch (event.metadata_type) {
     case 'life':       return milestoneCard(event);
     case 'employment': return employmentCard(event);
@@ -49,68 +54,6 @@ export function buildCardContent(event) {
   }
 }
 
-/**
- * Build a week summary card showing all events that overlap the given ISO week,
- * grouped by family. Each event item carries a data-id attribute so the
- * delegated click handler in main.js can open the individual event card.
- *
- * @param {string}   weekKey - ISO week key, e.g. "2023-W11".
- * @param {object[]} events  - Events overlapping this week (from grid.eventsForWeek).
- * @returns {HTMLElement}
- */
-export function buildWeekCardContent(weekKey, events, residenceLabel = null) {
-  const wrap = el('div', 'card--week');
-
-  wrap.appendChild(el('p', 'card-title', formatWeekKey(weekKey)));
-
-  if (events.length === 0) {
-    const msg = residenceLabel
-      ? `Living in ${residenceLabel}.`
-      : 'No events this week.';
-    wrap.appendChild(el('p', 'card-description', msg));
-    return wrap;
-  }
-
-  // Group events by family label.
-  const groups = new Map(); // familyLabel → event[]
-  for (const evt of events) {
-    const label = FAMILY_LABELS[evt.family_id] ?? titleCase(evt.family_id);
-    if (!groups.has(label)) groups.set(label, []);
-    groups.get(label).push(evt);
-  }
-
-  for (const [groupLabel, groupEvents] of groups) {
-    const section = document.createElement('section');
-    section.className = 'card-week-section';
-
-    const heading = el('p', 'card-week-group-label', groupLabel);
-    section.appendChild(heading);
-
-    const list = document.createElement('ul');
-    list.className = 'card-week-event-list';
-
-    for (const evt of groupEvents) {
-      const item = document.createElement('li');
-
-      const btn = document.createElement('button');
-      btn.className = 'week-event-item';
-      btn.dataset.id = evt.id;
-      btn.type = 'button';
-
-      const titleSpan = el('span', 'week-event-title', evt.title);
-      const dateSpan  = el('span', 'week-event-date', weekEventDate(evt));
-      btn.appendChild(titleSpan);
-      btn.appendChild(dateSpan);
-      item.appendChild(btn);
-      list.appendChild(item);
-    }
-
-    section.appendChild(list);
-    wrap.appendChild(section);
-  }
-
-  return wrap;
-}
 
 // ── Card builders ─────────────────────────────────────────────────────────────
 
@@ -442,20 +385,141 @@ function standardCard(event) {
   return wrap;
 }
 
-function aggregateCard(event) {
-  const wrap = el('div', 'card--aggregate');
+/**
+ * Build a cluster card — a list of member events with drill-down capability.
+ *
+ * Used for three contexts:
+ *   - Day zoom proximity clusters (type === 'cluster')
+ *   - Month zoom aggregates (type === 'aggregate')
+ *   - Week grid cells (type === 'week-cluster')
+ *
+ * All three have a list of member events that can be tapped to open the
+ * individual event detail card.
+ *
+ * @param {object} clusterOrAggregate - Cluster, aggregate, or week cluster object
+ * @returns {HTMLElement}
+ */
+export function buildClusterCardContent(clusterOrAggregate) {
+  const obj = clusterOrAggregate;
+  const wrap = el('div', `card--${obj.type}`);
 
-  wrap.appendChild(el('p', 'card-title', event.title));
-  wrap.appendChild(el('p', 'card-dates', formatYearMonth(event.year_month)));
-
-  const list = document.createElement('ul');
-  list.className = 'card-aggregate-list';
-  for (const src of event.events ?? []) {
-    const item = document.createElement('li');
-    item.textContent = src.title;
-    list.appendChild(item);
+  // Header with family label (if present) and date range.
+  let headerText = '';
+  if (obj.type === 'week-cluster') {
+    headerText = `Week of ${formatDate(obj.startDate)}`;
+  } else if (obj.type === 'aggregate') {
+    const familyLabel = FAMILY_LABELS[obj.family_id] ?? titleCase(obj.family_id);
+    headerText = `${familyLabel} · ${formatYearMonth(obj.year_month)}`;
+  } else {
+    // cluster
+    const familyLabel = FAMILY_LABELS[obj.familyId] ?? titleCase(obj.familyId);
+    const dateRange = `${formatDate(obj.endDate)} – ${formatDate(obj.startDate)}`;
+    headerText = `${familyLabel} · ${dateRange}`;
   }
-  wrap.appendChild(list);
+  wrap.appendChild(el('p', 'card-title', headerText));
+
+  // Member events list.
+  const members = obj.members ?? obj.events ?? [];
+
+  if (obj.type === 'week-cluster') {
+    // Week cluster: group members by family.
+    const groups = new Map();
+    for (const evt of members) {
+      const label = FAMILY_LABELS[evt.family_id] ?? titleCase(evt.family_id);
+      if (!groups.has(label)) groups.set(label, []);
+      groups.get(label).push(evt);
+    }
+
+    for (const [groupLabel, groupEvents] of groups) {
+      const section = document.createElement('section');
+      section.className = 'cluster-section';
+
+      const heading = el('p', 'cluster-group-label', groupLabel);
+      section.appendChild(heading);
+
+      const list = document.createElement('ul');
+      list.className = 'cluster-member-list';
+
+      for (const evt of groupEvents) {
+        const item = document.createElement('li');
+
+        const btn = document.createElement('button');
+        btn.className = 'cluster-member-item';
+        btn.dataset.id = evt.id;
+        btn.type = 'button';
+
+        // Icon + label + date layout.
+        // Priority: icon_png_url (for cards) > non-mdi icon text (emoji) > skip
+        if (evt.icon_png_url) {
+          const iconImg = document.createElement('img');
+          iconImg.className = 'cluster-member-icon';
+          // Use dark variant if dark mode is active
+          const isDarkMode = !isLightMode();
+          iconImg.src = isDarkMode
+            ? evt.icon_png_url.replace('.png', '-dark.png')
+            : evt.icon_png_url;
+          iconImg.alt = '';
+          iconImg.loading = 'lazy';
+          btn.appendChild(iconImg);
+        } else if (evt.icon && !evt.icon.startsWith('mdi:')) {
+          const iconSpan = el('span', 'cluster-member-icon', evt.icon);
+          btn.appendChild(iconSpan);
+        }
+
+        const titleSpan = el('span', 'cluster-member-label', evt.label ?? evt.title);
+        const dateSpan = el('span', 'cluster-member-date', formatDate(evt.date ?? evt.start_date));
+        btn.appendChild(titleSpan);
+        btn.appendChild(dateSpan);
+
+        item.appendChild(btn);
+        list.appendChild(item);
+      }
+
+      section.appendChild(list);
+      wrap.appendChild(section);
+    }
+  } else {
+    // Cluster or aggregate: flat list of members (not grouped).
+    const list = document.createElement('ul');
+    list.className = 'cluster-member-list';
+
+    for (const evt of members) {
+      const item = document.createElement('li');
+
+      const btn = document.createElement('button');
+      btn.className = 'cluster-member-item';
+      btn.dataset.id = evt.id;
+      btn.type = 'button';
+
+      // Icon + label + date layout.
+      // Priority: icon_png_url (for cards) > non-mdi icon text (emoji) > skip
+      if (evt.icon_png_url) {
+        const iconImg = document.createElement('img');
+        iconImg.className = 'cluster-member-icon';
+        // Use dark variant if dark mode is active
+        const isDarkMode = !isLightMode();
+        iconImg.src = isDarkMode
+          ? evt.icon_png_url.replace('.png', '-dark.png')
+          : evt.icon_png_url;
+        iconImg.alt = '';
+        iconImg.loading = 'lazy';
+        btn.appendChild(iconImg);
+      } else if (evt.icon && !evt.icon.startsWith('mdi:')) {
+        const iconSpan = el('span', 'cluster-member-icon', evt.icon);
+        btn.appendChild(iconSpan);
+      }
+
+      const titleSpan = el('span', 'cluster-member-label', evt.label ?? evt.title);
+      const dateSpan = el('span', 'cluster-member-date', formatDate(evt.date ?? evt.start_date));
+      btn.appendChild(titleSpan);
+      btn.appendChild(dateSpan);
+
+      item.appendChild(btn);
+      list.appendChild(item);
+    }
+
+    wrap.appendChild(list);
+  }
 
   return wrap;
 }
@@ -593,22 +657,6 @@ function formatYearMonth(yearMonth) {
  * @param {string} weekKey
  * @returns {string}
  */
-function formatWeekKey(weekKey) {
-  if (!weekKey) return '';
-  const [yr, wPart] = weekKey.split('-W');
-  return `Week ${Number(wPart)} · ${yr}`;
-}
-
-/**
- * Format a short date string for a week card event item.
- * Spans show start date only; point events show their date.
- * @param {object} evt
- * @returns {string}
- */
-function weekEventDate(evt) {
-  if (evt.start_date) return formatDate(evt.start_date);
-  return formatDate(evt.date);
-}
 
 /** Convert a snake_case or kebab-case id to Title Case. */
 function titleCase(str) {

@@ -13,7 +13,7 @@ vi.mock('../../js/icons.js', () => ({
   getIconPath: vi.fn(),
 }));
 
-import { buildStation } from '../../js/stations.js';
+import { buildStation, buildClusterStation } from '../../js/stations.js';
 import { getIconPath } from '../../js/icons.js';
 
 const SPINE_X = 400;
@@ -37,7 +37,6 @@ function makeObj(overrides = {}) {
   return {
     id:           'test-evt',
     y:            200,
-    isMajor:      false,
     laneOffset:   0,
     color:        null,
     label:        null,
@@ -64,14 +63,6 @@ describe('station dot', () => {
     getIconPath.mockReturnValue('M 0 0 L 24 24');
     const g = buildStation(makeObj({ icon: 'mdi:airplane-takeoff' }), SPINE_X);
     expect(g.querySelector('.station-dot')).not.toBeNull();
-  });
-
-  it('has a larger radius for major stations', () => {
-    const major  = buildStation(makeObj({ isMajor: true }),  SPINE_X);
-    const minor  = buildStation(makeObj({ isMajor: false }), SPINE_X);
-    const rMajor = Number(major.querySelector('.station-dot').getAttribute('r'));
-    const rMinor = Number(minor.querySelector('.station-dot').getAttribute('r'));
-    expect(rMajor).toBeGreaterThan(rMinor);
   });
 
   it('uses cx="50%" for spine stations (laneOffset 0)', () => {
@@ -149,18 +140,6 @@ describe('station label', () => {
     expect(el).not.toBeNull();
     expect(el.textContent).toBe('Japan');
   });
-
-  it('has station-label--major class for major stations', () => {
-    const g  = buildStation(makeObj({ label: 'Big Day', isMajor: true }), SPINE_X);
-    const el = g.querySelector('.station-label');
-    expect(el.classList.contains('station-label--major')).toBe(true);
-  });
-
-  it('does not have station-label--major class for minor stations', () => {
-    const g  = buildStation(makeObj({ label: 'Small thing', isMajor: false }), SPINE_X);
-    const el = g.querySelector('.station-label');
-    expect(el.classList.contains('station-label--major')).toBe(false);
-  });
 });
 
 // ── CSS class flags ───────────────────────────────────────────────────────────
@@ -189,6 +168,56 @@ describe('station CSS class flags', () => {
 
   it('includes family_id in the station class', () => {
     const g = buildStation(makeObj({ event: makeEvent({ family_id: 'books' }) }), SPINE_X);
+    expect(g.classList.contains('station--books')).toBe(true);
+  });
+});
+
+// ── Cluster stations ──────────────────────────────────────────────────────────
+
+describe('cluster station', () => {
+  function makeCluster(overrides = {}) {
+    return {
+      id:           'cluster-a-b',
+      y:            200,
+      laneOffset:   50,
+      color:        '#1e90ff',
+      count:        5,
+      familyId:     'fitness',
+      startDate:    '2024-01-01',
+      endDate:      '2024-01-06',
+      members:      [makeObj(), makeObj()],
+      ...overrides,
+    };
+  }
+
+  it('renders a plain dot with no icon', () => {
+    const g = buildClusterStation(makeCluster(), SPINE_X);
+    expect(g.querySelector('.station-dot')).not.toBeNull();
+    expect(g.querySelector('.station-icon')).toBeNull();
+  });
+
+  it('renders a count pill on the label side', () => {
+    const g = buildClusterStation(makeCluster(), SPINE_X);
+    const pill = g.querySelector('.cluster-pill-text');
+    expect(pill).not.toBeNull();
+    expect(pill.textContent).toBe('5');
+  });
+
+  it('reflects the correct member count in the pill', () => {
+    const g = buildClusterStation(makeCluster({ count: 12 }), SPINE_X);
+    const pill = g.querySelector('.cluster-pill-text');
+    expect(pill.textContent).toBe('12');
+  });
+
+  it('has a hit area ≥ 44px radius', () => {
+    const g = buildClusterStation(makeCluster(), SPINE_X);
+    const hit = g.querySelector('.station-hit');
+    const r = Number(hit.getAttribute('r'));
+    expect(r).toBeGreaterThanOrEqual(22); // radius ≥ 22px → diameter ≥ 44px
+  });
+
+  it('includes familyId in the CSS class', () => {
+    const g = buildClusterStation(makeCluster({ familyId: 'books' }), SPINE_X);
     expect(g.classList.contains('station--books')).toBe(true);
   });
 });
