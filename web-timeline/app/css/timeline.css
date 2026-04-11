@@ -37,7 +37,7 @@ body.zoom-month .station:focus-within .station-icon {
    works). */
 body.zoom-week .station--span-hover .station-icon,
 body.zoom-month .station--span-hover .station-icon {
-  display: block;
+  display: block !important;
 }
 
 /* Labels: always visible at ZOOM_DAY; hover/tap-only at ZOOM_WEEK and ZOOM_MONTH. */
@@ -51,7 +51,7 @@ body.zoom-week .station-label {
 
 body.zoom-week .station:hover .station-label,
 body.zoom-week .station:focus-within .station-label {
-  display: block;
+  display: block !important;
 }
 
 body.zoom-month .station-label {
@@ -65,6 +65,45 @@ body.zoom-month .station:focus-within .station-label {
 
 body.zoom-week .station--span-hover .station-label,
 body.zoom-month .station--span-hover .station-label {
+  display: block !important;
+}
+
+/* Cluster count pill: visible at ZOOM_DAY, hover/tap only at ZOOM_WEEK and ZOOM_MONTH. */
+body.zoom-day .cluster-pill-bg,
+body.zoom-day .cluster-pill-text {
+  display: block !important;
+}
+
+body.zoom-week .cluster-pill-bg,
+body.zoom-week .cluster-pill-text {
+  display: none !important;
+}
+
+body.zoom-week .station:hover .cluster-pill-bg,
+body.zoom-week .station:hover .cluster-pill-text,
+body.zoom-week .station:focus-within .cluster-pill-bg,
+body.zoom-week .station:focus-within .cluster-pill-text {
+  display: block !important;
+}
+
+body.zoom-month .cluster-pill-bg,
+body.zoom-month .cluster-pill-text {
+  display: none !important;
+}
+
+body.zoom-month .station:hover .cluster-pill-bg,
+body.zoom-month .station:hover .cluster-pill-text,
+body.zoom-month .station:focus-within .cluster-pill-bg,
+body.zoom-month .station:focus-within .cluster-pill-text {
+  display: block !important;
+}
+
+/* Hovering the span line bridge: reveal cluster pill on both departure and
+   arrival stations (if they are cluster stations). */
+body.zoom-week .station--span-hover .cluster-pill-bg,
+body.zoom-week .station--span-hover .cluster-pill-text,
+body.zoom-month .station--span-hover .cluster-pill-bg,
+body.zoom-month .station--span-hover .cluster-pill-text {
   display: block !important;
 }
 

@@ -833,7 +833,7 @@ function truncate(str, max = 22) {
  * zoom-state rules (label visibility, icon placement) can use simple selectors.
  */
 function setBodyZoom(pxPerDay) {
-  document.body.classList.remove('zoom-day', 'zoom-month', 'zoom-year');
+  document.body.classList.remove('zoom-day', 'zoom-week', 'zoom-month');
   if (pxPerDay === ZOOM_MONTH)     document.body.classList.add('zoom-month');
   else if (pxPerDay === ZOOM_WEEK) document.body.classList.add('zoom-week');
   else                             document.body.classList.add('zoom-day');
