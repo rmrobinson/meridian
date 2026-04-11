@@ -1,0 +1,61 @@
+#!/bin/bash
+
+set -e
+
+# Get repo root
+REPO_ROOT=$(git rev-parse --show-toplevel)
+cd "$REPO_ROOT"
+
+# Check which files are staged
+PROTO_CHANGED=$(git diff --cached --name-only | grep -c '\.proto$' || true)
+WEB_TIMELINE_CHANGED=$(git diff --cached --name-only | grep -c '^web-timeline/' || true)
+BACKEND_CHANGED=$(git diff --cached --name-only | grep -c '^backend/' || true)
+
+echo "Running pre-commit checks..."
+
+# Proto validation
+if [ "$PROTO_CHANGED" -gt 0 ]; then
+  echo "  → Proto files changed, validating..."
+  if ! buf lint proto 2>&1; then
+    echo "✗ buf lint failed. Fix issues and stage again."
+    exit 1
+  fi
+  if ! buf format --diff proto 2>&1; then
+    echo "✗ buf format check failed. Run: buf format --write proto"
+    exit 1
+  fi
+  echo "  ✓ Proto validation passed"
+fi
+
+# Icon check
+if [ "$WEB_TIMELINE_CHANGED" -gt 0 ]; then
+  echo "  → Web-timeline files changed, checking icons..."
+  if ! (cd web-timeline && npm run check-icons 2>&1); then
+    echo "✗ Icon check failed. Copy missing icons from node_modules/@mdi/svg/svg/"
+    exit 1
+  fi
+  echo "  ✓ Icon check passed"
+fi
+
+# Backend tests (run if backend or proto files changed)
+if [ "$BACKEND_CHANGED" -gt 0 ] || [ "$PROTO_CHANGED" -gt 0 ]; then
+  echo "  → Backend or proto files changed, running tests..."
+  if ! (cd backend && make test 2>&1); then
+    echo "✗ Backend tests failed"
+    exit 1
+  fi
+  echo "  ✓ Backend tests passed"
+fi
+
+# Web-timeline tests (run if web-timeline or proto files changed)
+if [ "$WEB_TIMELINE_CHANGED" -gt 0 ] || [ "$PROTO_CHANGED" -gt 0 ]; then
+  echo "  → Web-timeline or proto files changed, running tests..."
+  if ! (cd web-timeline && npm test 2>&1); then
+    echo "✗ Web-timeline tests failed"
+    exit 1
+  fi
+  echo "  ✓ Web-timeline tests passed"
+fi
+
+echo "✓ Pre-commit checks passed!"
+exit 0
