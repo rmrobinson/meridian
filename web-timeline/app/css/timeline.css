@@ -278,6 +278,13 @@ body.zoom-month .station--span-hover .cluster-pill-text {
 
 /* ── Station labels (Phase 3) ─────────────────────────────────────────────── */
 
+.station-label-bg {
+  fill: var(--color-bg);
+  fill-opacity: 0.7;
+  stroke: none;
+  pointer-events: none;
+}
+
 .station-label {
   font-size: 11px;
   fill: var(--color-label-secondary);

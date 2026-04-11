@@ -104,6 +104,22 @@ export function buildStation(obj, spineX) {
     text.setAttribute('text-anchor',       isRight ? 'end' : 'start');
     text.setAttribute('dominant-baseline', 'middle');
     text.textContent = label;
+
+    // Semi-opaque background rect for legibility when overlapping branches.
+    // Width/height are estimated to fit the label text with padding.
+    const bgPadding = 4;
+    const textWidthEst = label.length * 5.5 + (bgPadding * 2);
+    const bgHeight = 16;
+    const bgRx = 3;
+    const bg = svgEl('rect');
+    bg.setAttribute('class', 'station-label-bg');
+    bg.setAttribute('x', String(isRight ? labelX - textWidthEst : labelX));
+    bg.setAttribute('y', String(y - bgHeight / 2));
+    bg.setAttribute('width', String(textWidthEst));
+    bg.setAttribute('height', String(bgHeight));
+    bg.setAttribute('rx', String(bgRx));
+    g.appendChild(bg);
+
     g.appendChild(text);
   }
 
