@@ -27,7 +27,7 @@
  *     The card type class (e.g. card--travel) is set on the returned element.
  */
 
-import { isLightMode } from './main.js';
+import { isLightMode } from './theme.js';
 
 /**
  * Build the content element for the given event.

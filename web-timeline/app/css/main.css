@@ -75,10 +75,10 @@
 
     --color-shadow: rgba(0, 0, 0, 0.15);
 
-    --color-spine:         hsl(45, 50%, 33%);  /* warm amber, darkened for light bg */
-    --color-spine-border:  hsl(45, 55%, 20%);  /* darker amber border for light bg */
+    --color-spine:         hsl(45, 50%, 55%);  /* warm amber, brightened for light bg */
+    --color-spine-border:  hsl(45, 55%, 40%);  /* lighter amber border for light bg */
     --color-station-ring:  hsl(0, 0%, 92%);
-    --color-station-major: hsl(45, 60%, 28%);  /* milestone dot fill — deeper amber */
+    --color-station-major: hsl(45, 60%, 50%);  /* milestone dot fill — lighter amber */
     --color-station-hover: #000000;
 
     --color-year-label:  rgba(0, 0, 0, 0.40);
@@ -148,10 +148,10 @@
 
   --color-shadow: rgba(0, 0, 0, 0.15);
 
-  --color-spine:         hsl(45, 50%, 33%);
-  --color-spine-border:  hsl(45, 55%, 20%);
+  --color-spine:         hsl(45, 50%, 55%);
+  --color-spine-border:  hsl(45, 55%, 40%);
   --color-station-ring:  hsl(0, 0%, 92%);
-  --color-station-major: hsl(45, 60%, 28%);
+  --color-station-major: hsl(45, 60%, 50%);
   --color-station-hover: #000000;
 
   --color-year-label:  rgba(0, 0, 0, 0.40);
