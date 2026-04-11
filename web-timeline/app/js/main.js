@@ -91,6 +91,7 @@ async function init() {
   _weekMap = buildWeekMap(_data, hslColor);
 
   setupZoomButtons();
+  setupViewButtons();
   setupThemeToggle();
   setupCardInteraction(svg);
   setupGridCardInteraction();
@@ -430,6 +431,55 @@ function setupZoomButtons() {
       // Always rebuild subway map render objects.
       const { layout, renderObjects } = buildRenderObjects(_data, pxPerDay);
       _controller.setRenderObjects(layout, renderObjects);
+    });
+  });
+}
+
+/**
+ * Attach click listeners to the Subway / Grid view buttons in the view switcher.
+ * Toggles `view-btn--active` class to switch between subway map and week grid views.
+ * Also toggles visibility of the zoom controls row (hidden in grid view) and adjusts
+ * the zoom-bar height and timeline-container top position accordingly.
+ *
+ * Called once after first render so _data, _controller, and _weekMap are guaranteed set.
+ */
+function setupViewButtons() {
+  const buttons = Array.from(document.querySelectorAll('.view-btn'));
+  const zoomBar = document.querySelector('.zoom-bar');
+  const zoomControlsRow = document.getElementById('zoom-controls-row');
+  const svg = document.getElementById('timeline-svg');
+  const timelineContainer = document.getElementById('timeline-container');
+
+  buttons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const view = btn.dataset.view;
+      if (!view) return;
+
+      // Update active button state
+      buttons.forEach((b) => {
+        b.classList.remove('view-btn--active');
+      });
+      btn.classList.add('view-btn--active');
+
+      if (view === 'grid') {
+        // Show grid, hide subway map and zoom controls
+        _gridContainer.removeAttribute('hidden');
+        svg.toggleAttribute('hidden', true);
+        zoomControlsRow.toggleAttribute('hidden', true);
+        // Adjust zoom-bar height and timeline-container position for single-row header
+        zoomBar.style.height = '48px';
+        timelineContainer.style.top = '48px';
+        // Render the grid with the current WeekMap
+        renderGrid(_weekMap, _data, _gridContainer);
+      } else if (view === 'subway') {
+        // Show subway map and zoom controls, hide grid
+        svg.toggleAttribute('hidden', false);
+        zoomControlsRow.toggleAttribute('hidden', false);
+        _gridContainer.toggleAttribute('hidden', true);
+        // Restore zoom-bar height and timeline-container position for two-row header
+        zoomBar.style.height = '';
+        timelineContainer.style.top = '';
+      }
     });
   });
 }
