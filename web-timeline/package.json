@@ -8,6 +8,7 @@
     "test:e2e": "playwright test",
     "test:e2e:update": "playwright test --update-snapshots",
     "serve": "vite",
+    "capture-screenshots": "node capture-screenshots.js",
     "build-icons": "node scripts/build-icons.js",
     "gen-perf-fixture": "node scripts/gen-perf-fixture.js",
     "check-icons": "node scripts/check-icons.js"
