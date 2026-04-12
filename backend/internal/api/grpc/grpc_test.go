@@ -21,6 +21,7 @@ import (
 	"github.com/rmrobinson/meridian/backend/internal/config"
 	"github.com/rmrobinson/meridian/backend/internal/db"
 	"github.com/rmrobinson/meridian/backend/internal/domain"
+	"github.com/rmrobinson/meridian/backend/internal/sharing"
 	"go.uber.org/zap"
 )
 
@@ -39,7 +40,10 @@ func (m *mockEnricher) Enrich(_ context.Context, event *domain.Event) error {
 	return m.err
 }
 
-const testRawToken = "test-raw-token-for-grpc"
+const (
+	testRawToken  = "test-raw-token-for-grpc"
+	testJWTSecret = "test-jwt-secret"
+)
 
 func newTestEnvWithEnrichers(t *testing.T, bookEnricher, filmTVEnricher domain.Enricher) *testEnv {
 	t.Helper()
@@ -59,66 +63,15 @@ func newTestEnvWithEnrichers(t *testing.T, bookEnricher, filmTVEnricher domain.E
 	cfg := &config.Config{
 		Server: config.Server{GRPCPort: 9090},
 		Auth: config.Auth{
+			JWTSecret: testJWTSecret,
 			WriteTokens: []config.WriteToken{
 				{Name: "test", TokenHash: string(hash)},
 			},
 		},
 	}
 
-	gs := grpcapi.NewGRPCServer(cfg, database, zap.NewNop(), bookEnricher, filmTVEnricher)
-
-	lis := bufconn.Listen(1024 * 1024)
-	go gs.Serve(lis)
-
-	conn, err := grpc.NewClient("passthrough://bufnet",
-		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
-			return lis.DialContext(ctx)
-		}),
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
-	if err != nil {
-		t.Fatalf("dialing bufconn: %v", err)
-	}
-
-	t.Cleanup(func() {
-		conn.Close()
-		gs.Stop()
-		database.Close()
-	})
-
-	return &testEnv{client: pb.NewTimelineServiceClient(conn), db: database}
-}
-
-type testEnv struct {
-	client pb.TimelineServiceClient
-	db     *db.DB
-}
-
-func newTestEnv(t *testing.T) *testEnv {
-	t.Helper()
-
-	hash, err := bcrypt.GenerateFromPassword([]byte(testRawToken), bcrypt.MinCost)
-	if err != nil {
-		t.Fatalf("hashing token: %v", err)
-	}
-
-	name := strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
-	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", name)
-	database, err := db.Open(dsn)
-	if err != nil {
-		t.Fatalf("opening test db: %v", err)
-	}
-
-	cfg := &config.Config{
-		Server: config.Server{GRPCPort: 9090},
-		Auth: config.Auth{
-			WriteTokens: []config.WriteToken{
-				{Name: "test", TokenHash: string(hash)},
-			},
-		},
-	}
-
-	gs := grpcapi.NewGRPCServer(cfg, database, zap.NewNop(), nil, nil)
+	sharingStore := sharing.NewStore(database)
+	gs := grpcapi.NewGRPCServer(cfg, database, zap.NewNop(), bookEnricher, filmTVEnricher, sharingStore)
 
 	lis := bufconn.Listen(1024 * 1024)
 	go gs.Serve(lis)
@@ -140,8 +93,69 @@ func newTestEnv(t *testing.T) *testEnv {
 	})
 
 	return &testEnv{
-		client: pb.NewTimelineServiceClient(conn),
-		db:     database,
+		client:        pb.NewTimelineServiceClient(conn),
+		sharingClient: pb.NewSharingServiceClient(conn),
+		db:            database,
+	}
+}
+
+type testEnv struct {
+	client        pb.TimelineServiceClient
+	sharingClient pb.SharingServiceClient
+	db            *db.DB
+}
+
+func newTestEnv(t *testing.T) *testEnv {
+	t.Helper()
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(testRawToken), bcrypt.MinCost)
+	if err != nil {
+		t.Fatalf("hashing token: %v", err)
+	}
+
+	name := strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
+	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", name)
+	database, err := db.Open(dsn)
+	if err != nil {
+		t.Fatalf("opening test db: %v", err)
+	}
+
+	cfg := &config.Config{
+		Server: config.Server{GRPCPort: 9090},
+		Auth: config.Auth{
+			JWTSecret: testJWTSecret,
+			WriteTokens: []config.WriteToken{
+				{Name: "test", TokenHash: string(hash)},
+			},
+		},
+	}
+
+	sharingStore := sharing.NewStore(database)
+	gs := grpcapi.NewGRPCServer(cfg, database, zap.NewNop(), nil, nil, sharingStore)
+
+	lis := bufconn.Listen(1024 * 1024)
+	go gs.Serve(lis)
+
+	conn, err := grpc.NewClient("passthrough://bufnet",
+		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+			return lis.DialContext(ctx)
+		}),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		t.Fatalf("dialing bufconn: %v", err)
+	}
+
+	t.Cleanup(func() {
+		conn.Close()
+		gs.Stop()
+		database.Close()
+	})
+
+	return &testEnv{
+		client:        pb.NewTimelineServiceClient(conn),
+		sharingClient: pb.NewSharingServiceClient(conn),
+		db:            database,
 	}
 }
 

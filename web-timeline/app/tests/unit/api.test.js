@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { generateBirthdays, normalize, resolveFlights, getTokenFromSearch, fetchTimeline } from '../../js/api.js';
+import { generateBirthdays, normalize, resolveFlights, getTokenFromSearch, getClaimsFromToken, fetchTimeline } from '../../js/api.js';
 
 const BIRTH = '1990-04-12';
 
@@ -209,6 +209,75 @@ describe('getTokenFromSearch()', () => {
 
   it('handles token among other params', () => {
     expect(getTokenFromSearch('?foo=bar&token=xyz&baz=1')).toBe('xyz');
+  });
+});
+
+describe('getClaimsFromToken()', () => {
+  // Build a minimal base64url-encoded JWT payload for testing.
+  function makeToken(payload) {
+    const encoded = btoa(JSON.stringify(payload)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    return `header.${encoded}.signature`;
+  }
+
+  it('returns null for null input', () => {
+    expect(getClaimsFromToken(null)).toBeNull();
+  });
+
+  it('returns null for empty string', () => {
+    expect(getClaimsFromToken('')).toBeNull();
+  });
+
+  it('returns null when the token is malformed (not 3 parts)', () => {
+    expect(getClaimsFromToken('onlyone')).toBeNull();
+    expect(getClaimsFromToken('two.parts')).toBeNull();
+  });
+
+  it('returns null when the payload has neither name nor role', () => {
+    expect(getClaimsFromToken(makeToken({ sub: 'x' }))).toBeNull();
+  });
+
+  it('returns null when the payload is not valid JSON', () => {
+    expect(getClaimsFromToken('header.!!!.signature')).toBeNull();
+  });
+
+  it('extracts name and email from a sharing token', () => {
+    const result = getClaimsFromToken(makeToken({ name: 'Alice', email: 'alice@example.com', visibility: 2 }));
+    expect(result.name).toBe('Alice');
+    expect(result.email).toBe('alice@example.com');
+  });
+
+  it('maps visibility 4 to Owner permission', () => {
+    expect(getClaimsFromToken(makeToken({ name: 'Me', visibility: 4 })).permission).toBe('Owner');
+  });
+
+  it('maps visibility 3 to Family access', () => {
+    expect(getClaimsFromToken(makeToken({ name: 'Mum', visibility: 3 })).permission).toBe('Family access');
+  });
+
+  it('maps visibility 2 to Friends access', () => {
+    expect(getClaimsFromToken(makeToken({ name: 'Bob', visibility: 2 })).permission).toBe('Friends access');
+  });
+
+  it('maps role owner to Owner permission', () => {
+    expect(getClaimsFromToken(makeToken({ role: 'owner' })).permission).toBe('Owner');
+  });
+
+  it('maps role family to Family access', () => {
+    expect(getClaimsFromToken(makeToken({ role: 'family' })).permission).toBe('Family access');
+  });
+
+  it('maps role friends to Friends access', () => {
+    expect(getClaimsFromToken(makeToken({ role: 'friends' })).permission).toBe('Friends access');
+  });
+
+  it('sets email to null when absent from sharing token', () => {
+    const result = getClaimsFromToken(makeToken({ name: 'Alice', visibility: 2 }));
+    expect(result.email).toBeNull();
+  });
+
+  it('sets name to null when absent from a role token', () => {
+    const result = getClaimsFromToken(makeToken({ role: 'owner' }));
+    expect(result.name).toBeNull();
   });
 });
 

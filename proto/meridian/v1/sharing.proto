@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package meridian.v1;
+
+import "google/protobuf/timestamp.proto";
+import "meridian/v1/timeline.proto";
+
+option go_package = "github.com/rmrobinson/meridian/backend/gen/go/meridian/v1;meridianv1";
+
+service SharingService {
+  rpc CreateSharingToken(CreateSharingTokenRequest) returns (CreateSharingTokenResponse);
+  rpc RevokeSharingToken(RevokeSharingTokenRequest) returns (RevokeSharingTokenResponse);
+  rpc ListSharingTokens(ListSharingTokensRequest) returns (ListSharingTokensResponse);
+}
+
+message SharingTokenRecord {
+  string id = 1;
+  string name = 2;
+  string email = 3;
+  Visibility visibility = 4;
+  google.protobuf.Timestamp created_at = 5;
+  optional google.protobuf.Timestamp expires_at = 6;
+  optional google.protobuf.Timestamp deleted_at = 7;
+}
+
+message CreateSharingTokenRequest {
+  string name = 1;
+  string email = 2;
+  Visibility visibility = 3;
+  optional google.protobuf.Timestamp expires_at = 4;
+}
+
+message CreateSharingTokenResponse {
+  string token = 1; // signed JWT — returned once only
+  SharingTokenRecord record = 2;
+}
+
+message RevokeSharingTokenRequest {
+  string id = 1;
+}
+
+message RevokeSharingTokenResponse {}
+
+message ListSharingTokensRequest {}
+
+message ListSharingTokensResponse {
+  repeated SharingTokenRecord tokens = 1;
+}

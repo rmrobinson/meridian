@@ -49,6 +49,12 @@ func (d *DB) Close() error {
 	return d.db.Close()
 }
 
+// DB returns the underlying *sql.DB for use by sub-packages that need direct
+// query access (e.g. the sharing package).
+func (d *DB) DB() *sql.DB {
+	return d.db
+}
+
 func runMigrations(sqlDB *sql.DB) error {
 	src, err := iofs.New(migrationsFS, "migrations")
 	if err != nil {

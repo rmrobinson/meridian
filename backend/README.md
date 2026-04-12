@@ -112,6 +112,76 @@ make test
 # or directly: GOWORK=off go test ./...
 ```
 
+## Sharing tokens
+
+Sharing tokens let you grant read access to the REST API at a specific visibility level without exposing your owner JWT. They are managed via the gRPC `SharingService` and require a valid write token.
+
+All `grpcurl` examples below assume the server is running locally on its default gRPC port. Replace `<write_token>` with a raw write token from your config.
+
+### Create a sharing token
+
+```bash
+grpcurl -plaintext \
+  -H "Authorization: Bearer <write_token>" \
+  -d '{
+    "name": "Alice",
+    "email": "alice@example.com",
+    "visibility": "VISIBILITY_FRIENDS"
+  }' \
+  localhost:9090 meridian.v1.SharingService/CreateSharingToken
+```
+
+The response contains:
+- `token` — a signed JWT to hand to the recipient. **This is returned once only; it is not stored.**
+- `record` — the persisted token record including its `id`.
+
+To create a token that expires:
+
+```bash
+grpcurl -plaintext \
+  -H "Authorization: Bearer <write_token>" \
+  -d '{
+    "name": "Bob",
+    "email": "bob@example.com",
+    "visibility": "VISIBILITY_FAMILY",
+    "expires_at": "2026-12-31T23:59:59Z"
+  }' \
+  localhost:9090 meridian.v1.SharingService/CreateSharingToken
+```
+
+Valid `visibility` values: `VISIBILITY_PUBLIC`, `VISIBILITY_FRIENDS`, `VISIBILITY_FAMILY`, `VISIBILITY_PERSONAL`.
+
+### List all sharing tokens
+
+Returns all tokens, including revoked ones.
+
+```bash
+grpcurl -plaintext \
+  -H "Authorization: Bearer <write_token>" \
+  localhost:9090 meridian.v1.SharingService/ListSharingTokens
+```
+
+### Revoke a sharing token
+
+Revocation takes effect immediately — subsequent REST requests using the token's JWT are treated as unauthenticated even if the JWT has not yet expired.
+
+```bash
+grpcurl -plaintext \
+  -H "Authorization: Bearer <write_token>" \
+  -d '{"id": "<token_id>"}' \
+  localhost:9090 meridian.v1.SharingService/RevokeSharingToken
+```
+
+`<token_id>` is the `record.id` value returned by `CreateSharingToken` or `ListSharingTokens`.
+
+### Using a sharing token on the REST API
+
+Pass the JWT returned by `CreateSharingToken` as a bearer token on any REST request:
+
+```bash
+curl -H "Authorization: Bearer <sharing_jwt>" http://localhost:8080/api/timeline
+```
+
 ## Makefile targets
 
 | Target     | Description                        |

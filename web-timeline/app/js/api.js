@@ -22,6 +22,53 @@ export function getTokenFromSearch(search) {
 }
 
 /**
+ * Decode a JWT and return display-oriented claims if the token identifies a
+ * viewer (sharing token or role token).
+ *
+ * Does NOT verify the signature — the backend already did that when issuing
+ * the token. This is purely for display purposes.
+ *
+ * Sharing tokens carry `name`, `email`, and `visibility` (int32: 1=public,
+ * 2=friends, 3=family, 4=personal/owner).
+ * Role tokens carry a `role` string ("owner", "family", "friends").
+ *
+ * Returns null when the token is absent, malformed, or carries no viewer
+ * identity (e.g. a token with only public-tier claims and no name).
+ *
+ * @param {string|null} token - A JWT string (header.payload.signature).
+ * @returns {{ name: string|null, email: string|null, permission: string }|null}
+ */
+export function getClaimsFromToken(token) {
+  if (!token) return null;
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+
+    // Only surface the lock UI when the token actually identifies someone.
+    if (!payload.name && !payload.role) return null;
+
+    const name  = payload.name  || null;
+    const email = payload.email || null;
+
+    let permission;
+    if (payload.role === 'owner' || payload.visibility === 4) {
+      permission = 'Owner';
+    } else if (payload.role === 'family' || payload.visibility === 3) {
+      permission = 'Family access';
+    } else if (payload.role === 'friends' || payload.visibility === 2) {
+      permission = 'Friends access';
+    } else {
+      permission = 'Public access';
+    }
+
+    return { name, email, permission };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Fetch and normalize the full timeline payload.
  *
  * @param {string} [url]   - Override endpoint (useful for testing with a fixture).

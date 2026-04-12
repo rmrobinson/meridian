@@ -20,12 +20,15 @@ Paths are relative to the monorepo root.
 ```
 /proto
   timeline.proto          — gRPC service and message definitions
+  sharing.proto           — SharingService gRPC definitions
 
 /backend
   /gen
     /go
       timeline.pb.go        — generated protobuf types (gitignored, generated at build time)
       timeline_grpc.pb.go   — generated gRPC service stubs (gitignored, generated at build time)
+      sharing.pb.go         — generated sharing protobuf types (gitignored, generated at build time)
+      sharing_grpc.pb.go    — generated SharingService stubs (gitignored, generated at build time)
 
   /cmd
     /server
@@ -45,6 +48,7 @@ Paths are relative to the monorepo root.
         timeline.go         — CreateEvent, UpdateEvent, DeleteEvent, ImportEvents
         photos.go           — AddPhoto, RemovePhoto, ReorderPhotos
         merge.go            — MergeEvents, UnmergeEvents
+        sharing.go          — CreateSharingToken, RevokeSharingToken, ListSharingTokens
     /config
       config.go             — Viper loading, struct definitions
     /db
@@ -58,6 +62,9 @@ Paths are relative to the monorepo root.
       merger.go             — coalescing logic, source priority resolution
     /auth
       tokens.go             — bearer token bcrypt validation for gRPC write path
+    /sharing
+      store.go              — sharing_tokens DB queries (create, get by ID, revoke, list)
+      token.go              — JWT issue and validate; Claims type
     /enrichment
       isbndb.go             — ISBNdb metadata fetcher
       tmdb.go               — TMDB metadata fetcher
@@ -79,7 +86,7 @@ database:
   path: ./timeline.db
 
 auth:
-  jwt_secret: "..."         # used by REST read path to validate scoped JWTs
+  jwt_secret: "..."         # used to sign and verify all sharing JWTs
   write_tokens:             # used by gRPC write path; bcrypt hashes of raw bearer tokens
     - name: "cli"
       token_hash: "$2a$10$..."
@@ -206,6 +213,18 @@ CREATE TABLE photos (
     variant    TEXT NOT NULL CHECK(variant IN ('hero', 'thumb', 'original')),
     sort_order INTEGER NOT NULL DEFAULT 0
 );
+
+CREATE TABLE sharing_tokens (
+    id          TEXT PRIMARY KEY,                     -- UUID; also the JWT jti claim
+    name        TEXT NOT NULL,                        -- display name of the recipient
+    email       TEXT NOT NULL,
+    visibility  TEXT NOT NULL CHECK(visibility IN ('public', 'friends', 'family', 'personal')),
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    expires_at  TEXT,                                 -- NULL means no expiry
+    deleted_at  TEXT                                  -- NULL means active; set on revoke
+);
+
+CREATE INDEX idx_sharing_tokens_email ON sharing_tokens(email);
 ```
 
 ### ID Strategy
@@ -260,6 +279,54 @@ service TimelineService {
     rpc UnmergeEvent(UnmergeEventRequest) returns (Event);
 }
 
+service SharingService {
+    rpc CreateSharingToken(CreateSharingTokenRequest) returns (CreateSharingTokenResponse);
+    rpc RevokeSharingToken(RevokeSharingTokenRequest) returns (RevokeSharingTokenResponse);
+    rpc ListSharingTokens(ListSharingTokensRequest)   returns (ListSharingTokensResponse);
+}
+
+enum Visibility {
+    VISIBILITY_UNSPECIFIED = 0;
+    VISIBILITY_PUBLIC      = 1;
+    VISIBILITY_FRIENDS     = 2;
+    VISIBILITY_FAMILY      = 3;
+    VISIBILITY_PERSONAL    = 4;
+}
+
+message CreateSharingTokenRequest {
+    string     name       = 1;
+    string     email      = 2;
+    Visibility visibility = 3;
+    optional google.protobuf.Timestamp expires_at = 4;
+}
+
+message CreateSharingTokenResponse {
+    string token              = 1;  // signed JWT — only returned at creation time
+    SharingTokenRecord record = 2;
+}
+
+message RevokeSharingTokenRequest {
+    string id = 1;  // the jti UUID
+}
+
+message RevokeSharingTokenResponse {}
+
+message ListSharingTokensRequest {}
+
+message ListSharingTokensResponse {
+    repeated SharingTokenRecord tokens = 1;
+}
+
+message SharingTokenRecord {
+    string     id         = 1;
+    string     name       = 2;
+    string     email      = 3;
+    Visibility visibility = 4;
+    google.protobuf.Timestamp created_at           = 5;
+    optional google.protobuf.Timestamp expires_at  = 6;
+    optional google.protobuf.Timestamp deleted_at  = 7;
+}
+
 enum ConflictStrategy {
     CONFLICT_STRATEGY_UNSPECIFIED = 0;
     CONFLICT_STRATEGY_UPSERT = 1;
@@ -298,6 +365,82 @@ message ImportEventsResponse {
 - `MergeEvents` takes a canonical event ID and one or more event IDs to link to it, setting `canonical_id` on the linked rows.
 - `UnmergeEvent` detaches a linked event back to standalone canonical by clearing its `canonical_id`.
 - Manual merges override auto-merge decisions.
+
+---
+
+## Sharing Tokens
+
+Sharing tokens are JWTs issued to named recipients at a specific visibility level. They are managed via `SharingService` (gRPC, bearer-token protected) and stored in the `sharing_tokens` table. The DB is the source of truth — every authenticated REST request validates the token against the DB row, not just the JWT signature.
+
+### JWT Claims
+
+```json
+{
+  "jti": "<uuid>",
+  "name": "Alice",
+  "email": "alice@example.com",
+  "visibility": 3,
+  "iat": 1234567890,
+  "exp": 1234567890
+}
+```
+
+`visibility` is the integer wire value of the `Visibility` proto enum (`1` = PUBLIC, `2` = FRIENDS, `3` = FAMILY, `4` = PERSONAL). `exp` is omitted when no expiry is set. `jti` matches the `id` column in `sharing_tokens` and is the lookup key on every request.
+
+### Auth Middleware (REST)
+
+On every request carrying a `Bearer` token in `Authorization`:
+
+1. Validate JWT signature using `auth.jwt_secret`
+2. Extract `jti` from claims
+3. Look up the `sharing_tokens` row by `id = jti`
+4. Reject with `401` if the row is missing, `deleted_at` is non-null, or `expires_at` is in the past
+5. Use the DB row's `visibility` value (not the JWT claim) for access scoping — the DB is authoritative
+
+The `name` and `email` from the JWT claims are available to the frontend for display purposes (e.g. "Viewing as Alice (Family)") without an additional API call.
+
+### Visibility Hierarchy
+
+| Token visibility | Accessible event levels |
+|---|---|
+| `VISIBILITY_PUBLIC` | public |
+| `VISIBILITY_FRIENDS` | public, friends |
+| `VISIBILITY_FAMILY` | public, friends, family |
+| `VISIBILITY_PERSONAL` | public, friends, family, personal |
+
+Unauthenticated requests see `public` only.
+
+### Token Lifecycle
+
+- Tokens are created via `CreateSharingToken` — the signed JWT is returned **once** in the response and is not recoverable thereafter.
+- Revoking a token sets `deleted_at` on the DB row. The JWT is immediately invalid on the next REST request even if it has not expired.
+- Tokens are never deleted from the DB — `deleted_at` is used for audit purposes. `ListSharingTokens` returns all tokens including revoked ones.
+- Visibility cannot be changed on an existing token — revoke and reissue.
+
+### internal/sharing packages
+
+**`store.go`**
+```go
+func (s *Store) Create(ctx context.Context, t *SharingToken) error
+func (s *Store) GetByID(ctx context.Context, id string) (*SharingToken, error)
+func (s *Store) Revoke(ctx context.Context, id string) error
+func (s *Store) List(ctx context.Context) ([]*SharingToken, error)
+```
+
+**`token.go`**
+```go
+type Claims struct {
+    jwt.RegisteredClaims
+    Name       string                `json:"name"`
+    Email      string                `json:"email"`
+    Visibility meridianv1.Visibility `json:"visibility"`
+}
+
+func Issue(t *SharingToken, secret []byte) (string, error)
+func Validate(tokenStr string, secret []byte) (*Claims, error)
+```
+
+`Issue` generates a UUID for `jti`, populates the claims, and signs the JWT. The caller is responsible for inserting the DB row before calling `Issue`. `Validate` verifies the signature and returns claims — DB validation is the caller's responsibility.
 
 ---
 
