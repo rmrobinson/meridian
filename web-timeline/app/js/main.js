@@ -101,6 +101,7 @@ async function init() {
   setupZoomButtons();
   setupViewButtons();
   setupThemeToggle();
+  updateTitleIcon();
   setupCardInteraction(svg);
   setupGridCardInteraction();
   setupSpanHoverSync(svg);
@@ -931,6 +932,17 @@ window.__timeline_setZoom = function (pxPerDay) {
 
 // ── Theme toggle ──────────────────────────────────────────────────────────────
 
+function updateTitleIcon() {
+  const icon = document.querySelector('.title-branding__icon');
+  if (!icon) return;
+
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark' ||
+    (!document.documentElement.getAttribute('data-theme') &&
+     window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+  icon.src = isDark ? 'icon-light.svg' : 'icon.svg';
+}
+
 function setupThemeToggle() {
   const btn = document.getElementById('theme-toggle');
   if (!btn) return;
@@ -964,6 +976,7 @@ function setupThemeToggle() {
  * from base_color_hsl) adapt to the new light/dark mode.
  */
 function rebuildForThemeChange() {
+  updateTitleIcon();
   if (!_data) return;
   // If grid view is visible, rebuild the WeekMap (colors are baked in) then re-render.
   if (_gridContainer && !_gridContainer.hasAttribute('hidden')) {

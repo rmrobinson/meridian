@@ -40,31 +40,40 @@ body.zoom-month .station--span-hover .station-icon {
   display: block !important;
 }
 
-/* Labels: always visible at ZOOM_DAY; hover/tap-only at ZOOM_WEEK and ZOOM_MONTH. */
-body.zoom-day .station-label {
+/* Labels and label background: always visible at ZOOM_DAY; hover/tap-only at ZOOM_WEEK and ZOOM_MONTH. */
+body.zoom-day .station-label,
+body.zoom-day .station-label-bg {
   display: block !important;
 }
 
-body.zoom-week .station-label {
+body.zoom-week .station-label,
+body.zoom-week .station-label-bg {
   display: none !important;
 }
 
 body.zoom-week .station:hover .station-label,
-body.zoom-week .station:focus-within .station-label {
+body.zoom-week .station:hover .station-label-bg,
+body.zoom-week .station:focus-within .station-label,
+body.zoom-week .station:focus-within .station-label-bg {
   display: block !important;
 }
 
-body.zoom-month .station-label {
+body.zoom-month .station-label,
+body.zoom-month .station-label-bg {
   display: none !important;
 }
 
 body.zoom-month .station:hover .station-label,
-body.zoom-month .station:focus-within .station-label {
+body.zoom-month .station:hover .station-label-bg,
+body.zoom-month .station:focus-within .station-label,
+body.zoom-month .station:focus-within .station-label-bg {
   display: block !important;
 }
 
 body.zoom-week .station--span-hover .station-label,
-body.zoom-month .station--span-hover .station-label {
+body.zoom-week .station--span-hover .station-label-bg,
+body.zoom-month .station--span-hover .station-label,
+body.zoom-month .station--span-hover .station-label-bg {
   display: block !important;
 }
 
