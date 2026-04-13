@@ -10,6 +10,7 @@ cd "$REPO_ROOT"
 PROTO_CHANGED=$(git diff --cached --name-only | grep -c '\.proto$' || true)
 WEB_TIMELINE_CHANGED=$(git diff --cached --name-only | grep -c '^web-timeline/' || true)
 BACKEND_CHANGED=$(git diff --cached --name-only | grep -c '^backend/' || true)
+MCP_CHANGED=$(git diff --cached --name-only | grep -c '^mcp/' || true)
 
 echo "Running pre-commit checks..."
 
@@ -45,6 +46,16 @@ if [ "$BACKEND_CHANGED" -gt 0 ] || [ "$PROTO_CHANGED" -gt 0 ]; then
     exit 1
   fi
   echo "  ✓ Backend tests passed"
+fi
+
+# MCP build (run if mcp or proto files changed)
+if [ "$MCP_CHANGED" -gt 0 ] || [ "$PROTO_CHANGED" -gt 0 ]; then
+  echo "  → MCP or proto files changed, building MCP..."
+  if ! (cd mcp && npm run build 2>&1); then
+    echo "✗ MCP build failed"
+    exit 1
+  fi
+  echo "  ✓ MCP build passed"
 fi
 
 # Web-timeline tests (run if web-timeline or proto files changed)
