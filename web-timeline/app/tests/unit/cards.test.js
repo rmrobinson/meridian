@@ -453,27 +453,28 @@ describe('film_tv card', () => {
     expect(getRoot(frag).querySelector('.card-rating').textContent).toBe('★★★★☆');
   });
 
-  it('renders director for movie type', () => {
+  it('renders director for movie type using card-network', () => {
     const frag = buildCardContent(base({
       metadata_type: 'film_tv',
       metadata: { type: 'movie', director: 'Denis Villeneuve' },
     }));
-    expect(getRoot(frag).querySelector('.card-director').textContent).toBe('Denis Villeneuve');
+    expect(getRoot(frag).querySelector('.card-network').textContent).toBe('Denis Villeneuve');
   });
 
-  it('renders year for movie type', () => {
+  it('renders year for movie type using card-seasons', () => {
     const frag = buildCardContent(base({
       metadata_type: 'film_tv',
       metadata: { type: 'movie', year: 2021 },
     }));
-    expect(getRoot(frag).querySelector('.card-year').textContent).toBe('2021');
+    expect(getRoot(frag).querySelector('.card-seasons').textContent).toBe('2021');
   });
 
-  it('does not render seasons for movie type', () => {
+  it('does not render seasons_watched for movie type', () => {
     const frag = buildCardContent(base({
       metadata_type: 'film_tv',
       metadata: { type: 'movie', seasons_watched: 1 },
     }));
+    // seasons_watched is ignored for movies; card-seasons shows the year (absent here)
     expect(getRoot(frag).querySelector('.card-seasons')).toBeNull();
   });
 

@@ -75,38 +75,35 @@
   /* loading="lazy" is an HTML attribute set when <img> elements are created in cards.js */
 }
 
-/* ── Book card ─────────────────────────────────────────────────────────────── */
+/* ── Shared: book, film and TV cards ────────────────────────────────────────── */
 
-.card--book .card-rating {
+/* Star rating */
+.card-rating {
   color: var(--color-rating);
   letter-spacing: 2px;
 }
 
-.card--book .card-review {
-  font-size: 0.85rem;
-  font-style: italic;
-  color: var(--color-label-secondary);
-  border-left: 3px solid var(--color-review-border);
-  padding-left: 10px;
-}
-
-/* ── TV / show card ─────────────────────────────────────────────────────────── */
-
-.card--tv .card-rating {
-  color: var(--color-rating);
-  letter-spacing: 2px;
-}
-
-.card--tv .card-network {
+/* Byline — author (book), director (movie), network (TV) */
+.card-network {
   font-size: 0.8rem;
   color: var(--color-label-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
-.card--tv .card-seasons {
+/* Secondary info — seasons (TV), year (movie) */
+.card-seasons {
   font-size: 0.8rem;
   color: var(--color-label-secondary);
+}
+
+/* Review quote */
+.card-review {
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--color-label-secondary);
+  border-left: 3px solid var(--color-review-border);
+  padding-left: 10px;
 }
 
 /* ── Flight card ────────────────────────────────────────────────────────────── */
@@ -155,6 +152,18 @@
 .card--flight .card-arrival {
   font-size: 0.75rem;
   color: var(--color-label-tertiary);
+  margin: 0;
+}
+
+/* ── Dates footer (book and film/TV cards) ──────────────────────────────────── */
+
+.card-dates-footer {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.card-dates-footer .card-dates {
   margin: 0;
 }
 

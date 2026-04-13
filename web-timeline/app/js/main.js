@@ -383,9 +383,14 @@ function buildRenderObjects(data, pxPerDay) {
     const y = yFor(date);
     if (y < 0 || y > totalHeight) continue;
 
-    const laneInfo   = laneMap.get(evt.line_key);
+    const family   = familyById.get(evt.family_id);
+    // Look up this event's own lane first; if absent (e.g. a point event in a
+    // per_event family that has no span of its own), fall back to the parent
+    // family's lane so it renders beside its parent spine rather than on the
+    // main spine.
+    const laneInfo = laneMap.get(evt.line_key)
+      ?? (family?.parent_family_id ? laneMap.get(family.parent_family_id) : null);
     const laneOffset = laneInfo?.laneOffset ?? 0;
-    const family     = familyById.get(evt.family_id);
     const color      = (family && laneInfo)
       ? variantColor(family.base_color_hsl, laneInfo.colorIndex)
       : null;

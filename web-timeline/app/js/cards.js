@@ -200,7 +200,7 @@ function flightCard(event) {
 function bookCard(event) {
   const wrap = el('div', 'card--book');
 
-  const { cover_image_url } = event.metadata ?? {};
+  const { cover_image_url, author, rating, review } = event.metadata ?? {};
   if (cover_image_url) {
     const img = document.createElement('img');
     img.className = 'card-book-cover';
@@ -210,23 +210,24 @@ function bookCard(event) {
     wrap.appendChild(img);
   }
 
-  appendShared(wrap, event);
-
-  const { title, author, rating, review } = event.metadata ?? {};
-  if (title) wrap.appendChild(el('p', 'card-book-title', title));
+  wrap.appendChild(el('p', 'card-title', event.title));
   if (author) wrap.appendChild(el('p', 'card-author', author));
+  if (event.description) wrap.appendChild(el('p', 'card-description', event.description));
+  if (event.location?.label) wrap.appendChild(el('p', 'card-location', event.location.label));
+
   if (typeof rating === 'number') {
     wrap.appendChild(el('p', 'card-rating', starsFor(rating)));
   }
   if (review) wrap.appendChild(el('p', 'card-review', review));
 
+  appendDatesFooter(wrap, event);
   return wrap;
 }
 
 function filmTvCard(event) {
   const wrap = el('div', 'card--tv');
 
-  const { poster_url } = event.metadata ?? {};
+  const { poster_url, type, director, year, network, seasons_watched, rating, review } = event.metadata ?? {};
   if (poster_url) {
     const img = document.createElement('img');
     img.className = 'card-poster';
@@ -236,16 +237,22 @@ function filmTvCard(event) {
     wrap.appendChild(img);
   }
 
-  appendShared(wrap, event);
+  wrap.appendChild(el('p', 'card-title', event.title));
 
-  const { type, director, year, network, seasons_watched, rating } = event.metadata ?? {};
-
+  // Byline: director for movies, network for TV — same position as author on a book card.
   if (type === 'movie') {
-    if (director) wrap.appendChild(el('p', 'card-director', director));
-    if (year) wrap.appendChild(el('p', 'card-year', String(year)));
+    if (director) wrap.appendChild(el('p', 'card-network', director));
   } else {
-    // tv or unspecified
     if (network) wrap.appendChild(el('p', 'card-network', network));
+  }
+
+  if (event.description) wrap.appendChild(el('p', 'card-description', event.description));
+  if (event.location?.label) wrap.appendChild(el('p', 'card-location', event.location.label));
+
+  // Secondary info: year for movies, season count for TV — same styling.
+  if (type === 'movie') {
+    if (year) wrap.appendChild(el('p', 'card-seasons', String(year)));
+  } else {
     if (typeof seasons_watched === 'number') {
       wrap.appendChild(el('p', 'card-seasons',
         `${seasons_watched} season${seasons_watched !== 1 ? 's' : ''}`));
@@ -255,7 +262,9 @@ function filmTvCard(event) {
   if (typeof rating === 'number') {
     wrap.appendChild(el('p', 'card-rating', starsFor(rating)));
   }
+  if (review) wrap.appendChild(el('p', 'card-review', review));
 
+  appendDatesFooter(wrap, event);
   return wrap;
 }
 
@@ -549,6 +558,21 @@ function appendShared(parent, event, { skipTitle = false, skipDates = false } = 
   if (event.location?.label) {
     parent.appendChild(el('p', 'card-location', event.location.label));
   }
+}
+
+/**
+ * Append a visually separated dates footer at the bottom of a card.
+ *
+ * @param {HTMLElement} parent
+ * @param {object}      event
+ */
+function appendDatesFooter(parent, event) {
+  const dateStr = event.start_date
+    ? `${formatDate(event.start_date)} – ${event.end_date ? formatDate(event.end_date) : 'Present'}`
+    : formatDate(event.date);
+  const footer = el('div', 'card-dates-footer');
+  footer.appendChild(el('p', 'card-dates', dateStr));
+  parent.appendChild(footer);
 }
 
 /**
