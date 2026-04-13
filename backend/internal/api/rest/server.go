@@ -11,25 +11,28 @@ import (
 
 	"github.com/rmrobinson/meridian/backend/internal/config"
 	"github.com/rmrobinson/meridian/backend/internal/db"
+	"github.com/rmrobinson/meridian/backend/internal/sharing"
 )
 
 const defaultRequestTimeout = 30 * time.Second
 
 // Server is the REST API server.
 type Server struct {
-	cfg    *config.Config
-	db     *db.DB
-	logger *zap.Logger
-	mux    *http.ServeMux
+	cfg          *config.Config
+	db           *db.DB
+	sharingStore *sharing.Store
+	logger       *zap.Logger
+	mux          *http.ServeMux
 }
 
 // NewServer constructs a Server and registers all routes.
-func NewServer(cfg *config.Config, database *db.DB, logger *zap.Logger) *Server {
+func NewServer(cfg *config.Config, database *db.DB, sharingStore *sharing.Store, logger *zap.Logger) *Server {
 	s := &Server{
-		cfg:    cfg,
-		db:     database,
-		logger: logger,
-		mux:    http.NewServeMux(),
+		cfg:          cfg,
+		db:           database,
+		sharingStore: sharingStore,
+		logger:       logger,
+		mux:          http.NewServeMux(),
 	}
 	s.routes()
 	return s
@@ -37,7 +40,7 @@ func NewServer(cfg *config.Config, database *db.DB, logger *zap.Logger) *Server 
 
 func (s *Server) routes() {
 	withJWT := func(h http.HandlerFunc) http.Handler {
-		return timeoutMiddleware(defaultRequestTimeout, jwtMiddleware(s.cfg.Auth.JWTSecret, h))
+		return timeoutMiddleware(defaultRequestTimeout, jwtMiddleware(s.cfg.Auth.JWTSecret, s.sharingStore, h))
 	}
 	s.mux.Handle("GET /api/lines", withJWT(s.handleGetLines))
 	s.mux.Handle("GET /api/events", withJWT(s.handleGetEvents))

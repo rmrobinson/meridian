@@ -20,6 +20,7 @@ import (
 	"github.com/rmrobinson/meridian/backend/internal/db"
 	"github.com/rmrobinson/meridian/backend/internal/domain"
 	"github.com/rmrobinson/meridian/backend/internal/enrichment"
+	"github.com/rmrobinson/meridian/backend/internal/sharing"
 )
 
 func main() {
@@ -75,8 +76,10 @@ func main() {
 	// Build enrichers when API keys are configured; nil disables enrichment.
 	bookEnricher, filmTVEnricher := buildEnrichers(cfg, logger)
 
+	sharingStore := sharing.NewStore(database)
+
 	// Start gRPC server in background.
-	grpcServer := grpcapi.NewGRPCServer(cfg, database, logger, bookEnricher, filmTVEnricher)
+	grpcServer := grpcapi.NewGRPCServer(cfg, database, logger, bookEnricher, filmTVEnricher, sharingStore)
 	grpcAddr := grpcapi.Addr(cfg)
 	lis, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
@@ -90,7 +93,7 @@ func main() {
 	}()
 
 	// Build REST server.
-	restHandler := rest.NewServer(cfg, database, logger)
+	restHandler := rest.NewServer(cfg, database, sharingStore, logger)
 	restAddr := restHandler.Addr()
 	httpServer := &http.Server{
 		Addr:    restAddr,

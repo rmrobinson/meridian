@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
 	pb "github.com/rmrobinson/meridian/backend/gen/go/meridian/v1"
@@ -19,6 +20,7 @@ import (
 	"github.com/rmrobinson/meridian/backend/internal/config"
 	"github.com/rmrobinson/meridian/backend/internal/db"
 	"github.com/rmrobinson/meridian/backend/internal/domain"
+	"github.com/rmrobinson/meridian/backend/internal/sharing"
 )
 
 // Server is the gRPC API server.
@@ -44,15 +46,18 @@ func NewServer(cfg *config.Config, database *db.DB, logger *zap.Logger, bookEnri
 }
 
 // NewGRPCServer creates a grpc.Server with auth and logging interceptors
-// registered and the TimelineService implementation bound.
-func NewGRPCServer(cfg *config.Config, database *db.DB, logger *zap.Logger, bookEnricher, filmTVEnricher domain.Enricher) *grpc.Server {
+// registered and both the TimelineService and SharingService implementations bound.
+func NewGRPCServer(cfg *config.Config, database *db.DB, logger *zap.Logger, bookEnricher, filmTVEnricher domain.Enricher, sharingStore *sharing.Store) *grpc.Server {
 	s := NewServer(cfg, database, logger, bookEnricher, filmTVEnricher)
+	sharingServer := NewSharingServer(cfg, sharingStore, logger)
 	gs := grpc.NewServer(grpc.ChainUnaryInterceptor(
 		s.requestIDInterceptor,
 		s.authInterceptor,
 		s.loggingInterceptor,
 	))
 	pb.RegisterTimelineServiceServer(gs, s)
+	pb.RegisterSharingServiceServer(gs, sharingServer)
+	reflection.Register(gs)
 	return gs
 }
 

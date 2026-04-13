@@ -29,6 +29,7 @@ import (
 	"github.com/rmrobinson/meridian/backend/internal/api/rest"
 	"github.com/rmrobinson/meridian/backend/internal/config"
 	"github.com/rmrobinson/meridian/backend/internal/db"
+	"github.com/rmrobinson/meridian/backend/internal/sharing"
 )
 
 const (
@@ -38,10 +39,11 @@ const (
 
 // testEnv holds running gRPC + REST servers sharing one database.
 type testEnv struct {
-	grpcClient pb.TimelineServiceClient
-	restURL    string
-	restClient *http.Client
-	grpcStop   func()
+	grpcClient    pb.TimelineServiceClient
+	sharingClient pb.SharingServiceClient
+	restURL       string
+	restClient    *http.Client
+	grpcStop      func()
 }
 
 func newTestEnv(t *testing.T) *testEnv {
@@ -75,8 +77,10 @@ func newTestEnv(t *testing.T) *testEnv {
 		},
 	}
 
+	sharingStore := sharing.NewStore(database)
+
 	// --- gRPC via bufconn ---
-	gs := grpcapi.NewGRPCServer(cfg, database, zap.NewNop(), nil, nil)
+	gs := grpcapi.NewGRPCServer(cfg, database, zap.NewNop(), nil, nil, sharingStore)
 	lis := bufconn.Listen(1024 * 1024)
 	go gs.Serve(lis)
 
@@ -91,7 +95,7 @@ func newTestEnv(t *testing.T) *testEnv {
 	}
 
 	// --- REST via httptest ---
-	restSrv := rest.NewServer(cfg, database, zap.NewNop())
+	restSrv := rest.NewServer(cfg, database, sharingStore, zap.NewNop())
 	ts := httptest.NewServer(restSrv)
 
 	t.Cleanup(func() {
@@ -102,10 +106,11 @@ func newTestEnv(t *testing.T) *testEnv {
 	})
 
 	return &testEnv{
-		grpcClient: pb.NewTimelineServiceClient(conn),
-		restURL:    ts.URL,
-		restClient: ts.Client(),
-		grpcStop:   gs.GracefulStop,
+		grpcClient:    pb.NewTimelineServiceClient(conn),
+		sharingClient: pb.NewSharingServiceClient(conn),
+		restURL:       ts.URL,
+		restClient:    ts.Client(),
+		grpcStop:      gs.GracefulStop,
 	}
 }
 
@@ -384,6 +389,133 @@ func TestAddAndReorderPhotos_RESTReturnsCorrectOrder(t *testing.T) {
 	if so0 >= so1 {
 		t.Errorf("photos not in sort order: got sort_order %d before %d", so0, so1)
 	}
+}
+
+// --- Sharing token integration tests ---
+
+func TestSharingToken_FullRoundTrip(t *testing.T) {
+	env := newTestEnv(t)
+	ctx := authCtx(t)
+
+	// Create one public and one friends event via gRPC.
+	_, err := env.grpcClient.CreateEvent(ctx, &pb.CreateEventRequest{
+		Id: "pub-st", FamilyId: "travel", LineKey: "l",
+		Type: pb.EventType_EVENT_TYPE_POINT, Title: "Public Event",
+		Date: "2024-06-01", Visibility: pb.Visibility_VISIBILITY_PUBLIC,
+	})
+	if err != nil {
+		t.Fatalf("CreateEvent public: %v", err)
+	}
+	_, err = env.grpcClient.CreateEvent(ctx, &pb.CreateEventRequest{
+		Id: "fri-st", FamilyId: "travel", LineKey: "l",
+		Type: pb.EventType_EVENT_TYPE_POINT, Title: "Friends Event",
+		Date: "2024-06-02", Visibility: pb.Visibility_VISIBILITY_FRIENDS,
+	})
+	if err != nil {
+		t.Fatalf("CreateEvent friends: %v", err)
+	}
+
+	// Create a friends-level sharing token via gRPC SharingService.
+	tokenResp, err := env.sharingClient.CreateSharingToken(ctx, &pb.CreateSharingTokenRequest{
+		Name:       "Alice",
+		Email:      "alice@example.com",
+		Visibility: pb.Visibility_VISIBILITY_FRIENDS,
+	})
+	if err != nil {
+		t.Fatalf("CreateSharingToken: %v", err)
+	}
+	sharingJWT := tokenResp.Token
+
+	// Unauthenticated: only public event visible.
+	resp := env.restGet(t, "/api/events", "")
+	defer resp.Body.Close()
+	var unauthEvents []map[string]any
+	json.NewDecoder(resp.Body).Decode(&unauthEvents)
+	if len(unauthEvents) != 1 || unauthEvents[0]["id"] != "pub-st" {
+		t.Errorf("unauthenticated: expected only pub-st, got %v", eventIDs(unauthEvents))
+	}
+
+	// Sharing JWT: public + friends events visible.
+	resp2 := env.restGet(t, "/api/events", sharingJWT)
+	defer resp2.Body.Close()
+	var sharingEvents []map[string]any
+	json.NewDecoder(resp2.Body).Decode(&sharingEvents)
+	if len(sharingEvents) != 2 {
+		t.Errorf("sharing JWT: expected 2 events, got %d: %v", len(sharingEvents), eventIDs(sharingEvents))
+	}
+
+	// Owner JWT: also sees both (friends visibility includes public).
+	resp3 := env.restGet(t, "/api/events", makeJWT(t, "owner"))
+	defer resp3.Body.Close()
+	var ownerEvents []map[string]any
+	json.NewDecoder(resp3.Body).Decode(&ownerEvents)
+	if len(ownerEvents) != 2 {
+		t.Errorf("owner JWT: expected 2 events, got %d: %v", len(ownerEvents), eventIDs(ownerEvents))
+	}
+}
+
+func TestSharingToken_RevocationIsImmediate(t *testing.T) {
+	env := newTestEnv(t)
+	ctx := authCtx(t)
+
+	_, err := env.grpcClient.CreateEvent(ctx, &pb.CreateEventRequest{
+		Id: "pub-rv", FamilyId: "travel", LineKey: "l",
+		Type: pb.EventType_EVENT_TYPE_POINT, Title: "Public",
+		Date: "2024-07-01", Visibility: pb.Visibility_VISIBILITY_PUBLIC,
+	})
+	if err != nil {
+		t.Fatalf("CreateEvent public: %v", err)
+	}
+	_, err = env.grpcClient.CreateEvent(ctx, &pb.CreateEventRequest{
+		Id: "fri-rv", FamilyId: "travel", LineKey: "l",
+		Type: pb.EventType_EVENT_TYPE_POINT, Title: "Friends",
+		Date: "2024-07-02", Visibility: pb.Visibility_VISIBILITY_FRIENDS,
+	})
+	if err != nil {
+		t.Fatalf("CreateEvent friends: %v", err)
+	}
+
+	tokenResp, err := env.sharingClient.CreateSharingToken(ctx, &pb.CreateSharingTokenRequest{
+		Name:       "Bob",
+		Email:      "bob@example.com",
+		Visibility: pb.Visibility_VISIBILITY_FRIENDS,
+	})
+	if err != nil {
+		t.Fatalf("CreateSharingToken: %v", err)
+	}
+	sharingJWT := tokenResp.Token
+	tokenID := tokenResp.Record.Id
+
+	// Confirm the sharing JWT works before revocation.
+	resp := env.restGet(t, "/api/events", sharingJWT)
+	defer resp.Body.Close()
+	var beforeEvents []map[string]any
+	json.NewDecoder(resp.Body).Decode(&beforeEvents)
+	if len(beforeEvents) != 2 {
+		t.Fatalf("before revoke: expected 2 events, got %d", len(beforeEvents))
+	}
+
+	// Revoke the token.
+	if _, err := env.sharingClient.RevokeSharingToken(ctx, &pb.RevokeSharingTokenRequest{Id: tokenID}); err != nil {
+		t.Fatalf("RevokeSharingToken: %v", err)
+	}
+
+	// Same JWT now acts as unauthenticated — only the public event.
+	resp2 := env.restGet(t, "/api/events", sharingJWT)
+	defer resp2.Body.Close()
+	var afterEvents []map[string]any
+	json.NewDecoder(resp2.Body).Decode(&afterEvents)
+	if len(afterEvents) != 1 || afterEvents[0]["id"] != "pub-rv" {
+		t.Errorf("after revoke: expected only pub-rv, got %v", eventIDs(afterEvents))
+	}
+}
+
+func eventIDs(events []map[string]any) []any {
+	ids := make([]any, len(events))
+	for i, e := range events {
+		ids[i] = e["id"]
+	}
+	return ids
 }
 
 func TestGracefulShutdown_InFlightRequestCompletes(t *testing.T) {

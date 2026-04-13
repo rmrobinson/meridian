@@ -17,13 +17,15 @@ import (
 	"github.com/rmrobinson/meridian/backend/internal/config"
 	"github.com/rmrobinson/meridian/backend/internal/db"
 	"github.com/rmrobinson/meridian/backend/internal/domain"
+	"github.com/rmrobinson/meridian/backend/internal/sharing"
 	"go.uber.org/zap"
 )
 
 // testEnv holds all the pieces needed for API tests.
 type testEnv struct {
-	server *httptest.Server
-	db     *db.DB
+	server       *httptest.Server
+	db           *db.DB
+	sharingStore *sharing.Store
 }
 
 func newTestEnv(t *testing.T) *testEnv {
@@ -38,7 +40,8 @@ func newTestEnv(t *testing.T) *testEnv {
 
 	cfg := testConfig()
 	logger := zap.NewNop()
-	srv := rest.NewServer(cfg, database, logger)
+	sharingStore := sharing.NewStore(database)
+	srv := rest.NewServer(cfg, database, sharingStore, logger)
 	ts := httptest.NewServer(srv)
 
 	t.Cleanup(func() {
@@ -46,7 +49,7 @@ func newTestEnv(t *testing.T) *testEnv {
 		database.Close()
 	})
 
-	return &testEnv{server: ts, db: database}
+	return &testEnv{server: ts, db: database, sharingStore: sharingStore}
 }
 
 func testConfig() *config.Config {
@@ -527,5 +530,162 @@ func TestGetEventByID_MetadataTypeIncludedInResponse(t *testing.T) {
 	decodeJSON(t, resp.Body, &event)
 	if got := event["metadata_type"]; got != "book" {
 		t.Errorf("metadata_type: got %v, want book", got)
+	}
+}
+
+// --- Sharing token middleware tests ---
+
+// makeSharingJWT creates a signed sharing JWT for a token that already exists
+// in the DB (created via sharingStore.Create).
+func makeSharingJWT(t *testing.T, tok *sharing.SharingToken) string {
+	t.Helper()
+	signed, err := sharing.Issue(tok, []byte(testSecret))
+	if err != nil {
+		t.Fatalf("issuing sharing JWT: %v", err)
+	}
+	return signed
+}
+
+func TestJWTMiddleware_SharingToken_ValidFriends(t *testing.T) {
+	env := newTestEnv(t)
+	ctx := context.Background()
+
+	// Seed a public and a friends event; sharing token grants friends visibility.
+	seedEvent(t, env.db, "pub-s", "travel", "2023-01-01", domain.VisibilityPublic)
+	seedEvent(t, env.db, "fri-s", "travel", "2023-01-02", domain.VisibilityFriends)
+	seedEvent(t, env.db, "per-s", "travel", "2023-01-03", domain.VisibilityPersonal)
+
+	tok := &sharing.SharingToken{
+		ID:         "share-friends",
+		Name:       "Alice",
+		Email:      "alice@example.com",
+		Visibility: domain.VisibilityFriends,
+		CreatedAt:  time.Now().UTC(),
+	}
+	if err := env.sharingStore.Create(ctx, tok); err != nil {
+		t.Fatalf("creating sharing token: %v", err)
+	}
+
+	resp := get(t, env.server, "/api/events", makeSharingJWT(t, tok))
+	var events []map[string]any
+	decodeJSON(t, resp.Body, &events)
+
+	ids := eventIDsFromMaps(events)
+	if len(events) != 2 {
+		t.Errorf("expected 2 events (public+friends), got %d: %v", len(events), ids)
+	}
+	for _, e := range events {
+		if e["id"] == "per-s" {
+			t.Error("personal event should not be visible with friends sharing token")
+		}
+	}
+}
+
+func TestJWTMiddleware_SharingToken_Revoked(t *testing.T) {
+	env := newTestEnv(t)
+	ctx := context.Background()
+
+	seedEvent(t, env.db, "pub-r", "travel", "2023-01-01", domain.VisibilityPublic)
+	seedEvent(t, env.db, "fri-r", "travel", "2023-01-02", domain.VisibilityFriends)
+
+	tok := &sharing.SharingToken{
+		ID:         "share-revoked",
+		Name:       "Bob",
+		Email:      "bob@example.com",
+		Visibility: domain.VisibilityFriends,
+		CreatedAt:  time.Now().UTC(),
+	}
+	if err := env.sharingStore.Create(ctx, tok); err != nil {
+		t.Fatalf("creating sharing token: %v", err)
+	}
+	jwtStr := makeSharingJWT(t, tok)
+
+	if err := env.sharingStore.Revoke(ctx, tok.ID); err != nil {
+		t.Fatalf("revoking sharing token: %v", err)
+	}
+
+	resp := get(t, env.server, "/api/events", jwtStr)
+	var events []map[string]any
+	decodeJSON(t, resp.Body, &events)
+
+	// Revoked token: treated as unauthenticated — only public events.
+	if len(events) != 1 || events[0]["id"] != "pub-r" {
+		t.Errorf("expected only public event after revocation, got %v", eventIDsFromMaps(events))
+	}
+}
+
+func TestJWTMiddleware_SharingToken_ExpiredInDB(t *testing.T) {
+	env := newTestEnv(t)
+	ctx := context.Background()
+
+	seedEvent(t, env.db, "pub-e", "travel", "2023-01-01", domain.VisibilityPublic)
+	seedEvent(t, env.db, "fri-e", "travel", "2023-01-02", domain.VisibilityFriends)
+
+	// DB row has expires_at in the past; JWT itself has a future exp.
+	past := time.Now().Add(-time.Hour)
+	tok := &sharing.SharingToken{
+		ID:         "share-db-expired",
+		Name:       "Carol",
+		Email:      "carol@example.com",
+		Visibility: domain.VisibilityFriends,
+		CreatedAt:  time.Now().Add(-2 * time.Hour).UTC(),
+		ExpiresAt:  &past,
+	}
+	if err := env.sharingStore.Create(ctx, tok); err != nil {
+		t.Fatalf("creating sharing token: %v", err)
+	}
+
+	// Issue a JWT with a future exp so it would pass JWT-only validation.
+	future := time.Now().Add(time.Hour)
+	tok.ExpiresAt = &future
+	jwtStr := makeSharingJWT(t, tok)
+
+	resp := get(t, env.server, "/api/events", jwtStr)
+	var events []map[string]any
+	decodeJSON(t, resp.Body, &events)
+
+	// DB row expired: treated as unauthenticated — only public events.
+	if len(events) != 1 || events[0]["id"] != "pub-e" {
+		t.Errorf("expected only public event for DB-expired token, got %v", eventIDsFromMaps(events))
+	}
+}
+
+func TestJWTMiddleware_SharingToken_UnknownJTI(t *testing.T) {
+	env := newTestEnv(t)
+
+	seedEvent(t, env.db, "pub-u", "travel", "2023-01-01", domain.VisibilityPublic)
+	seedEvent(t, env.db, "fri-u", "travel", "2023-01-02", domain.VisibilityFriends)
+
+	// Issue a JWT for a token that doesn't exist in the DB.
+	tok := &sharing.SharingToken{
+		ID:         "ghost-id",
+		Name:       "Ghost",
+		Email:      "ghost@example.com",
+		Visibility: domain.VisibilityFriends,
+		CreatedAt:  time.Now().UTC(),
+	}
+	jwtStr := makeSharingJWT(t, tok)
+
+	resp := get(t, env.server, "/api/events", jwtStr)
+	var events []map[string]any
+	decodeJSON(t, resp.Body, &events)
+
+	if len(events) != 1 || events[0]["id"] != "pub-u" {
+		t.Errorf("expected only public event for unknown JTI, got %v", eventIDsFromMaps(events))
+	}
+}
+
+func TestJWTMiddleware_OwnerJWT_StillWorks(t *testing.T) {
+	env := newTestEnv(t)
+
+	seedEvent(t, env.db, "pub-o", "travel", "2023-01-01", domain.VisibilityPublic)
+	seedEvent(t, env.db, "per-o", "travel", "2023-01-02", domain.VisibilityPersonal)
+
+	resp := get(t, env.server, "/api/events", makeJWT(t, "owner"))
+	var events []map[string]any
+	decodeJSON(t, resp.Body, &events)
+
+	if len(events) != 2 {
+		t.Errorf("owner JWT: expected 2 events, got %d: %v", len(events), eventIDsFromMaps(events))
 	}
 }

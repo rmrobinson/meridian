@@ -318,6 +318,69 @@ html, body {
   :root:not([data-theme="dark"]) .theme-toggle__icon--dark  { display: none; }
 }
 
+/* Token lock button — shown beside theme-toggle when a sharing/role token is active */
+.token-lock {
+  position: absolute;
+  right: 52px; /* 12px margin + 32px theme-toggle + 8px gap */
+  background: none;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: inherit;
+  transition: background 0.15s;
+}
+
+.token-lock:hover {
+  background: var(--color-btn-active-bg);
+}
+
+.token-lock__icon {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+/* Popover that appears below the lock button on hover or click */
+.token-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 52px; /* aligns with the lock button */
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 8px;
+  padding: 10px 14px;
+  min-width: 180px;
+  box-shadow: 0 4px 16px var(--color-shadow);
+  z-index: 110;
+  pointer-events: none; /* informational only */
+}
+
+.token-popover__name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-label);
+  margin-bottom: 2px;
+}
+
+.token-popover__email {
+  font-size: 0.8rem;
+  color: var(--color-label-secondary);
+  margin-bottom: 6px;
+}
+
+.token-popover__permission {
+  font-size: 0.75rem;
+  color: var(--color-label-tertiary);
+  border-top: 1px solid var(--color-border);
+  padding-top: 6px;
+  margin-top: 2px;
+}
+
 .zoom-btn {
   padding: 6px 16px;
   border: 1px solid var(--color-border-strong);

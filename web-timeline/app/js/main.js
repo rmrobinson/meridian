@@ -16,7 +16,7 @@
  *   e.g. window.__timeline_setZoom(0.55)  // ZOOM_WEEK
  */
 
-import { fetchTimeline } from './api.js';
+import { fetchTimeline, getTokenFromSearch, getClaimsFromToken } from './api.js';
 import { buildCardContent, buildClusterCardContent } from './cards.js';
 import { clusterPointEvents } from './clusters.js';
 import { preloadIcons } from './icons.js';
@@ -73,10 +73,35 @@ async function init() {
   _data = await fetchTimeline();
   loadingEl.remove();
 
-  // Update the person's name in the title bar
+  // Update the person's name in the title bar.
   const personNameEl = document.getElementById('person-name');
   if (personNameEl && _data.person?.name) {
     personNameEl.textContent = _data.person.name;
+  }
+
+  // Show the lock button when a token with viewer identity is present.
+  const token = getTokenFromSearch(window.location.search);
+  const claims = getClaimsFromToken(token);
+  if (claims) {
+    const lockBtn     = document.getElementById('token-lock');
+    const popover     = document.getElementById('token-popover');
+    const popoverName = document.getElementById('token-popover-name');
+    const popoverEmail     = document.getElementById('token-popover-email');
+    const popoverPermission = document.getElementById('token-popover-permission');
+
+    popoverName.textContent       = claims.name  ?? '';
+    popoverEmail.textContent      = claims.email ?? '';
+    popoverPermission.textContent = claims.permission;
+
+    // Hide email row when absent.
+    popoverEmail.hidden = !claims.email;
+
+    lockBtn.hidden = false;
+
+    // Show popover on hover or click (toggle on click for touch devices).
+    lockBtn.addEventListener('mouseenter', () => { popover.hidden = false; });
+    lockBtn.addEventListener('mouseleave', () => { popover.hidden = true; });
+    lockBtn.addEventListener('click', () => { popover.hidden = !popover.hidden; });
   }
 
   // Pre-load all icon files into the cache before any rendering begins.

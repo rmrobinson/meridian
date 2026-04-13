@@ -9,6 +9,9 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+
+	"github.com/rmrobinson/meridian/backend/internal/domain"
+	"github.com/rmrobinson/meridian/backend/internal/sharing"
 )
 
 type contextKey string
@@ -54,17 +57,48 @@ func requestIDFromContext(ctx context.Context) string {
 // jwtMiddleware extracts and validates the Bearer token from the Authorization
 // header. Requests with no token proceed as unauthenticated — this is not an
 // error on read endpoints.
-func jwtMiddleware(secret string, next http.Handler) http.Handler {
+//
+// Two token types are supported:
+//   - Sharing tokens: JWTs with a non-empty jti. Validated against the DB row
+//     (revocation and expiry are checked there, not from the JWT claim).
+//   - Owner/role tokens: JWTs with a "role" claim. Existing behaviour unchanged.
+func jwtMiddleware(secret string, sharingStore *sharing.Store, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if strings.HasPrefix(authHeader, "Bearer ") {
 			tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-			if claims, err := ValidateToken(tokenString, secret); err == nil {
+
+			// Sharing tokens always carry a non-empty jti. Try that path first.
+			if sharingClaims, err := sharing.Validate(tokenString, []byte(secret)); err == nil && sharingClaims.ID != "" {
+				t, err := sharingStore.GetByID(r.Context(), sharingClaims.ID)
+				if err == nil && t != nil && t.DeletedAt == nil &&
+					(t.ExpiresAt == nil || t.ExpiresAt.After(time.Now())) {
+					r = r.WithContext(context.WithValue(r.Context(), claimsKey,
+						&Claims{Role: visibilityToRole(t.Visibility)}))
+				}
+				// Revoked, expired, or unknown sharing token → proceed as unauthenticated.
+			} else if claims, err := ValidateToken(tokenString, secret); err == nil {
 				r = r.WithContext(context.WithValue(r.Context(), claimsKey, claims))
 			}
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// visibilityToRole maps a domain Visibility value to the role string consumed
+// by RoleToVisibility, so sharing tokens integrate with existing handler code
+// without requiring handler changes.
+func visibilityToRole(v domain.Visibility) string {
+	switch v {
+	case domain.VisibilityPersonal:
+		return "owner"
+	case domain.VisibilityFamily:
+		return "family"
+	case domain.VisibilityFriends:
+		return "friends"
+	default:
+		return ""
+	}
 }
 
 // claimsFromContext retrieves the JWT claims from the request context, or nil
