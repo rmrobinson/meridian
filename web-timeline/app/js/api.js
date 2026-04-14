@@ -124,7 +124,9 @@ export function normalize(raw) {
  * @param {string}   birthDateStr - ISO date string from person.birth_date.
  */
 function injectBirthdayAge(events, birthDateStr) {
+  if (!birthDateStr) return;
   const birth = new Date(birthDateStr);
+  if (isNaN(birth.getTime())) return;
   for (const evt of events) {
     if (evt.metadata_type !== 'life' || evt.metadata?.milestone_type !== 'birthday') continue;
     if (typeof evt.metadata.age === 'number') continue; // already set
@@ -244,7 +246,9 @@ function normalizePhotos(photos) {
  * @returns {object[]}
  */
 export function generateBirthdays(birthDateStr, existingEvents = []) {
+  if (!birthDateStr) return [];
   const birth = new Date(birthDateStr);
+  if (isNaN(birth.getTime())) return [];
   const today = new Date();
 
   // Dates of explicit birthday life events (ISO strings) — these win.

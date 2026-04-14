@@ -147,7 +147,7 @@ function buildRenderObjects(data, pxPerDay) {
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
 
-  const birthDate   = new Date(data.person.birth_date);
+  const birthDate   = new Date(data.person.timeline_start);
   const totalDays   = (today - birthDate) / MS_PER_DAY;
   const totalHeight = Math.ceil(totalDays) * pxPerDay;
 

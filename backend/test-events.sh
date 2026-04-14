@@ -50,7 +50,7 @@ grpc_create <<'EOF'
   "date": "1992-03-14",
   "location": {"label": "Ottawa, ON", "lat": 45.4215, "lng": -75.6972},
   "visibility": "VISIBILITY_PUBLIC",
-  "life_metadata": {"milestone_type": "LIFE_MILESTONE_TYPE_RELOCATION"}
+  "life_metadata": {"milestone_type": "LIFE_MILESTONE_TYPE_BIRTH"}
 }
 EOF
 

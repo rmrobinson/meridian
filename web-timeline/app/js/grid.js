@@ -131,7 +131,7 @@ export function residenceColor(label) {
  */
 export function buildWeekMap(data, colorFn) {
   const today     = new Date();
-  const birthDate = new Date(data.person.birth_date);
+  const birthDate = new Date(data.person.timeline_start);
 
   // Current ISO week boundaries — weeks beyond this are excluded.
   const currentISOYear = isoWeekYear(today);
@@ -325,7 +325,7 @@ export function renderGrid(weekMap, data, container) {
   const splitIntoHalves = !fitsInOneRow();
 
   const today     = new Date();
-  const birthDate = new Date(data.person.birth_date);
+  const birthDate = new Date(data.person.timeline_start);
 
   const birthISOYear   = isoWeekYear(birthDate);
   const currentISOYear = isoWeekYear(today);

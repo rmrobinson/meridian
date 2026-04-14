@@ -45,8 +45,9 @@ type WriteToken struct {
 }
 
 type Person struct {
-	Name      string `mapstructure:"name"`
-	BirthDate string `mapstructure:"birth_date"`
+	Name          string `mapstructure:"name"`
+	BirthDate     string `mapstructure:"birth_date"`
+	TimelineStart string `mapstructure:"timeline_start"`
 }
 
 type LineFamily struct {

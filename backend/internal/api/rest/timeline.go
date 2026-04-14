@@ -9,8 +9,9 @@ import (
 )
 
 type personResponse struct {
-	Name      string `json:"name"`
-	BirthDate string `json:"birth_date"`
+	Name          string `json:"name"`
+	TimelineStart string `json:"timeline_start"`
+	BirthDate     string `json:"birth_date"`
 }
 
 type timelineResponse struct {
@@ -30,6 +31,8 @@ func (s *Server) handleGetTimeline(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
+
+	events = filterRestrictedLifeEvents(events, visibilities)
 
 	eventResps := make([]eventResponse, 0, len(events))
 	for _, e := range events {
@@ -55,10 +58,21 @@ func (s *Server) handleGetTimeline(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	birthDate := ""
+	if callerHasFriendsOrAbove(visibilities) {
+		birthDate = s.cfg.Person.BirthDate
+	}
+
+	timelineStart := s.cfg.Person.TimelineStart
+	if timelineStart == "" {
+		timelineStart = s.cfg.Person.BirthDate
+	}
+
 	resp := timelineResponse{
 		Person: personResponse{
-			Name:      s.cfg.Person.Name,
-			BirthDate: s.cfg.Person.BirthDate,
+			Name:          s.cfg.Person.Name,
+			TimelineStart: timelineStart,
+			BirthDate:     birthDate,
 		},
 		Families: families,
 		Events:   eventResps,
