@@ -129,8 +129,8 @@ enrichment:
 
   # TMDB (https://www.themoviedb.org) — enriches "film_tv" family events.
   # Populates director/network, release year, and poster image from the TMDB ID.
-  # Obtain an API key at https://www.themoviedb.org/settings/api
-  tmdb_api_key: ""
+  # Obtain a Read Access Token at https://www.themoviedb.org/settings/api
+  tmdb_read_access_token: ""
 
   # AWS S3 bucket where downloaded cover/poster images are stored.
   # The bucket must already exist; the server never creates it.

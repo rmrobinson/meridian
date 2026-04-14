@@ -18,9 +18,9 @@ type Config struct {
 }
 
 type Enrichment struct {
-	TMDBAPIKey string `mapstructure:"tmdb_api_key"`
-	S3Bucket   string `mapstructure:"s3_bucket"`
-	S3Region   string `mapstructure:"s3_region"`
+	TMDBReadAccessToken string `mapstructure:"tmdb_read_access_token"`
+	S3Bucket            string `mapstructure:"s3_bucket"`
+	S3Region            string `mapstructure:"s3_region"`
 }
 
 type Server struct {

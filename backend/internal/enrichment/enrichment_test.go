@@ -227,10 +227,10 @@ func TestOpenLibrary_S3UploadFailure_ReturnsError(t *testing.T) {
 
 func newTestTMDBEnricher(apiSrv *httptest.Server, uploader *S3Uploader) *TMDBEnricher {
 	return &TMDBEnricher{
-		apiKey:   "test-key",
-		uploader: uploader,
-		baseURL:  apiSrv.URL,
-		client:   apiSrv.Client(),
+		readAccessToken: "test-token",
+		uploader:        uploader,
+		baseURL:         apiSrv.URL,
+		client:          apiSrv.Client(),
 	}
 }
 

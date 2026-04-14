@@ -156,8 +156,8 @@ func buildEnrichers(cfg *config.Config, logger *zap.Logger) (book domain.Enriche
 	book = enrichment.NewOpenLibraryEnricher(uploader)
 	logger.Info("OpenLibrary book enricher enabled")
 
-	if e.TMDBAPIKey != "" {
-		filmTV = enrichment.NewTMDBEnricher(e.TMDBAPIKey, uploader)
+	if e.TMDBReadAccessToken != "" {
+		filmTV = enrichment.NewTMDBEnricher(e.TMDBReadAccessToken, uploader)
 		logger.Info("TMDB enricher enabled")
 	}
 
