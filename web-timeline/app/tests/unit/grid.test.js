@@ -23,7 +23,7 @@ function makeData({
   line_families = [],
   events = [],
 } = {}) {
-  return { person: { timeline_start }, line_families, events };
+  return { person: {}, timelineStart: new Date(timeline_start), line_families, events };
 }
 
 /** Build a span event. */

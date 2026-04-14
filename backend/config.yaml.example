@@ -31,14 +31,9 @@ auth:
 
 person:
   name: "Your Name"
-  # ISO 8601 date (YYYY-MM-DD). Exact birth date — only returned to callers
-  # with friends-or-above visibility. Used to generate birthday events.
+  # ISO 8601 date (YYYY-MM-DD). Only returned to callers with friends-or-above
+  # visibility. Used to generate birthday events on the timeline.
   birth_date: "1990-01-01"
-  # ISO 8601 date (YYYY-MM-DD). Always returned to all callers as the Y-axis
-  # origin of the timeline. Set this to a rounded date (e.g. the first day of
-  # your birth year) to avoid leaking your exact birthday to public visitors.
-  # Defaults to birth_date when omitted.
-  timeline_start: "1990-01-01"
 
 # Each family defines one line on the timeline. The nine built-in families are
 # shown below. Remove or adjust base_color_hsl to change the rendered colour.

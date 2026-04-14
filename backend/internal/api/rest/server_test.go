@@ -30,11 +30,6 @@ type testEnv struct {
 
 func newTestEnv(t *testing.T) *testEnv {
 	t.Helper()
-	return newTestEnvWithConfig(t, testConfig())
-}
-
-func newTestEnvWithConfig(t *testing.T, cfg *config.Config) *testEnv {
-	t.Helper()
 
 	name := strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
 	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", name)
@@ -43,6 +38,7 @@ func newTestEnvWithConfig(t *testing.T, cfg *config.Config) *testEnv {
 		t.Fatalf("opening test db: %v", err)
 	}
 
+	cfg := testConfig()
 	logger := zap.NewNop()
 	sharingStore := sharing.NewStore(database)
 	srv := rest.NewServer(cfg, database, sharingStore, logger)
@@ -66,7 +62,7 @@ func testConfig() *config.Config {
 				{Name: "test", TokenHash: "$2a$10$placeholder"},
 			},
 		},
-		Person: config.Person{Name: "Test User", BirthDate: "1990-01-01", TimelineStart: "1990-01-01"},
+		Person: config.Person{Name: "Test User", BirthDate: "1990-01-01"},
 		LineFamilies: []config.LineFamily{
 			{ID: "spine", Label: "Life Spine", BaseColorHSL: []int{0, 0, 80}, Side: "center", OnEnd: "never", SpawnBehavior: "single_line"},
 			{ID: "travel", Label: "Travel", BaseColorHSL: []int{50, 85, 50}, Side: "right", OnEnd: "merge", SpawnBehavior: "per_event"},
@@ -405,56 +401,6 @@ func TestGetTimeline_ReturnsPersonFromConfig(t *testing.T) {
 	}
 	if person["birth_date"] != "1990-01-01" {
 		t.Errorf("person.birth_date: got %v, want 1990-01-01", person["birth_date"])
-	}
-	if person["timeline_start"] != "1990-01-01" {
-		t.Errorf("person.timeline_start: got %v, want 1990-01-01", person["timeline_start"])
-	}
-}
-
-func TestGetTimeline_TimelineStartDiffersFromBirthDateWhenConfigured(t *testing.T) {
-	cfg := testConfig()
-	cfg.Person.BirthDate = "1990-04-12"
-	cfg.Person.TimelineStart = "1990-01-01"
-	env := newTestEnvWithConfig(t, cfg)
-
-	resp := get(t, env.server, "/api/timeline", makeJWT(t, "owner"))
-	var tl map[string]any
-	decodeJSON(t, resp.Body, &tl)
-	person, _ := tl["person"].(map[string]any)
-	if person["birth_date"] != "1990-04-12" {
-		t.Errorf("birth_date: got %v, want 1990-04-12", person["birth_date"])
-	}
-	if person["timeline_start"] != "1990-01-01" {
-		t.Errorf("timeline_start: got %v, want 1990-01-01", person["timeline_start"])
-	}
-}
-
-func TestGetTimeline_TimelineStartFallsBackToBirthDateWhenNotConfigured(t *testing.T) {
-	cfg := testConfig()
-	cfg.Person.BirthDate = "1990-04-12"
-	cfg.Person.TimelineStart = ""
-	env := newTestEnvWithConfig(t, cfg)
-
-	resp := get(t, env.server, "/api/timeline", makeJWT(t, "owner"))
-	var tl map[string]any
-	decodeJSON(t, resp.Body, &tl)
-	person, _ := tl["person"].(map[string]any)
-	if person["timeline_start"] != "1990-04-12" {
-		t.Errorf("timeline_start fallback: got %v, want 1990-04-12", person["timeline_start"])
-	}
-}
-
-func TestGetTimeline_PublicCallerHasTimelineStartButNoBirthDate(t *testing.T) {
-	env := newTestEnv(t)
-	resp := get(t, env.server, "/api/timeline", "")
-	var tl map[string]any
-	decodeJSON(t, resp.Body, &tl)
-	person, _ := tl["person"].(map[string]any)
-	if person["timeline_start"] != "1990-01-01" {
-		t.Errorf("public: timeline_start: got %v, want 1990-01-01", person["timeline_start"])
-	}
-	if bd := person["birth_date"]; bd != "" && bd != nil {
-		t.Errorf("public: birth_date should be empty, got %v", bd)
 	}
 }
 

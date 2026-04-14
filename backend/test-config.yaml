@@ -28,7 +28,6 @@ auth:
 person:
   name: "Alex Meridian"
   birth_date: "1992-03-14"
-  timeline_start: "1992-01-01"
 
 line_families:
   - id: spine

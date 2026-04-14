@@ -130,16 +130,16 @@ export function residenceColor(label) {
  * @returns {object}         - Plain object: weekKey → entry | null
  */
 export function buildWeekMap(data, colorFn) {
-  const today     = new Date();
-  const birthDate = new Date(data.person.timeline_start);
+  const today         = new Date();
+  const timelineStart = data.timelineStart;
 
   // Current ISO week boundaries — weeks beyond this are excluded.
   const currentISOYear = isoWeekYear(today);
   const currentISOWeek = isoWeekNumber(today);
 
-  // Birth ISO week — weeks before this are null (even in birth year).
-  const birthISOYear = isoWeekYear(birthDate);
-  const birthISOWeek = isoWeekNumber(birthDate);
+  // Timeline start ISO week — weeks before this are null.
+  const birthISOYear = isoWeekYear(timelineStart);
+  const birthISOWeek = isoWeekNumber(timelineStart);
 
   // Build a lookup from family id → color string.
   const familyColor = new Map();
@@ -324,10 +324,10 @@ function fitsInOneRow() {
 export function renderGrid(weekMap, data, container) {
   const splitIntoHalves = !fitsInOneRow();
 
-  const today     = new Date();
-  const birthDate = new Date(data.person.timeline_start);
+  const today         = new Date();
+  const timelineStart = data.timelineStart;
 
-  const birthISOYear   = isoWeekYear(birthDate);
+  const birthISOYear   = isoWeekYear(timelineStart);
   const currentISOYear = isoWeekYear(today);
 
   container.innerHTML = '';

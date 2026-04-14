@@ -109,11 +109,35 @@ export function normalize(raw) {
 
   const birthdays = generateBirthdays(person.birth_date, events);
 
+  const allEvents = [...events, ...birthdays];
   return {
     person,
     line_families,
-    events: [...events, ...birthdays],
+    events: allEvents,
+    timelineStart: computeTimelineStart(allEvents),
   };
+}
+
+// Two months of padding before the oldest event.
+const TIMELINE_PADDING_MS = 61 * 24 * 60 * 60 * 1000;
+
+/**
+ * Compute the Y-axis bottom anchor for the timeline: the oldest event date
+ * minus a fixed padding period. Falls back to 2 months before today when no
+ * events are present.
+ *
+ * @param {object[]} events - Normalized events (point + span, including birthdays).
+ * @returns {Date}
+ */
+function computeTimelineStart(events) {
+  let oldestMs = Date.now();
+  for (const e of events) {
+    const dateStr = e.start_date ?? e.date;
+    if (!dateStr) continue;
+    const ms = new Date(dateStr).getTime();
+    if (!isNaN(ms) && ms < oldestMs) oldestMs = ms;
+  }
+  return new Date(oldestMs - TIMELINE_PADDING_MS);
 }
 
 /**
