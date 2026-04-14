@@ -12,19 +12,20 @@ import (
 // TMDBEnricher fetches film/TV metadata from the TMDB API and uploads the
 // poster image to S3.
 type TMDBEnricher struct {
-	apiKey   string
-	uploader *S3Uploader
-	baseURL  string // overridable for tests
-	client   *http.Client
+	readAccessToken string
+	uploader        *S3Uploader
+	baseURL         string // overridable for tests
+	client          *http.Client
 }
 
-// NewTMDBEnricher creates a TMDBEnricher.
-func NewTMDBEnricher(apiKey string, uploader *S3Uploader) *TMDBEnricher {
+// NewTMDBEnricher creates a TMDBEnricher. readAccessToken is the API Read
+// Access Token from https://www.themoviedb.org/settings/api (v4 auth).
+func NewTMDBEnricher(readAccessToken string, uploader *S3Uploader) *TMDBEnricher {
 	return &TMDBEnricher{
-		apiKey:  apiKey,
-		uploader: uploader,
-		baseURL: "https://api.themoviedb.org/3",
-		client:  &http.Client{},
+		readAccessToken: readAccessToken,
+		uploader:        uploader,
+		baseURL:         "https://api.themoviedb.org/3",
+		client:          &http.Client{},
 	}
 }
 
@@ -72,11 +73,12 @@ func (e *TMDBEnricher) Enrich(ctx context.Context, event *domain.Event) error {
 }
 
 func (e *TMDBEnricher) enrichMovie(ctx context.Context, event *domain.Event, m *domain.FilmTVMetadata) error {
-	url := fmt.Sprintf("%s/movie/%s?api_key=%s&append_to_response=credits", e.baseURL, m.TMDBID, e.apiKey)
+	url := fmt.Sprintf("%s/movie/%s?append_to_response=credits", e.baseURL, m.TMDBID)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return fmt.Errorf("building TMDB request: %w", err)
 	}
+	req.Header.Set("Authorization", "Bearer "+e.readAccessToken)
 
 	resp, err := e.client.Do(req)
 	if err != nil {
@@ -119,11 +121,12 @@ func (e *TMDBEnricher) enrichMovie(ctx context.Context, event *domain.Event, m *
 }
 
 func (e *TMDBEnricher) enrichTV(ctx context.Context, event *domain.Event, m *domain.FilmTVMetadata) error {
-	url := fmt.Sprintf("%s/tv/%s?api_key=%s", e.baseURL, m.TMDBID, e.apiKey)
+	url := fmt.Sprintf("%s/tv/%s", e.baseURL, m.TMDBID)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return fmt.Errorf("building TMDB request: %w", err)
 	}
+	req.Header.Set("Authorization", "Bearer "+e.readAccessToken)
 
 	resp, err := e.client.Do(req)
 	if err != nil {
