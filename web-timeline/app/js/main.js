@@ -104,6 +104,15 @@ async function init() {
     lockBtn.addEventListener('click', () => { popover.hidden = !popover.hidden; });
   }
 
+  // Hide the entire view switcher in public mode — the grid depends on
+  // birthday and other personal data only available with elevated access,
+  // so offering the choice is meaningless for unauthenticated visitors.
+  const hasElevatedAccess = claims && claims.permission !== 'Public access';
+  if (!hasElevatedAccess) {
+    const viewSwitcher = document.querySelector('.view-switcher');
+    if (viewSwitcher) viewSwitcher.hidden = true;
+  }
+
   // Pre-load all icon files into the cache before any rendering begins.
   // getIconPath() is called synchronously during scroll; the cache must be
   // fully populated first.

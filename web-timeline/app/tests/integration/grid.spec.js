@@ -1,5 +1,15 @@
 import { test, expect } from '@playwright/test';
 
+// Minimal fake JWT with name + visibility=2 (friends).  The mock dev server
+// ignores the Authorization header and always returns the fixture, so any
+// well-formed token works here.  The client only decodes the payload to decide
+// whether to show the view switcher — it never verifies the signature.
+// Payload: {"name":"Test User","visibility":2}
+const FRIENDS_TOKEN =
+  'eyJhbGciOiJIUzI1NiJ9' +
+  '.eyJuYW1lIjoiVGVzdCBVc2VyIiwidmlzaWJpbGl0eSI6Mn0' +
+  '.fakesig';
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /** Switch to grid view and wait for the grid container to be visible. */
@@ -21,7 +31,7 @@ test.describe('Grid — desktop (1280×800)', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await page.goto(`/?token=${FRIENDS_TOKEN}`);
     await page.waitForFunction(
       () => Number(document.getElementById('timeline-svg')?.getAttribute('height')) > 0,
     );
@@ -231,6 +241,16 @@ test.describe('Grid — desktop (1280×800)', () => {
     });
     expect(overflow).toBe(true);
   });
+
+  // ── Public mode ──────────────────────────────────────────────────────────────
+
+  test('view switcher is hidden in public mode (no token)', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForFunction(
+      () => Number(document.getElementById('timeline-svg')?.getAttribute('height')) > 0,
+    );
+    await expect(page.locator('.view-switcher')).toHaveAttribute('hidden', '');
+  });
 });
 
 // ── Mobile tests ──────────────────────────────────────────────────────────────
@@ -239,7 +259,7 @@ test.describe('Grid — mobile (390×844)', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await page.goto(`/?token=${FRIENDS_TOKEN}`);
     await page.waitForFunction(
       () => Number(document.getElementById('timeline-svg')?.getAttribute('height')) > 0,
     );
