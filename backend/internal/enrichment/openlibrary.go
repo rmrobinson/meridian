@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/rmrobinson/meridian/backend/internal/domain"
 )
@@ -36,13 +37,41 @@ type openLibraryAuthor struct {
 	Name string `json:"name"`
 }
 
-type openLibraryBook struct {
-	Title   string              `json:"title"`
-	Authors []openLibraryAuthor `json:"authors"`
+// openLibraryDetails holds the book detail fields returned under the "details" key
+// when using jscmd=details. Description may be a plain string or an object with a
+// "value" field — both are captured as raw JSON and parsed in parseDescription.
+type openLibraryDetails struct {
+	Title       string              `json:"title"`
+	Authors     []openLibraryAuthor `json:"authors"`
+	Description json.RawMessage     `json:"description"`
+}
+
+type openLibraryResult struct {
+	Details openLibraryDetails `json:"details"`
+}
+
+// parseDescription handles both string and {"type":…,"value":…} forms.
+func parseDescription(raw json.RawMessage) string {
+	if len(raw) == 0 {
+		return ""
+	}
+	// Try plain string first.
+	var s string
+	if err := json.Unmarshal(raw, &s); err == nil {
+		return s
+	}
+	// Try object with "value" field.
+	var obj struct {
+		Value string `json:"value"`
+	}
+	if err := json.Unmarshal(raw, &obj); err == nil {
+		return obj.Value
+	}
+	return ""
 }
 
 // Enrich fetches metadata for the book identified by metadata.isbn and
-// populates title, author, and cover_image_url.
+// populates title, author, description, and cover_image_url.
 func (e *OpenLibraryEnricher) Enrich(ctx context.Context, event *domain.Event) error {
 	m, err := domain.ParseMetadata[domain.BookMetadata](event)
 	if err != nil {
@@ -52,7 +81,8 @@ func (e *OpenLibraryEnricher) Enrich(ctx context.Context, event *domain.Event) e
 		return fmt.Errorf("book event missing isbn in metadata")
 	}
 
-	url := fmt.Sprintf("%s/api/books?bibkeys=ISBN:%s&format=json&jscmd=data", e.baseURL, m.ISBN)
+	isbn := strings.ReplaceAll(m.ISBN, "-", "")
+	url := fmt.Sprintf("%s/api/books?bibkeys=ISBN:%s&format=json&jscmd=details", e.baseURL, isbn)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return fmt.Errorf("building OpenLibrary request: %w", err)
@@ -72,27 +102,31 @@ func (e *OpenLibraryEnricher) Enrich(ctx context.Context, event *domain.Event) e
 		return fmt.Errorf("OpenLibrary returned status %d", resp.StatusCode)
 	}
 
-	var result map[string]openLibraryBook
+	var result map[string]openLibraryResult
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return fmt.Errorf("decoding OpenLibrary response: %w", err)
 	}
 
-	book, ok := result[fmt.Sprintf("ISBN:%s", m.ISBN)]
+	book, ok := result[fmt.Sprintf("ISBN:%s", isbn)]
 	if !ok {
 		return fmt.Errorf("isbn %q: %w", m.ISBN, ErrNotFound)
 	}
 
-	if book.Title != "" {
-		m.Title = book.Title
+	details := book.Details
+	if details.Title != "" {
+		m.Title = details.Title
 	}
-	if len(book.Authors) > 0 {
-		m.Author = book.Authors[0].Name
+	if len(details.Authors) > 0 {
+		m.Author = details.Authors[0].Name
+	}
+	if desc := parseDescription(details.Description); desc != "" {
+		event.Description = &desc
 	}
 
 	// Upload cover image to S3 using the ISBN-based cover URL.
-	imgURL := fmt.Sprintf("%s/b/isbn/%s-L.jpg", e.coverURL, m.ISBN)
-	s3Key := fmt.Sprintf("timeline/books/%s/cover.jpg", m.ISBN)
-	s3URL, err := e.uploader.UploadFromURL(ctx, imgURL, s3Key)
+	imgURL := fmt.Sprintf("%s/b/isbn/%s-L.jpg", e.coverURL, isbn)
+	s3Key := fmt.Sprintf("timeline/books/%s/cover.jpg", isbn)
+	s3URL, err := e.uploader.UploadFromURLIfNotExists(ctx, imgURL, s3Key)
 	if err != nil {
 		return fmt.Errorf("uploading cover image: %w", err)
 	}

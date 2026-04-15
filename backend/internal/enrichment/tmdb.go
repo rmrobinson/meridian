@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/rmrobinson/meridian/backend/internal/domain"
 )
@@ -29,9 +30,18 @@ func NewTMDBEnricher(readAccessToken string, uploader *S3Uploader) *TMDBEnricher
 	}
 }
 
+type tmdbSearchResult struct {
+	ID int `json:"id"`
+}
+
+type tmdbSearchResponse struct {
+	Results []tmdbSearchResult `json:"results"`
+}
+
 type tmdbMovieResponse struct {
 	Title       string `json:"title"`
 	ReleaseDate string `json:"release_date"` // "YYYY-MM-DD"
+	Overview    string `json:"overview"`
 	PosterPath  string `json:"poster_path"`
 	Credits     struct {
 		Crew []struct {
@@ -42,24 +52,28 @@ type tmdbMovieResponse struct {
 }
 
 type tmdbTVResponse struct {
-	Name         string `json:"name"`
-	FirstAirDate string `json:"first_air_date"`
-	PosterPath   string `json:"poster_path"`
-	Networks     []struct {
+	Name            string `json:"name"`
+	FirstAirDate    string `json:"first_air_date"`
+	Overview        string `json:"overview"`
+	PosterPath      string `json:"poster_path"`
+	Networks        []struct {
 		Name string `json:"name"`
 	} `json:"networks"`
 	NumberOfSeasons int `json:"number_of_seasons"`
 }
 
-// Enrich fetches metadata for the film or TV show identified by metadata.tmdb_id
-// and populates poster_url, director/network, and year.
+// Enrich fetches metadata for the film or TV show and populates poster_url,
+// director/network, and year. If tmdb_id is absent it searches TMDB by title.
 func (e *TMDBEnricher) Enrich(ctx context.Context, event *domain.Event) error {
 	m, err := domain.ParseMetadata[domain.FilmTVMetadata](event)
 	if err != nil {
 		return fmt.Errorf("parsing film_tv metadata: %w", err)
 	}
+
 	if m.TMDBID == "" {
-		return fmt.Errorf("film_tv event missing tmdb_id in metadata")
+		if err := e.resolveIDByTitle(ctx, event.Title, m); err != nil {
+			return err
+		}
 	}
 
 	switch m.Type {
@@ -70,6 +84,42 @@ func (e *TMDBEnricher) Enrich(ctx context.Context, event *domain.Event) error {
 	default:
 		return fmt.Errorf("unknown film_tv type %q, must be movie or tv", m.Type)
 	}
+}
+
+// resolveIDByTitle searches TMDB for the title and sets m.TMDBID from the
+// first result. Returns ErrNotFound when the search returns no results.
+func (e *TMDBEnricher) resolveIDByTitle(ctx context.Context, title string, m *domain.FilmTVMetadata) error {
+	endpoint := "movie"
+	if m.Type == "tv" {
+		endpoint = "tv"
+	}
+	searchURL := fmt.Sprintf("%s/search/%s?query=%s", e.baseURL, endpoint, url.QueryEscape(title))
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, searchURL, nil)
+	if err != nil {
+		return fmt.Errorf("building TMDB search request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+e.readAccessToken)
+
+	resp, err := e.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("calling TMDB search: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("TMDB search returned status %d", resp.StatusCode)
+	}
+
+	var result tmdbSearchResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return fmt.Errorf("decoding TMDB search response: %w", err)
+	}
+	if len(result.Results) == 0 {
+		return fmt.Errorf("title %q: %w", title, ErrNotFound)
+	}
+
+	m.TMDBID = fmt.Sprintf("%d", result.Results[0].ID)
+	return nil
 }
 
 func (e *TMDBEnricher) enrichMovie(ctx context.Context, event *domain.Event, m *domain.FilmTVMetadata) error {
@@ -111,6 +161,10 @@ func (e *TMDBEnricher) enrichMovie(ctx context.Context, event *domain.Event, m *
 			m.Director = c.Name
 			break
 		}
+	}
+
+	if result.Overview != "" {
+		event.Description = &result.Overview
 	}
 
 	if err := e.uploadPoster(ctx, m, result.PosterPath); err != nil {
@@ -157,6 +211,9 @@ func (e *TMDBEnricher) enrichTV(ctx context.Context, event *domain.Event, m *dom
 	if result.NumberOfSeasons > 0 {
 		m.SeasonsWatched = &result.NumberOfSeasons
 	}
+	if result.Overview != "" {
+		event.Description = &result.Overview
+	}
 
 	if err := e.uploadPoster(ctx, m, result.PosterPath); err != nil {
 		return err
@@ -171,7 +228,7 @@ func (e *TMDBEnricher) uploadPoster(ctx context.Context, m *domain.FilmTVMetadat
 	}
 	imageURL := fmt.Sprintf("https://image.tmdb.org/t/p/original%s", posterPath)
 	s3Key := fmt.Sprintf("timeline/film_tv/%s/poster.jpg", m.TMDBID)
-	s3URL, err := e.uploader.UploadFromURL(ctx, imageURL, s3Key)
+	s3URL, err := e.uploader.UploadFromURLIfNotExists(ctx, imageURL, s3Key)
 	if err != nil {
 		return fmt.Errorf("uploading poster: %w", err)
 	}

@@ -58,14 +58,10 @@ func validateFilmTVMetadata(event *Event) error {
 	if err != nil {
 		return fmt.Errorf("parsing film_tv metadata: %w", err)
 	}
-	var errs []error
-	if m.TMDBID == "" {
-		errs = append(errs, errors.New("film_tv metadata: tmdb_id is required"))
-	}
 	if m.Type != "movie" && m.Type != "tv" {
-		errs = append(errs, fmt.Errorf("film_tv metadata: type must be %q or %q, got %q", "movie", "tv", m.Type))
+		return fmt.Errorf("film_tv metadata: type must be %q or %q, got %q", "movie", "tv", m.Type)
 	}
-	return errors.Join(errs...)
+	return nil
 }
 
 func validateFlightsMetadata(event *Event) error {

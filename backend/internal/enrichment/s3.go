@@ -3,18 +3,22 @@ package enrichment
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 )
 
 // S3PutObjectAPI is the subset of the S3 client needed for uploads.
 // Using an interface allows test code to inject a mock.
 type S3PutObjectAPI interface {
 	PutObject(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error)
+	HeadObject(ctx context.Context, params *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error)
 }
 
 // S3Uploader downloads a file from a URL and uploads it to S3.
@@ -75,4 +79,36 @@ func (u *S3Uploader) UploadFromURL(ctx context.Context, sourceURL, s3Key string)
 	}
 
 	return fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", u.bucket, u.region, s3Key), nil
+}
+
+// UploadFromURLIfNotExists is like UploadFromURL but skips the download and
+// upload when the key already exists in S3, returning the existing object's URL.
+func (u *S3Uploader) UploadFromURLIfNotExists(ctx context.Context, sourceURL, s3Key string) (string, error) {
+	_, err := u.client.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: aws.String(u.bucket),
+		Key:    aws.String(s3Key),
+	})
+	if err == nil {
+		return fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", u.bucket, u.region, s3Key), nil
+	}
+	if !isS3KeyAbsent(err) {
+		return "", fmt.Errorf("checking S3 key existence: %w", err)
+	}
+	return u.UploadFromURL(ctx, sourceURL, s3Key)
+}
+
+// isS3KeyAbsent returns true when a HeadObject error indicates the key does
+// not exist. S3 returns 404 (typed as NotFound) when public bucket access is
+// allowed, and 403 (Forbidden) when the bucket is private — both mean absent.
+func isS3KeyAbsent(err error) bool {
+	var notFound *s3types.NotFound
+	if errors.As(err, &notFound) {
+		return true
+	}
+	var re *awshttp.ResponseError
+	if errors.As(err, &re) {
+		c := re.HTTPStatusCode()
+		return c == http.StatusNotFound || c == http.StatusForbidden
+	}
+	return false
 }

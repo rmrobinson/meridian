@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 
 	"github.com/rmrobinson/meridian/backend/internal/domain"
 )
@@ -18,6 +19,7 @@ import (
 type mockS3 struct {
 	err     error
 	lastKey string
+	exists  bool // controls HeadObject: true = key exists, false = NotFound
 }
 
 func (m *mockS3) PutObject(_ context.Context, params *s3.PutObjectInput, _ ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
@@ -25,6 +27,13 @@ func (m *mockS3) PutObject(_ context.Context, params *s3.PutObjectInput, _ ...fu
 		m.lastKey = *params.Key
 	}
 	return &s3.PutObjectOutput{}, m.err
+}
+
+func (m *mockS3) HeadObject(_ context.Context, _ *s3.HeadObjectInput, _ ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {
+	if m.exists {
+		return &s3.HeadObjectOutput{}, nil
+	}
+	return nil, &s3types.NotFound{}
 }
 
 // newTestUploader wires an S3Uploader with a mock S3 client and the given
@@ -89,6 +98,49 @@ func TestS3UploadFromURL_S3PutFailure(t *testing.T) {
 	}
 }
 
+func TestS3UploadFromURLIfNotExists_AlreadyExists_SkipsUpload(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("HTTP download should not be called when key already exists")
+	}))
+	defer srv.Close()
+
+	s3mock := &mockS3{exists: true}
+	uploader := newTestUploader(s3mock, srv.Client())
+
+	url, err := uploader.UploadFromURLIfNotExists(context.Background(), srv.URL+"/cover.jpg", "books/123/cover.jpg")
+	if err != nil {
+		t.Fatalf("UploadFromURLIfNotExists: %v", err)
+	}
+	if url == "" {
+		t.Error("expected non-empty S3 URL")
+	}
+	if s3mock.lastKey != "" {
+		t.Error("PutObject should not have been called")
+	}
+}
+
+func TestS3UploadFromURLIfNotExists_NotExists_Uploads(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/jpeg")
+		w.Write([]byte("fake-image-data"))
+	}))
+	defer srv.Close()
+
+	s3mock := &mockS3{exists: false}
+	uploader := newTestUploader(s3mock, srv.Client())
+
+	url, err := uploader.UploadFromURLIfNotExists(context.Background(), srv.URL+"/cover.jpg", "books/123/cover.jpg")
+	if err != nil {
+		t.Fatalf("UploadFromURLIfNotExists: %v", err)
+	}
+	if url == "" {
+		t.Error("expected non-empty S3 URL")
+	}
+	if s3mock.lastKey != "books/123/cover.jpg" {
+		t.Errorf("s3 key: got %q, want books/123/cover.jpg", s3mock.lastKey)
+	}
+}
+
 // --- OpenLibrary tests ---
 
 func newTestOpenLibraryEnricher(apiSrv, coverSrv *httptest.Server, uploader *S3Uploader) *OpenLibraryEnricher {
@@ -105,7 +157,7 @@ func bookEvent(isbn string) *domain.Event {
 	return &domain.Event{FamilyID: "books", Metadata: &meta}
 }
 
-func TestOpenLibrary_ValidISBN_PopulatesAuthorAndTitle(t *testing.T) {
+func TestOpenLibrary_ValidISBN_PopulatesAuthorTitleAndDescription(t *testing.T) {
 	const isbn = "9780441013593"
 
 	coverSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -114,7 +166,7 @@ func TestOpenLibrary_ValidISBN_PopulatesAuthorAndTitle(t *testing.T) {
 	defer coverSrv.Close()
 
 	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, `{"ISBN:%s":{"title":"Dune","authors":[{"name":"Frank Herbert"}]}}`, isbn)
+		fmt.Fprintf(w, `{"ISBN:%s":{"details":{"title":"Dune","authors":[{"name":"Frank Herbert"}],"description":"A sci-fi epic."}}}`, isbn)
 	}))
 	defer apiSrv.Close()
 
@@ -134,6 +186,36 @@ func TestOpenLibrary_ValidISBN_PopulatesAuthorAndTitle(t *testing.T) {
 	if m.Title != "Dune" {
 		t.Errorf("title: got %q, want Dune", m.Title)
 	}
+	if event.Description == nil || *event.Description != "A sci-fi epic." {
+		t.Errorf("description: got %v, want \"A sci-fi epic.\"", event.Description)
+	}
+}
+
+func TestOpenLibrary_ValidISBN_DescriptionObject(t *testing.T) {
+	const isbn = "9780441013593"
+
+	coverSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("img"))
+	}))
+	defer coverSrv.Close()
+
+	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, `{"ISBN:%s":{"details":{"title":"Dune","authors":[{"name":"Frank Herbert"}],"description":{"type":"/type/text","value":"A sci-fi epic."}}}}`, isbn)
+	}))
+	defer apiSrv.Close()
+
+	s3mock := &mockS3{}
+	uploader := newTestUploader(s3mock, coverSrv.Client())
+	enricher := newTestOpenLibraryEnricher(apiSrv, coverSrv, uploader)
+
+	event := bookEvent(isbn)
+	if err := enricher.Enrich(context.Background(), event); err != nil {
+		t.Fatalf("Enrich: %v", err)
+	}
+
+	if event.Description == nil || *event.Description != "A sci-fi epic." {
+		t.Errorf("description: got %v, want \"A sci-fi epic.\"", event.Description)
+	}
 }
 
 func TestOpenLibrary_CoverUploadedToS3_URLReplaced(t *testing.T) {
@@ -145,7 +227,7 @@ func TestOpenLibrary_CoverUploadedToS3_URLReplaced(t *testing.T) {
 	defer coverSrv.Close()
 
 	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, `{"ISBN:%s":{"title":"Dune","authors":[{"name":"Frank Herbert"}]}}`, isbn)
+		fmt.Fprintf(w, `{"ISBN:%s":{"details":{"title":"Dune","authors":[{"name":"Frank Herbert"}]}}}`, isbn)
 	}))
 	defer apiSrv.Close()
 
@@ -200,6 +282,37 @@ func TestOpenLibrary_UnknownISBN_ReturnsNotFound(t *testing.T) {
 	}
 }
 
+func TestOpenLibrary_CoverAlreadyInS3_SkipsDownloadAndUpload(t *testing.T) {
+	const isbn = "9780441013593"
+
+	coverSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("cover download should not be called when image already exists in S3")
+	}))
+	defer coverSrv.Close()
+
+	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, `{"ISBN:%s":{"details":{"title":"Dune","authors":[{"name":"Frank Herbert"}]}}}`, isbn)
+	}))
+	defer apiSrv.Close()
+
+	s3mock := &mockS3{exists: true}
+	uploader := newTestUploader(s3mock, coverSrv.Client())
+	enricher := newTestOpenLibraryEnricher(apiSrv, coverSrv, uploader)
+
+	event := bookEvent(isbn)
+	if err := enricher.Enrich(context.Background(), event); err != nil {
+		t.Fatalf("Enrich: %v", err)
+	}
+
+	m, _ := domain.ParseMetadata[domain.BookMetadata](event)
+	if m.CoverImageURL == "" {
+		t.Error("cover_image_url should be set from existing S3 object")
+	}
+	if s3mock.lastKey != "" {
+		t.Error("PutObject should not have been called")
+	}
+}
+
 func TestOpenLibrary_S3UploadFailure_ReturnsError(t *testing.T) {
 	const isbn = "9780441013593"
 
@@ -209,7 +322,7 @@ func TestOpenLibrary_S3UploadFailure_ReturnsError(t *testing.T) {
 	defer coverSrv.Close()
 
 	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, `{"ISBN:%s":{"title":"Dune","authors":[{"name":"Frank Herbert"}]}}`, isbn)
+		fmt.Fprintf(w, `{"ISBN:%s":{"details":{"title":"Dune","authors":[{"name":"Frank Herbert"}]}}}`, isbn)
 	}))
 	defer apiSrv.Close()
 
@@ -239,6 +352,11 @@ func filmEvent(tmdbID, mediaType string) *domain.Event {
 	return &domain.Event{FamilyID: "film_tv", Metadata: &meta}
 }
 
+func filmEventByTitle(title, mediaType string) *domain.Event {
+	meta := fmt.Sprintf(`{"type":%q}`, mediaType)
+	return &domain.Event{FamilyID: "film_tv", Title: title, Metadata: &meta}
+}
+
 func TestTMDB_Movie_PopulatesDirectorAndYear(t *testing.T) {
 	imgSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("img"))
@@ -246,7 +364,7 @@ func TestTMDB_Movie_PopulatesDirectorAndYear(t *testing.T) {
 	defer imgSrv.Close()
 
 	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"title":"The Godfather","release_date":"1972-03-24","poster_path":"","credits":{"crew":[{"job":"Director","name":"Francis Ford Coppola"}]}}`))
+		w.Write([]byte(`{"title":"The Godfather","release_date":"1972-03-24","overview":"The aging patriarch of an organized crime dynasty.","poster_path":"","credits":{"crew":[{"job":"Director","name":"Francis Ford Coppola"}]}}`))
 	}))
 	defer apiSrv.Close()
 
@@ -263,6 +381,9 @@ func TestTMDB_Movie_PopulatesDirectorAndYear(t *testing.T) {
 	if m.Year != 1972 {
 		t.Errorf("year: got %d, want 1972", m.Year)
 	}
+	if event.Description == nil || *event.Description != "The aging patriarch of an organized crime dynasty." {
+		t.Errorf("description: got %v, want \"The aging patriarch of an organized crime dynasty.\"", event.Description)
+	}
 }
 
 func TestTMDB_TV_PopulatesNetworkAndSeasons(t *testing.T) {
@@ -272,7 +393,7 @@ func TestTMDB_TV_PopulatesNetworkAndSeasons(t *testing.T) {
 	defer imgSrv.Close()
 
 	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"name":"Breaking Bad","first_air_date":"2008-01-20","poster_path":"","networks":[{"name":"AMC"}],"number_of_seasons":5}`))
+		w.Write([]byte(`{"name":"Breaking Bad","first_air_date":"2008-01-20","overview":"A chemistry teacher turned drug manufacturer.","poster_path":"","networks":[{"name":"AMC"}],"number_of_seasons":5}`))
 	}))
 	defer apiSrv.Close()
 
@@ -288,6 +409,9 @@ func TestTMDB_TV_PopulatesNetworkAndSeasons(t *testing.T) {
 	}
 	if m.SeasonsWatched == nil || *m.SeasonsWatched != 5 {
 		t.Errorf("seasons_watched: got %v, want 5", m.SeasonsWatched)
+	}
+	if event.Description == nil || *event.Description != "A chemistry teacher turned drug manufacturer." {
+		t.Errorf("description: got %v, want \"A chemistry teacher turned drug manufacturer.\"", event.Description)
 	}
 }
 
@@ -350,6 +474,80 @@ func TestTMDB_UnknownID_ReturnsNotFound(t *testing.T) {
 	err := enricher.Enrich(context.Background(), filmEvent("999999", "movie"))
 	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestTMDB_NoTMDBID_SearchesByTitle(t *testing.T) {
+	imgSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("img"))
+	}))
+	defer imgSrv.Close()
+
+	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/search/movie" {
+			w.Write([]byte(`{"results":[{"id":238}]}`))
+			return
+		}
+		// detail fetch after ID resolved
+		w.Write([]byte(`{"title":"The Godfather","release_date":"1972-03-24","poster_path":"","credits":{"crew":[{"job":"Director","name":"Francis Ford Coppola"}]}}`))
+	}))
+	defer apiSrv.Close()
+
+	enricher := newTestTMDBEnricher(apiSrv, newTestUploader(&mockS3{}, imgSrv.Client()))
+	event := filmEventByTitle("The Godfather", "movie")
+	if err := enricher.Enrich(context.Background(), event); err != nil {
+		t.Fatalf("Enrich: %v", err)
+	}
+
+	m, _ := domain.ParseMetadata[domain.FilmTVMetadata](event)
+	if m.TMDBID != "238" {
+		t.Errorf("tmdb_id: got %q, want 238", m.TMDBID)
+	}
+	if m.Director != "Francis Ford Coppola" {
+		t.Errorf("director: got %q, want Francis Ford Coppola", m.Director)
+	}
+}
+
+func TestTMDB_NoTMDBID_TitleNotFound_ReturnsNotFound(t *testing.T) {
+	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"results":[]}`))
+	}))
+	defer apiSrv.Close()
+
+	enricher := newTestTMDBEnricher(apiSrv, newTestUploader(&mockS3{}, apiSrv.Client()))
+	err := enricher.Enrich(context.Background(), filmEventByTitle("Unknown Film", "movie"))
+	if !errors.Is(err, ErrNotFound) {
+		t.Errorf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestTMDB_NoTMDBID_TV_SearchesByTitle(t *testing.T) {
+	imgSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("img"))
+	}))
+	defer imgSrv.Close()
+
+	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/search/tv" {
+			w.Write([]byte(`{"results":[{"id":1396}]}`))
+			return
+		}
+		w.Write([]byte(`{"name":"Breaking Bad","first_air_date":"2008-01-20","poster_path":"","networks":[{"name":"AMC"}],"number_of_seasons":5}`))
+	}))
+	defer apiSrv.Close()
+
+	enricher := newTestTMDBEnricher(apiSrv, newTestUploader(&mockS3{}, imgSrv.Client()))
+	event := filmEventByTitle("Breaking Bad", "tv")
+	if err := enricher.Enrich(context.Background(), event); err != nil {
+		t.Fatalf("Enrich: %v", err)
+	}
+
+	m, _ := domain.ParseMetadata[domain.FilmTVMetadata](event)
+	if m.TMDBID != "1396" {
+		t.Errorf("tmdb_id: got %q, want 1396", m.TMDBID)
+	}
+	if m.Network != "AMC" {
+		t.Errorf("network: got %q, want AMC", m.Network)
 	}
 }
 

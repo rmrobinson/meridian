@@ -25,6 +25,13 @@
   font-size: 0.875rem;
   line-height: 1.5;
   color: var(--color-label-secondary);
+  max-height: 30vh;
+  overflow: hidden;
+}
+
+.card-description--truncated {
+  -webkit-mask-image: linear-gradient(to bottom, black 75%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 75%, transparent 100%);
 }
 
 .card-location {
@@ -73,6 +80,40 @@
   border-radius: 4px;
   cursor: zoom-in;
   /* loading="lazy" is an HTML attribute set when <img> elements are created in cards.js */
+}
+
+/* ── Book card ─────────────────────────────────────────────────────────────── */
+
+.card--book .card-book-cover {
+  width: 100px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+/* ── Film / TV card ────────────────────────────────────────────────────────── */
+
+.card--tv .card-poster {
+  width: 100px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+/* ── Shared: book, film and TV side-by-side layout ─────────────────────────── */
+
+.card-media-layout {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.card-media-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 /* ── Shared: book, film and TV cards ────────────────────────────────────────── */
