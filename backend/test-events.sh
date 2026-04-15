@@ -34,7 +34,7 @@ grpc_create() {
     "$GRPC_ADDR" meridian.v1.TimelineService/CreateEvent
 }
 
-echo "===== Creating 26 life events ====="
+echo "===== Creating 31 life events ====="
 echo ""
 
 # ── SPINE RELOCATIONS (6) — required for week grid residence colouring ────────
@@ -411,14 +411,11 @@ grpc_create <<'EOF'
   "type": "EVENT_TYPE_SPAN",
   "title": "Dune",
   "icon": "mdi:book-open-variant",
-  "description": "Frank Herbert's seminal sci-fi epic. Dense but rewarding — the ecological and political worldbuilding is unlike anything else.",
   "start_date": "2014-07-10",
   "end_date": "2014-08-10",
   "visibility": "VISIBILITY_PUBLIC",
   "book_metadata": {
-    "isbn": "978-0-441-01359-7",
-    "title": "Dune",
-    "author": "Frank Herbert",
+    "isbn": "978-0-441-01359-3",
     "rating": 5,
     "review": "Epic science fiction. The worldbuilding is unparalleled."
   }
@@ -433,14 +430,11 @@ grpc_create <<'EOF'
   "type": "EVENT_TYPE_SPAN",
   "title": "The Name of the Wind",
   "icon": "mdi:book-open-variant",
-  "description": "Patrick Rothfuss writes prose that feels like music. Kvothe is an unreliable narrator done right.",
   "start_date": "2016-02-20",
   "end_date": "2016-03-20",
   "visibility": "VISIBILITY_PUBLIC",
   "book_metadata": {
     "isbn": "978-0-7564-0407-9",
-    "title": "The Name of the Wind",
-    "author": "Patrick Rothfuss",
     "rating": 5,
     "review": "Beautiful prose and a deeply compelling narrator."
   }
@@ -455,14 +449,11 @@ grpc_create <<'EOF'
   "type": "EVENT_TYPE_SPAN",
   "title": "Sapiens: A Brief History of Humankind",
   "icon": "mdi:book-open-variant",
-  "description": "A sweeping overview of human history that reframes how we think about culture, money, and progress. Occasionally reductive but consistently fascinating.",
   "start_date": "2017-10-05",
   "end_date": "2017-11-05",
   "visibility": "VISIBILITY_PUBLIC",
   "book_metadata": {
     "isbn": "978-0-06-231609-7",
-    "title": "Sapiens: A Brief History of Humankind",
-    "author": "Yuval Noah Harari",
     "rating": 4,
     "review": "Mind-expanding perspective on human history and civilization."
   }
@@ -477,14 +468,11 @@ grpc_create <<'EOF'
   "type": "EVENT_TYPE_SPAN",
   "title": "Project Hail Mary",
   "icon": "mdi:book-open-variant",
-  "description": "Andy Weir's best yet. The science is meticulous, the pacing is relentless, and the central friendship is genuinely moving.",
   "start_date": "2021-08-05",
   "end_date": "2021-08-22",
   "visibility": "VISIBILITY_PUBLIC",
   "book_metadata": {
     "isbn": "978-0-593-13520-4",
-    "title": "Project Hail Mary",
-    "author": "Andy Weir",
     "rating": 5,
     "review": "Couldn't put it down. Rocky is one of the best characters in sci-fi."
   }
@@ -499,14 +487,11 @@ grpc_create <<'EOF'
   "type": "EVENT_TYPE_SPAN",
   "title": "The Pragmatic Programmer",
   "icon": "mdi:book-open-variant",
-  "description": "Required reading for any software engineer. The DRY principle and broken windows theory have permanently shaped how I approach code.",
   "start_date": "2022-02-10",
   "end_date": "2022-03-15",
   "visibility": "VISIBILITY_PERSONAL",
   "book_metadata": {
     "isbn": "978-0-13-595705-9",
-    "title": "The Pragmatic Programmer",
-    "author": "David Thomas & Andrew Hunt",
     "rating": 4,
     "review": "Essential career reading. Changed how I think about software craft."
   }
@@ -521,16 +506,111 @@ grpc_create <<'EOF'
   "type": "EVENT_TYPE_SPAN",
   "title": "Never Split the Difference",
   "icon": "mdi:book-open-variant",
-  "description": "Chris Voss applies FBI hostage negotiation tactics to everyday life. The tactical empathy framework is immediately practical.",
   "start_date": "2023-10-08",
   "end_date": "2023-10-30",
   "visibility": "VISIBILITY_PUBLIC",
   "book_metadata": {
     "isbn": "978-0-06-240780-1",
-    "title": "Never Split the Difference",
-    "author": "Chris Voss",
     "rating": 4,
     "review": "Surprisingly practical. The mirroring and labelling techniques actually work."
+  }
+}
+EOF
+
+# ── FILM & TV (5) ────────────────────────────────────────────────────────────
+
+echo "--- [27/31] Movie: Inception ---"
+grpc_create <<'EOF'
+{
+  "family_id": "film_tv",
+  "line_key": "film-inception",
+  "type": "EVENT_TYPE_POINT",
+  "title": "Inception",
+  "icon": "mdi:movie-open",
+  "date": "2010-08-14",
+  "visibility": "VISIBILITY_PUBLIC",
+  "film_tv_metadata": {
+    "type": "FILM_TV_TYPE_MOVIE",
+    "rating": 5,
+    "review": "A masterclass in layered storytelling. Watched it three times before the credits felt earned."
+  }
+}
+EOF
+
+echo "--- [28/31] Movie: Arrival ---"
+grpc_create <<'EOF'
+{
+  "family_id": "film_tv",
+  "line_key": "film-arrival",
+  "type": "EVENT_TYPE_POINT",
+  "title": "Arrival",
+  "icon": "mdi:movie-open",
+  "date": "2016-11-25",
+  "visibility": "VISIBILITY_PUBLIC",
+  "film_tv_metadata": {
+    "type": "FILM_TV_TYPE_MOVIE",
+    "rating": 5,
+    "review": "The most emotionally devastating sci-fi film I've seen. Amy Adams is extraordinary."
+  }
+}
+EOF
+
+echo "--- [29/31] Movie: Everything Everywhere All at Once ---"
+grpc_create <<'EOF'
+{
+  "family_id": "film_tv",
+  "line_key": "film-eeaao",
+  "type": "EVENT_TYPE_POINT",
+  "title": "Everything Everywhere All at Once",
+  "icon": "mdi:movie-open",
+  "date": "2022-04-10",
+  "visibility": "VISIBILITY_PUBLIC",
+  "film_tv_metadata": {
+    "type": "FILM_TV_TYPE_MOVIE",
+    "rating": 5,
+    "review": "Chaotic, tender, absurd, and profoundly human. Watched it twice in the same week."
+  }
+}
+EOF
+
+echo "--- [30/31] TV Show: Breaking Bad ---"
+grpc_create <<'EOF'
+{
+  "family_id": "film_tv",
+  "line_key": "tv-breaking-bad",
+  "type": "EVENT_TYPE_SPAN",
+  "title": "Breaking Bad",
+  "icon": "mdi:television-play",
+  "end_icon": "mdi:television-stop",
+  "start_date": "2013-06-01",
+  "end_date": "2013-08-20",
+  "visibility": "VISIBILITY_PUBLIC",
+  "film_tv_metadata": {
+    "type": "FILM_TV_TYPE_TV",
+    "seasons_watched": 5,
+    "rating": 5,
+    "review": "Binged all five seasons over a summer. 'I am the one who knocks' is one of TV's best scenes."
+  }
+}
+EOF
+
+echo "--- [31/31] TV Show: Severance ---"
+grpc_create <<'EOF'
+{
+  "family_id": "film_tv",
+  "line_key": "tv-severance",
+  "type": "EVENT_TYPE_SPAN",
+  "title": "Severance",
+  "icon": "mdi:television-play",
+  "end_icon": "mdi:television-stop",
+  "start_date": "2022-03-10",
+  "end_date": "2022-04-02",
+  "visibility": "VISIBILITY_PUBLIC",
+  "film_tv_metadata": {
+    "type": "FILM_TV_TYPE_TV",
+    "seasons_watched": 1,
+    "rating": 5,
+    "review": "The most original TV premise in years. That dance sequence is surreal perfection."
   }
 }
 EOF
@@ -563,6 +643,10 @@ echo ""
 
 echo "--- GET /api/events?family=books ---"
 curl -s -H "Authorization: Bearer $JWT" "$REST_ADDR/api/events?family=books" | python3 -m json.tool
+echo ""
+
+echo "--- GET /api/events?family=film_tv ---"
+curl -s -H "Authorization: Bearer $JWT" "$REST_ADDR/api/events?family=film_tv" | python3 -m json.tool
 echo ""
 
 echo "--- GET /api/timeline (full timeline) ---"

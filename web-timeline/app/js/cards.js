@@ -201,25 +201,28 @@ function bookCard(event) {
   const wrap = el('div', 'card--book');
 
   const { cover_image_url, author, rating, review } = event.metadata ?? {};
+
+  const layout = el('div', 'card-media-layout');
+
   if (cover_image_url) {
     const img = document.createElement('img');
     img.className = 'card-book-cover';
     img.src = cover_image_url;
     img.alt = '';
     img.loading = 'lazy';
-    wrap.appendChild(img);
+    layout.appendChild(img);
   }
 
-  wrap.appendChild(el('p', 'card-title', event.title));
-  if (author) wrap.appendChild(el('p', 'card-author', author));
-  if (event.description) wrap.appendChild(el('p', 'card-description', event.description));
-  if (event.location?.label) wrap.appendChild(el('p', 'card-location', event.location.label));
+  const info = el('div', 'card-media-info');
+  info.appendChild(el('p', 'card-title', event.title));
+  if (author) info.appendChild(el('p', 'card-author', author));
+  if (event.description) info.appendChild(el('p', 'card-description', event.description));
+  if (event.location?.label) info.appendChild(el('p', 'card-location', event.location.label));
+  if (typeof rating === 'number') info.appendChild(el('p', 'card-rating', starsFor(rating)));
+  if (review) info.appendChild(el('p', 'card-review', review));
+  layout.appendChild(info);
 
-  if (typeof rating === 'number') {
-    wrap.appendChild(el('p', 'card-rating', starsFor(rating)));
-  }
-  if (review) wrap.appendChild(el('p', 'card-review', review));
-
+  wrap.appendChild(layout);
   appendDatesFooter(wrap, event);
   return wrap;
 }
@@ -228,42 +231,46 @@ function filmTvCard(event) {
   const wrap = el('div', 'card--tv');
 
   const { poster_url, type, director, year, network, seasons_watched, rating, review } = event.metadata ?? {};
+
+  const layout = el('div', 'card-media-layout');
+
   if (poster_url) {
     const img = document.createElement('img');
     img.className = 'card-poster';
     img.src = poster_url;
     img.alt = '';
     img.loading = 'lazy';
-    wrap.appendChild(img);
+    layout.appendChild(img);
   }
 
-  wrap.appendChild(el('p', 'card-title', event.title));
+  const info = el('div', 'card-media-info');
+  info.appendChild(el('p', 'card-title', event.title));
 
   // Byline: director for movies, network for TV — same position as author on a book card.
   if (type === 'movie') {
-    if (director) wrap.appendChild(el('p', 'card-network', director));
+    if (director) info.appendChild(el('p', 'card-network', director));
   } else {
-    if (network) wrap.appendChild(el('p', 'card-network', network));
+    if (network) info.appendChild(el('p', 'card-network', network));
   }
 
-  if (event.description) wrap.appendChild(el('p', 'card-description', event.description));
-  if (event.location?.label) wrap.appendChild(el('p', 'card-location', event.location.label));
+  if (event.description) info.appendChild(el('p', 'card-description', event.description));
+  if (event.location?.label) info.appendChild(el('p', 'card-location', event.location.label));
 
   // Secondary info: year for movies, season count for TV — same styling.
   if (type === 'movie') {
-    if (year) wrap.appendChild(el('p', 'card-seasons', String(year)));
+    if (year) info.appendChild(el('p', 'card-seasons', String(year)));
   } else {
     if (typeof seasons_watched === 'number') {
-      wrap.appendChild(el('p', 'card-seasons',
+      info.appendChild(el('p', 'card-seasons',
         `${seasons_watched} season${seasons_watched !== 1 ? 's' : ''}`));
     }
   }
 
-  if (typeof rating === 'number') {
-    wrap.appendChild(el('p', 'card-rating', starsFor(rating)));
-  }
-  if (review) wrap.appendChild(el('p', 'card-review', review));
+  if (typeof rating === 'number') info.appendChild(el('p', 'card-rating', starsFor(rating)));
+  if (review) info.appendChild(el('p', 'card-review', review));
+  layout.appendChild(info);
 
+  wrap.appendChild(layout);
   appendDatesFooter(wrap, event);
   return wrap;
 }
