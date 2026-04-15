@@ -31,7 +31,8 @@ auth:
 
 person:
   name: "Your Name"
-  # ISO 8601 date (YYYY-MM-DD). Used to anchor the timeline origin.
+  # ISO 8601 date (YYYY-MM-DD). Only returned to callers with friends-or-above
+  # visibility. Used to generate birthday events on the timeline.
   birth_date: "1990-01-01"
 
 # Each family defines one line on the timeline. The nine built-in families are

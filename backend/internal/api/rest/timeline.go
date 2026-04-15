@@ -31,6 +31,8 @@ func (s *Server) handleGetTimeline(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	events = filterRestrictedLifeEvents(events, visibilities)
+
 	eventResps := make([]eventResponse, 0, len(events))
 	for _, e := range events {
 		photos, err := s.db.ListPhotosForEvent(r.Context(), e.ID)
@@ -55,10 +57,15 @@ func (s *Server) handleGetTimeline(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	birthDate := ""
+	if callerHasFriendsOrAbove(visibilities) {
+		birthDate = s.cfg.Person.BirthDate
+	}
+
 	resp := timelineResponse{
 		Person: personResponse{
 			Name:      s.cfg.Person.Name,
-			BirthDate: s.cfg.Person.BirthDate,
+			BirthDate: birthDate,
 		},
 		Families: families,
 		Events:   eventResps,

@@ -104,6 +104,15 @@ async function init() {
     lockBtn.addEventListener('click', () => { popover.hidden = !popover.hidden; });
   }
 
+  // Hide the entire view switcher in public mode — the grid depends on
+  // birthday and other personal data only available with elevated access,
+  // so offering the choice is meaningless for unauthenticated visitors.
+  const hasElevatedAccess = claims && claims.permission !== 'Public access';
+  if (!hasElevatedAccess) {
+    const viewSwitcher = document.querySelector('.view-switcher');
+    if (viewSwitcher) viewSwitcher.hidden = true;
+  }
+
   // Pre-load all icon files into the cache before any rendering begins.
   // getIconPath() is called synchronously during scroll; the cache must be
   // fully populated first.
@@ -147,14 +156,14 @@ function buildRenderObjects(data, pxPerDay) {
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
 
-  const birthDate   = new Date(data.person.birth_date);
-  const totalDays   = (today - birthDate) / MS_PER_DAY;
-  const totalHeight = Math.ceil(totalDays) * pxPerDay;
+  const timelineStart = data.timelineStart;
+  const totalDays     = (today - timelineStart) / MS_PER_DAY;
+  const totalHeight   = Math.ceil(totalDays) * pxPerDay;
 
-  const layout = { totalHeight, today, birthDate, pxPerDay };
+  const layout = { totalHeight, today, timelineStart, pxPerDay };
 
   function yFor(date) {
-    return timeToY(date, birthDate, today, totalHeight);
+    return timeToY(date, timelineStart, today, totalHeight);
   }
 
   const familyById = new Map(data.line_families.map((f) => [f.id, f]));
@@ -201,17 +210,17 @@ function buildRenderObjects(data, pxPerDay) {
 
   // ── Year markers ──────────────────────────────────────────────────────────
 
-  const birthYear   = birthDate.getUTCFullYear();
+  const startYear   = timelineStart.getUTCFullYear();
   const currentYear = today.getUTCFullYear();
 
-  for (let yr = currentYear; yr >= birthYear; yr--) {
+  for (let yr = currentYear; yr >= startYear; yr--) {
     const y = yFor(new Date(Date.UTC(yr, 0, 1)));
     if (y < 0 || y > totalHeight) continue;
     renderObjects.push({ type: 'year-marker', id: `year-${yr}`, y, label: String(yr), isToday: false });
   }
 
-  renderObjects.push({ type: 'year-marker', id: 'marker-today', y: 0,           label: formatDate(today),     isToday: true  });
-  renderObjects.push({ type: 'year-marker', id: 'marker-birth', y: totalHeight, label: formatDate(birthDate), isToday: false });
+  renderObjects.push({ type: 'year-marker', id: 'marker-today', y: 0,           label: formatDate(today),       isToday: true  });
+  renderObjects.push({ type: 'year-marker', id: 'marker-start', y: totalHeight, label: formatDate(timelineStart), isToday: false });
 
   // ── Pass 1 — span-line render objects + start / end stations ─────────────
 

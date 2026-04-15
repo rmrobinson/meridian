@@ -64,6 +64,8 @@ func (s *Server) handleGetEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	events = filterRestrictedLifeEvents(events, visibilities)
+
 	resp := make([]eventResponse, 0, len(events))
 	for _, e := range events {
 		photos, err := s.db.ListPhotosForEvent(r.Context(), e.ID)
@@ -94,6 +96,11 @@ func (s *Server) handleGetEventByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !visibilityAllowed(e.Visibility, visibilities) {
+		s.writeError(w, http.StatusForbidden, "forbidden")
+		return
+	}
+
+	if !callerHasFriendsOrAbove(visibilities) && isRestrictedLifeEvent(e) {
 		s.writeError(w, http.StatusForbidden, "forbidden")
 		return
 	}

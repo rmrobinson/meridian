@@ -19,11 +19,11 @@ const colorFn = ([h, s, l]) => `hsl(${h},${s}%,${l}%)`;
  * All fields are optional; defaults to an empty person/family/event set.
  */
 function makeData({
-  birth_date = '1990-01-01',
+  timeline_start = '1990-01-01',
   line_families = [],
   events = [],
 } = {}) {
-  return { person: { birth_date }, line_families, events };
+  return { person: {}, timelineStart: new Date(timeline_start), line_families, events };
 }
 
 /** Build a span event. */
@@ -141,7 +141,7 @@ describe('locationHue', () => {
 describe('buildWeekMap — birth / future week exclusion', () => {
   it('excludes weeks before the birth ISO week', () => {
     // Birth on 1990-04-16 (week 16 of 1990).
-    const data = makeData({ birth_date: '1990-04-16' });
+    const data = makeData({ timeline_start: '1990-04-16' });
     const map  = buildWeekMap(data, colorFn);
     // Week 15 of 1990 should not be present.
     expect(map['1990-W15']).toBeUndefined();
@@ -170,7 +170,7 @@ describe('buildWeekMap — priority: travel > employment > education > residence
 
   it('assigns travel colour when a travel span covers the week', () => {
     const data = makeData({
-      birth_date: '1990-01-01',
+      timeline_start: '1990-01-01',
       line_families: [family('travel', 50, 85, 50), family('employment', 210, 70, 50)],
       events: [
         span('t1', 'travel',     '2022-07-01', '2022-08-31'),
@@ -185,7 +185,7 @@ describe('buildWeekMap — priority: travel > employment > education > residence
 
   it('assigns employment colour when no travel span is active', () => {
     const data = makeData({
-      birth_date: '1990-01-01',
+      timeline_start: '1990-01-01',
       line_families: [family('employment', 210, 70, 50)],
       events: [
         span('e1', 'employment', '2022-01-01', '2022-12-31'),
@@ -198,7 +198,7 @@ describe('buildWeekMap — priority: travel > employment > education > residence
 
   it('assigns education colour when neither travel nor employment is active', () => {
     const data = makeData({
-      birth_date: '1990-01-01',
+      timeline_start: '1990-01-01',
       line_families: [family('education', 270, 60, 55)],
       events: [
         span('edu1', 'education', '2022-01-01', '2022-12-31'),
@@ -211,7 +211,7 @@ describe('buildWeekMap — priority: travel > employment > education > residence
 
   it('assigns residence colour when only a relocation event is present', () => {
     const data = makeData({
-      birth_date: '1990-01-01',
+      timeline_start: '1990-01-01',
       events: [relocation('r1', '1990-01-01', 'Edinburgh, UK')],
     });
     const map = buildWeekMap(data, colorFn);
@@ -221,7 +221,7 @@ describe('buildWeekMap — priority: travel > employment > education > residence
 
   it('returns null for weeks before any known residence', () => {
     // Birth on 1990-04-16; no relocation events → null for weeks after birth.
-    const data = makeData({ birth_date: '1990-04-16' });
+    const data = makeData({ timeline_start: '1990-04-16' });
     const map  = buildWeekMap(data, colorFn);
     expect(map['1990-W16']).toBeNull();
     expect(map['2000-W01']).toBeNull();
@@ -232,7 +232,7 @@ describe('buildWeekMap — concurrent travel spans', () => {
   it('picks the travel span with the latest start_date when two spans overlap the week', () => {
     // Both spans cover 2022-W30. t2 starts later → t2 wins.
     const data = makeData({
-      birth_date: '1990-01-01',
+      timeline_start: '1990-01-01',
       line_families: [family('travel', 50, 85, 50)],
       events: [
         { ...span('t1', 'travel', '2022-07-01', '2022-08-31') },
@@ -248,7 +248,7 @@ describe('buildWeekMap — concurrent travel spans', () => {
 describe('buildWeekMap — residence carries forward', () => {
   it('uses Edinburgh until the London relocation, then London thereafter', () => {
     const data = makeData({
-      birth_date: '1990-01-01',
+      timeline_start: '1990-01-01',
       events: [
         relocation('r1', '1990-01-01', 'Edinburgh, UK'),
         relocation('r2', '2019-09-02', 'London, UK'),  // week 36 of 2019
@@ -268,7 +268,7 @@ describe('buildWeekMap — residence carries forward', () => {
     // Week 35 (Mon 2019-08-26 – Sun 2019-09-01): Edinburgh.
     // Week 36 (Mon 2019-09-02 – Sun 2019-09-08): London.
     const data = makeData({
-      birth_date: '1990-01-01',
+      timeline_start: '1990-01-01',
       events: [
         relocation('r1', '1990-01-01', 'Edinburgh, UK'),
         relocation('r2', '2019-09-02', 'London, UK'),

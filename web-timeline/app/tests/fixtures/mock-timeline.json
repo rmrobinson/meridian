@@ -149,6 +149,46 @@
       }
     },
     {
+      "id": "evt_marriage",
+      "family_id": "spine",
+      "metadata_type": "life",
+      "line_key": "spine",
+      "type": "point",
+      "title": "Got Married",
+      "icon": "mdi:ring",
+      "date": "2018-07-14",
+      "location": {
+        "label": "Edinburgh, UK",
+        "lat": 55.9533,
+        "lng": -3.1883
+      },
+      "description": null,
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": {
+        "milestone_type": "marriage"
+      }
+    },
+    {
+      "id": "evt_anniversary_5",
+      "family_id": "spine",
+      "metadata_type": "life",
+      "line_key": "spine",
+      "type": "point",
+      "title": "5th Anniversary",
+      "icon": "mdi:heart",
+      "date": "2023-07-14",
+      "location": null,
+      "description": null,
+      "external_url": null,
+      "hero_image_url": null,
+      "photos": [],
+      "metadata": {
+        "milestone_type": "anniversary"
+      }
+    },
+    {
       "id": "evt_001b",
       "family_id": "employment",
       "metadata_type": "employment",

@@ -392,7 +392,7 @@ func TestGetEventByID_PhotosInSortOrder(t *testing.T) {
 
 func TestGetTimeline_ReturnsPersonFromConfig(t *testing.T) {
 	env := newTestEnv(t)
-	resp := get(t, env.server, "/api/timeline", "")
+	resp := get(t, env.server, "/api/timeline", makeJWT(t, "owner"))
 	var tl map[string]any
 	decodeJSON(t, resp.Body, &tl)
 	person, _ := tl["person"].(map[string]any)
@@ -687,5 +687,135 @@ func TestJWTMiddleware_OwnerJWT_StillWorks(t *testing.T) {
 
 	if len(events) != 2 {
 		t.Errorf("owner JWT: expected 2 events, got %d: %v", len(events), eventIDsFromMaps(events))
+	}
+}
+
+// --- Life event milestone-type visibility gating ---
+
+func seedLifeEvent(t *testing.T, d *db.DB, id, milestoneType string, vis domain.Visibility) *domain.Event {
+	t.Helper()
+	mt := "life"
+	meta := fmt.Sprintf(`{"milestone_type":%q}`, milestoneType)
+	now := time.Now().UTC()
+	date := "2023-06-01"
+	e := &domain.Event{
+		ID:           id,
+		FamilyID:     "spine",
+		LineKey:      "spine",
+		Type:         domain.EventTypePoint,
+		Title:        "Life event " + id,
+		Date:         &date,
+		MetadataType: &mt,
+		Metadata:     &meta,
+		Visibility:   vis,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}
+	if err := d.CreateEvent(context.Background(), e); err != nil {
+		t.Fatalf("seeding life event %s: %v", id, err)
+	}
+	return e
+}
+
+func TestGetEvents_PublicCallerSeesRelocationAndGraduationButNotRestrictedLifeEvents(t *testing.T) {
+	env := newTestEnv(t)
+	seedLifeEvent(t, env.db, "birth-evt", "birth", domain.VisibilityPublic)
+	seedLifeEvent(t, env.db, "death-evt", "death", domain.VisibilityPublic)
+	seedLifeEvent(t, env.db, "marriage-evt", "marriage", domain.VisibilityPublic)
+	seedLifeEvent(t, env.db, "anniversary-evt", "anniversary", domain.VisibilityPublic)
+	seedLifeEvent(t, env.db, "relocation-evt", "relocation", domain.VisibilityPublic)
+	seedLifeEvent(t, env.db, "graduation-evt", "graduation", domain.VisibilityPublic)
+
+	resp := get(t, env.server, "/api/events", "")
+	var events []map[string]any
+	decodeJSON(t, resp.Body, &events)
+
+	ids := eventIDsFromMaps(events)
+	if len(events) != 2 {
+		t.Errorf("public caller: expected 2 events (relocation + graduation), got %d: %v", len(events), ids)
+	}
+	for _, e := range events {
+		id := e["id"]
+		if id != "relocation-evt" && id != "graduation-evt" {
+			t.Errorf("public caller: unexpected event id %v in response", id)
+		}
+	}
+}
+
+func TestGetEvents_FriendsCallerSeesAllLifeEventTypes(t *testing.T) {
+	env := newTestEnv(t)
+	seedLifeEvent(t, env.db, "birth-f", "birth", domain.VisibilityPublic)
+	seedLifeEvent(t, env.db, "death-f", "death", domain.VisibilityPublic)
+	seedLifeEvent(t, env.db, "marriage-f", "marriage", domain.VisibilityPublic)
+	seedLifeEvent(t, env.db, "anniversary-f", "anniversary", domain.VisibilityPublic)
+	seedLifeEvent(t, env.db, "relocation-f", "relocation", domain.VisibilityPublic)
+	seedLifeEvent(t, env.db, "graduation-f", "graduation", domain.VisibilityPublic)
+
+	resp := get(t, env.server, "/api/events", makeJWT(t, "friends"))
+	var events []map[string]any
+	decodeJSON(t, resp.Body, &events)
+
+	if len(events) != 6 {
+		t.Errorf("friends caller: expected 6 events, got %d: %v", len(events), eventIDsFromMaps(events))
+	}
+}
+
+func TestGetEventByID_RestrictedLifeEventPublicCallerReturns403(t *testing.T) {
+	env := newTestEnv(t)
+	seedLifeEvent(t, env.db, "marriage-pub", "marriage", domain.VisibilityPublic)
+
+	resp := get(t, env.server, "/api/events/marriage-pub", "")
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("status: got %d, want 403", resp.StatusCode)
+	}
+}
+
+func TestGetEventByID_RestrictedLifeEventFriendsCallerReturns200(t *testing.T) {
+	env := newTestEnv(t)
+	seedLifeEvent(t, env.db, "marriage-fri", "marriage", domain.VisibilityPublic)
+
+	resp := get(t, env.server, "/api/events/marriage-fri", makeJWT(t, "friends"))
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("status: got %d, want 200", resp.StatusCode)
+	}
+}
+
+func TestGetTimeline_PublicCallerOmitsBirthDate(t *testing.T) {
+	env := newTestEnv(t)
+	resp := get(t, env.server, "/api/timeline", "")
+	var tl map[string]any
+	decodeJSON(t, resp.Body, &tl)
+	person, _ := tl["person"].(map[string]any)
+	if bd := person["birth_date"]; bd != "" && bd != nil {
+		t.Errorf("public caller: birth_date should be empty, got %v", bd)
+	}
+}
+
+func TestGetTimeline_FriendsCallerIncludesBirthDate(t *testing.T) {
+	env := newTestEnv(t)
+	resp := get(t, env.server, "/api/timeline", makeJWT(t, "friends"))
+	var tl map[string]any
+	decodeJSON(t, resp.Body, &tl)
+	person, _ := tl["person"].(map[string]any)
+	if person["birth_date"] != "1990-01-01" {
+		t.Errorf("friends caller: birth_date: got %v, want 1990-01-01", person["birth_date"])
+	}
+}
+
+func TestGetTimeline_PublicCallerFiltersRestrictedLifeEvents(t *testing.T) {
+	env := newTestEnv(t)
+	seedLifeEvent(t, env.db, "tl-marriage", "marriage", domain.VisibilityPublic)
+	seedLifeEvent(t, env.db, "tl-relocation", "relocation", domain.VisibilityPublic)
+
+	resp := get(t, env.server, "/api/timeline", "")
+	var tl map[string]any
+	decodeJSON(t, resp.Body, &tl)
+	events, _ := tl["events"].([]any)
+	if len(events) != 1 {
+		t.Errorf("public timeline: expected 1 event (relocation only), got %d: %v", len(events), events)
+	}
+	e, _ := events[0].(map[string]any)
+	if e["id"] != "tl-relocation" {
+		t.Errorf("public timeline: expected relocation event, got %v", e["id"])
 	}
 }
