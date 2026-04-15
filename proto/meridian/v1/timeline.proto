@@ -142,6 +142,43 @@ message FitnessMetadata {
   string result = 26;
 }
 
+enum LineFamilySide {
+  LINE_FAMILY_SIDE_UNSPECIFIED = 0;
+  LINE_FAMILY_SIDE_LEFT = 1;
+  LINE_FAMILY_SIDE_RIGHT = 2;
+  LINE_FAMILY_SIDE_CENTER = 3;
+}
+
+enum LineFamilyOnEnd {
+  LINE_FAMILY_ON_END_UNSPECIFIED = 0;
+  LINE_FAMILY_ON_END_MERGE = 1;
+  LINE_FAMILY_ON_END_TERMINATE = 2;
+  LINE_FAMILY_ON_END_NEVER = 3;
+}
+
+enum LineFamilySpawnBehavior {
+  LINE_FAMILY_SPAWN_BEHAVIOR_UNSPECIFIED = 0;
+  LINE_FAMILY_SPAWN_BEHAVIOR_PER_EVENT = 1;
+  LINE_FAMILY_SPAWN_BEHAVIOR_SINGLE_LINE = 2;
+  LINE_FAMILY_SPAWN_BEHAVIOR_SECONDARY_SPINE = 3;
+}
+
+message LineFamilyConfig {
+  string id = 1;
+  string label = 2;
+  repeated int32 base_color_hsl = 3;
+  LineFamilySide side = 4;
+  LineFamilyOnEnd on_end = 5;
+  LineFamilySpawnBehavior spawn_behavior = 6;
+  string parent_family_id = 7;
+}
+
+message ListLineFamiliesRequest {}
+
+message ListLineFamiliesResponse {
+  repeated LineFamilyConfig families = 1;
+}
+
 service TimelineService {
   rpc CreateEvent(CreateEventRequest) returns (CreateEventResponse);
   rpc UpdateEvent(UpdateEventRequest) returns (UpdateEventResponse);
@@ -155,6 +192,8 @@ service TimelineService {
 
   rpc MergeEvents(MergeEventsRequest) returns (MergeEventsResponse);
   rpc UnmergeEvent(UnmergeEventRequest) returns (UnmergeEventResponse);
+
+  rpc ListLineFamilies(ListLineFamiliesRequest) returns (ListLineFamiliesResponse);
 }
 
 enum ConflictStrategy {
