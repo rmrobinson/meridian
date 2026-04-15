@@ -707,6 +707,16 @@ function renderCardStack(anchorEl, mouseEvent, overlay, sheet, content) {
   content.innerHTML = '';
   content.appendChild(buildCardContent(event));
 
+  // Mark overflowing descriptions so the fade gradient is only shown when needed.
+  // Deferred to rAF so the browser has computed layout before we read dimensions.
+  requestAnimationFrame(() => {
+    content.querySelectorAll('.card-description').forEach((desc) => {
+      if (desc.scrollHeight > desc.clientHeight) {
+        desc.classList.add('card-description--truncated');
+      }
+    });
+  });
+
   // Inject back button in the card header if this is not the first card in the stack.
   if (_cardStack.length > 1) {
     const cardTitle = content.querySelector('.card-title');
