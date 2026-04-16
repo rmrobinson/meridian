@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Minimal host theme for the Compose activity. All real theming is handled
+         by MeridianTheme in Compose. The platform theme just suppresses the
+         action bar so Compose owns the full window. -->
+    <style name="Theme.Meridian" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
