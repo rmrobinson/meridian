@@ -22,6 +22,9 @@ interface EventDao {
     @Upsert
     suspend fun upsertAll(events: List<EventEntity>)
 
+    @Query("SELECT line_key FROM events WHERE family_id = :familyId")
+    suspend fun getLineKeysByFamilyId(familyId: String): List<String>
+
     @Query("DELETE FROM events WHERE id = :id")
     suspend fun deleteById(id: String)
 }

@@ -1,4 +1,4 @@
-package ca.rmrobinson.meridian.ui.entry.hobbies.book
+package ca.rmrobinson.meridian.ui.entry.hobbies.film
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -31,6 +32,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -41,19 +43,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import java.time.Instant
-import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BookManualScreen(
+fun FilmScreen(
     onBack: () -> Unit,
     onSuccess: () -> Unit,
-    viewModel: BookEntryViewModel = hiltViewModel(),
+    viewModel: FilmEntryViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -70,22 +76,17 @@ fun BookManualScreen(
         if (uiState.isSuccess) onSuccess()
     }
 
-    var showStartDatePicker by remember { mutableStateOf(false) }
-    var showEndDatePicker by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
 
-    val startPickerState = rememberDatePickerState(
-        initialSelectedDateMillis = uiState.startDate
-            .atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
-    )
-    val endPickerState = rememberDatePickerState(
-        initialSelectedDateMillis = (uiState.endDate ?: LocalDate.now())
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = uiState.watchedDate
             .atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
     )
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Book Details") },
+                title = { Text("Add Film") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -111,41 +112,32 @@ fun BookManualScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            OutlinedTextField(
-                value = uiState.isbn,
-                onValueChange = viewModel::setIsbn,
-                label = { Text("ISBN (optional)") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            OutlinedButton(
-                onClick = { showStartDatePicker = true },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("Started: ${uiState.startDate.format(formatter)}")
-            }
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                OutlinedButton(
-                    onClick = { showEndDatePicker = true },
+                OutlinedTextField(
+                    value = uiState.year,
+                    onValueChange = { if (it.length <= 4) viewModel.setYear(it) },
+                    label = { Text("Year (optional)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.weight(1f),
-                ) {
-                    Text(
-                        uiState.endDate?.format(formatter)
-                            ?.let { "Finished: $it" }
-                            ?: "Finish date (optional)",
-                    )
-                }
-                if (uiState.endDate != null) {
-                    Spacer(Modifier.width(8.dp))
-                    TextButton(onClick = { viewModel.setEndDate(null) }) {
-                        Text("Clear")
-                    }
-                }
+                )
+                OutlinedTextField(
+                    value = uiState.director,
+                    onValueChange = viewModel::setDirector,
+                    label = { Text("Director (optional)") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            OutlinedButton(
+                onClick = { showDatePicker = true },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Watched: ${uiState.watchedDate.format(formatter)}")
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -155,13 +147,18 @@ fun BookManualScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     for (i in 1..5) {
+                        val selected = i <= uiState.rating
                         Text(
-                            text = if (i <= uiState.rating) "★" else "☆",
-                            modifier = Modifier.clickable {
-                                viewModel.setRating(if (i == uiState.rating) 0 else i)
-                            },
+                            text = if (selected) "★" else "☆",
+                            modifier = Modifier
+                                .semantics {
+                                    role = Role.Button
+                                    contentDescription = if (selected) "Rating $i of 5, selected" else "Rate $i of 5"
+                                }
+                                .minimumInteractiveComponentSize()
+                                .clickable { viewModel.setRating(if (i == uiState.rating) 0 else i) },
                             style = MaterialTheme.typography.headlineSmall,
-                            color = if (i <= uiState.rating) MaterialTheme.colorScheme.primary
+                            color = if (selected) MaterialTheme.colorScheme.primary
                                     else MaterialTheme.colorScheme.outline,
                         )
                     }
@@ -199,47 +196,28 @@ fun BookManualScreen(
                         color = MaterialTheme.colorScheme.onPrimary,
                     )
                 } else {
-                    Text("Save Book")
+                    Text("Save Film")
                 }
             }
         }
     }
 
-    if (showStartDatePicker) {
+    if (showDatePicker) {
         DatePickerDialog(
-            onDismissRequest = { showStartDatePicker = false },
+            onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(onClick = {
-                    startPickerState.selectedDateMillis?.let { millis ->
-                        viewModel.setStartDate(
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        viewModel.setWatchedDate(
                             Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate(),
                         )
                     }
-                    showStartDatePicker = false
+                    showDatePicker = false
                 }) { Text("OK") }
             },
             dismissButton = {
-                TextButton(onClick = { showStartDatePicker = false }) { Text("Cancel") }
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
             },
-        ) { DatePicker(state = startPickerState) }
-    }
-
-    if (showEndDatePicker) {
-        DatePickerDialog(
-            onDismissRequest = { showEndDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    endPickerState.selectedDateMillis?.let { millis ->
-                        viewModel.setEndDate(
-                            Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate(),
-                        )
-                    }
-                    showEndDatePicker = false
-                }) { Text("OK") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showEndDatePicker = false }) { Text("Cancel") }
-            },
-        ) { DatePicker(state = endPickerState) }
+        ) { DatePicker(state = datePickerState) }
     }
 }

@@ -26,6 +26,9 @@ class EventRepository @Inject constructor(
 
     suspend fun getEvent(id: String): EventEntity? = eventDao.getById(id)
 
+    suspend fun getLineKeysByFamilyId(familyId: String): Set<String> =
+        eventDao.getLineKeysByFamilyId(familyId).toSet()
+
     // --- Sync (pull from server) ---
 
     suspend fun syncLineFamilies() {

@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun HobbyLandingScreen(
     onNavigateToBook: () -> Unit,
+    onNavigateToFilm: () -> Unit,
+    onNavigateToTv: () -> Unit,
     onBack: () -> Unit,
 ) {
     Scaffold(
@@ -46,8 +48,8 @@ fun HobbyLandingScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             item { HobbyTypeCard(label = "Book", onClick = onNavigateToBook, enabled = true) }
-            item { HobbyTypeCard(label = "Film", onClick = {}, enabled = false) }
-            item { HobbyTypeCard(label = "TV Series", onClick = {}, enabled = false) }
+            item { HobbyTypeCard(label = "Film", onClick = onNavigateToFilm, enabled = true) }
+            item { HobbyTypeCard(label = "TV Series", onClick = onNavigateToTv, enabled = true) }
             item { HobbyTypeCard(label = "Concert", onClick = {}, enabled = false) }
             item { HobbyTypeCard(label = "Other", onClick = {}, enabled = false) }
         }

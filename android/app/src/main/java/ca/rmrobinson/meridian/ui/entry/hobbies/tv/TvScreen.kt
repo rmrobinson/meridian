@@ -1,4 +1,4 @@
-package ca.rmrobinson.meridian.ui.entry.hobbies.book
+package ca.rmrobinson.meridian.ui.entry.hobbies.tv
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -31,6 +32,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -41,6 +43,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import java.time.Instant
@@ -50,10 +57,10 @@ import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BookManualScreen(
+fun TvScreen(
     onBack: () -> Unit,
     onSuccess: () -> Unit,
-    viewModel: BookEntryViewModel = hiltViewModel(),
+    viewModel: TvEntryViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -85,7 +92,7 @@ fun BookManualScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Book Details") },
+                title = { Text("Add TV Series") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -111,13 +118,26 @@ fun BookManualScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            OutlinedTextField(
-                value = uiState.isbn,
-                onValueChange = viewModel::setIsbn,
-                label = { Text("ISBN (optional)") },
-                singleLine = true,
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-            )
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedTextField(
+                    value = uiState.year,
+                    onValueChange = { if (it.length <= 4) viewModel.setYear(it) },
+                    label = { Text("Year (optional)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.weight(1f),
+                )
+                OutlinedTextField(
+                    value = uiState.network,
+                    onValueChange = viewModel::setNetwork,
+                    label = { Text("Network (optional)") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+            }
 
             OutlinedButton(
                 onClick = { showStartDatePicker = true },
@@ -148,6 +168,15 @@ fun BookManualScreen(
                 }
             }
 
+            OutlinedTextField(
+                value = uiState.seasonsWatched,
+                onValueChange = viewModel::setSeasonsWatched,
+                label = { Text("Seasons watched (optional)") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth(),
+            )
+
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("Rating", style = MaterialTheme.typography.labelLarge)
                 Row(
@@ -155,13 +184,18 @@ fun BookManualScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     for (i in 1..5) {
+                        val selected = i <= uiState.rating
                         Text(
-                            text = if (i <= uiState.rating) "★" else "☆",
-                            modifier = Modifier.clickable {
-                                viewModel.setRating(if (i == uiState.rating) 0 else i)
-                            },
+                            text = if (selected) "★" else "☆",
+                            modifier = Modifier
+                                .semantics {
+                                    role = Role.Button
+                                    contentDescription = if (selected) "Rating $i of 5, selected" else "Rate $i of 5"
+                                }
+                                .minimumInteractiveComponentSize()
+                                .clickable { viewModel.setRating(if (i == uiState.rating) 0 else i) },
                             style = MaterialTheme.typography.headlineSmall,
-                            color = if (i <= uiState.rating) MaterialTheme.colorScheme.primary
+                            color = if (selected) MaterialTheme.colorScheme.primary
                                     else MaterialTheme.colorScheme.outline,
                         )
                     }
@@ -199,7 +233,7 @@ fun BookManualScreen(
                         color = MaterialTheme.colorScheme.onPrimary,
                     )
                 } else {
-                    Text("Save Book")
+                    Text("Save TV Series")
                 }
             }
         }
