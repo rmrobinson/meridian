@@ -11,6 +11,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import ca.rmrobinson.meridian.ui.edit.EditEventScreen
 import ca.rmrobinson.meridian.ui.entry.EntryLandingScreen
 import ca.rmrobinson.meridian.ui.entry.flight.FlightLandingScreen
 import ca.rmrobinson.meridian.ui.entry.flight.FlightManualScreen
@@ -177,8 +178,14 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    // Placeholder routes — implemented in later phases
-                    composable("edit/{eventId}") { /* TODO Phase 7 */ }
+                    composable("edit/{eventId}") {
+                        EditEventScreen(
+                            onBack = { navController.popBackStack() },
+                            onSuccess = { navController.popBackStack() },
+                        )
+                    }
+
+                    // Placeholder route — implemented in a later phase
                     composable("entry/fitness") { /* TODO Phase 8 */ }
                 }
             }
