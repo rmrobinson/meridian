@@ -35,9 +35,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -71,13 +73,15 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun TimelineScreen(
     onNavigateToSettings: () -> Unit,
-    onNavigateToEntry: () -> Unit,
+    onNavigateToFlight: () -> Unit,
+    onNavigateToHobbies: () -> Unit,
     onNavigateToEdit: (String) -> Unit,
     viewModel: TimelineViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val darkTheme = isSystemInDarkTheme()
+    var showAddSheet by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
@@ -106,7 +110,7 @@ fun TimelineScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onNavigateToEntry) {
+            FloatingActionButton(onClick = { showAddSheet = true }) {
                 Icon(Icons.Default.Add, contentDescription = "Add event")
             }
         },
@@ -117,6 +121,21 @@ fun TimelineScreen(
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
+            // Offline banner — shown when connectivity is lost
+            if (uiState.isOffline) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.errorContainer,
+                ) {
+                    Text(
+                        text = "No internet connection — changes will sync when back online",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                }
+            }
+
             // Filter chip row
             Row(
                 modifier = Modifier
@@ -170,6 +189,87 @@ fun TimelineScreen(
             onDismiss = { viewModel.dismissMarkComplete() },
             onConfirm = { date -> viewModel.confirmMarkComplete(event, date) },
         )
+    }
+
+    // Add-event bottom sheet — opened by FAB
+    if (showAddSheet) {
+        AddEventSheet(
+            onDismiss = { showAddSheet = false },
+            onNavigateToFlight = {
+                showAddSheet = false
+                onNavigateToFlight()
+            },
+            onNavigateToHobbies = {
+                showAddSheet = false
+                onNavigateToHobbies()
+            },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddEventSheet(
+    onDismiss: () -> Unit,
+    onNavigateToFlight: () -> Unit,
+    onNavigateToHobbies: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = "Add to Timeline",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = 4.dp, top = 4.dp),
+            )
+            AddEventCategoryCard(label = "Travel", onClick = onNavigateToFlight, enabled = true)
+            AddEventCategoryCard(label = "Hobbies", onClick = onNavigateToHobbies, enabled = true)
+            AddEventCategoryCard(label = "Fitness", onClick = {}, enabled = false)
+        }
+    }
+}
+
+@Composable
+private fun AddEventCategoryCard(
+    label: String,
+    onClick: () -> Unit,
+    enabled: Boolean,
+) {
+    OutlinedCard(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 18.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleMedium,
+                color = if (enabled) MaterialTheme.colorScheme.onSurface
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (!enabled) {
+                Text(
+                    text = "Coming soon",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 

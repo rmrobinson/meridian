@@ -12,7 +12,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import ca.rmrobinson.meridian.ui.edit.EditEventScreen
-import ca.rmrobinson.meridian.ui.entry.EntryLandingScreen
 import ca.rmrobinson.meridian.ui.entry.flight.FlightLandingScreen
 import ca.rmrobinson.meridian.ui.entry.flight.FlightManualScreen
 import ca.rmrobinson.meridian.ui.entry.flight.FlightScanScreen
@@ -55,16 +54,9 @@ class MainActivity : ComponentActivity() {
                     composable("timeline") {
                         TimelineScreen(
                             onNavigateToSettings = { navController.navigate("settings") },
-                            onNavigateToEntry = { navController.navigate("entry") },
-                            onNavigateToEdit = { eventId -> navController.navigate("edit/$eventId") },
-                        )
-                    }
-
-                    composable("entry") {
-                        EntryLandingScreen(
                             onNavigateToFlight = { navController.navigate("entry/flight") },
                             onNavigateToHobbies = { navController.navigate("entry/hobbies") },
-                            onBack = { navController.popBackStack() },
+                            onNavigateToEdit = { eventId -> navController.navigate("edit/$eventId") },
                         )
                     }
 
@@ -185,8 +177,8 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    // Placeholder route — implemented in a later phase
-                    composable("entry/fitness") { /* TODO Phase 8 */ }
+                    // Placeholder route — Fitness entry not yet implemented
+                    composable("entry/fitness") { }
                 }
             }
         }

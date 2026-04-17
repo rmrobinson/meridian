@@ -9,6 +9,7 @@ import ca.rmrobinson.meridian.data.local.SyncState
 import ca.rmrobinson.meridian.data.toUpdateRequest
 import ca.rmrobinson.meridian.domain.usecase.SyncEventsUseCase
 import ca.rmrobinson.meridian.domain.usecase.UpdateEventUseCase
+import ca.rmrobinson.meridian.network.NetworkMonitor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -27,6 +28,7 @@ sealed class TimelineItem {
 
 data class TimelineUiState(
     val isSyncing: Boolean = false,
+    val isOffline: Boolean = false,
     val showOpenSpansOnly: Boolean = false,
     val items: List<TimelineItem> = emptyList(),
     val lineFamilies: Map<String, LineFamilyEntity> = emptyMap(),
@@ -40,6 +42,7 @@ class TimelineViewModel @Inject constructor(
     private val repository: EventRepository,
     private val syncEvents: SyncEventsUseCase,
     private val updateEvent: UpdateEventUseCase,
+    private val networkMonitor: NetworkMonitor,
 ) : ViewModel() {
 
     private val _syncState = MutableStateFlow(false)
@@ -64,9 +67,11 @@ class TimelineViewModel @Inject constructor(
         _syncState,
         _error,
         _markCompleteEvent,
-    ) { (events, families, openOnly), syncing, error, markEvent ->
+        networkMonitor.isOnline,
+    ) { (events, families, openOnly), syncing, error, markEvent, isOnline ->
         TimelineUiState(
             isSyncing = syncing,
+            isOffline = !isOnline,
             showOpenSpansOnly = openOnly,
             items = buildTimelineItems(events),
             lineFamilies = families.associateBy { it.id },

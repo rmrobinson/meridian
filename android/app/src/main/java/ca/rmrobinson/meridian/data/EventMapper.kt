@@ -19,6 +19,7 @@ import meridian.v1.LifeMilestoneType
 import meridian.v1.LifeMetadata
 import meridian.v1.LineFamilyConfig
 import meridian.v1.Location
+import meridian.v1.CreateEventRequest
 import meridian.v1.TravelMetadata
 import meridian.v1.UpdateEventRequest
 import meridian.v1.Visibility
@@ -103,6 +104,65 @@ fun EventEntity.toUpdateRequest(newEndDate: String? = null): UpdateEventRequest 
 
     applyMetadataToBuilder(builder, metadataJson)
 
+    return builder.build()
+}
+
+// ---------------------------------------------------------------------------
+// CreateEventRequest → EventEntity (for LOCAL_ONLY placeholder before RPC confirms)
+// ---------------------------------------------------------------------------
+
+fun CreateEventRequest.toLocalEntity(localId: String, now: Long): EventEntity = EventEntity(
+    id = localId,
+    familyId = familyId,
+    lineKey = lineKey,
+    type = if (type == EventType.EVENT_TYPE_SPAN) "span" else "point",
+    title = title,
+    startDate = startDate.takeIf { it.isNotBlank() },
+    endDate = endDate.takeIf { it.isNotBlank() },
+    date = date.takeIf { it.isNotBlank() },
+    locationLabel = if (hasLocation()) location.label.takeIf { it.isNotBlank() } else null,
+    locationLat = if (hasLocation()) location.lat else null,
+    locationLng = if (hasLocation()) location.lng else null,
+    description = description.takeIf { it.isNotBlank() },
+    externalUrl = externalUrl.takeIf { it.isNotBlank() },
+    heroImageUrl = heroImageUrl.takeIf { it.isNotBlank() },
+    metadataJson = createRequestMetadataToJson(),
+    visibility = visibility.name,
+    syncState = SyncState.LOCAL_ONLY,
+    createdAt = now,
+    updatedAt = now,
+)
+
+// ---------------------------------------------------------------------------
+// EventEntity → CreateEventRequest (for LOCAL_ONLY retry via SyncEventsUseCase)
+// ---------------------------------------------------------------------------
+
+fun EventEntity.toCreateRequest(): CreateEventRequest {
+    val builder = CreateEventRequest.newBuilder()
+        .setFamilyId(familyId)
+        .setLineKey(lineKey)
+        .setType(if (type == "span") EventType.EVENT_TYPE_SPAN else EventType.EVENT_TYPE_POINT)
+        .setTitle(title)
+        .setVisibility(visibilityFromString(visibility))
+
+    startDate?.let { builder.setStartDate(it) }
+    endDate?.let { builder.setEndDate(it) }
+    date?.let { builder.setDate(it) }
+    description?.let { builder.setDescription(it) }
+    externalUrl?.let { builder.setExternalUrl(it) }
+    heroImageUrl?.let { builder.setHeroImageUrl(it) }
+
+    if (locationLabel != null || locationLat != null) {
+        builder.setLocation(
+            Location.newBuilder()
+                .setLabel(locationLabel ?: "")
+                .setLat(locationLat ?: 0.0)
+                .setLng(locationLng ?: 0.0)
+                .build(),
+        )
+    }
+
+    applyMetadataToCreateBuilder(builder, metadataJson)
     return builder.build()
 }
 
@@ -371,4 +431,218 @@ private fun climbingTypeFrom(s: String): ClimbingType = when (s) {
 private fun JSONArray?.toStringList(): List<String> {
     if (this == null) return emptyList()
     return (0 until length()).map { getString(it) }
+}
+
+// ---------------------------------------------------------------------------
+// CreateEventRequest metadata helpers
+// Keep in sync with Event.metadataToJson() when new metadata types are added.
+// ---------------------------------------------------------------------------
+
+private fun CreateEventRequest.createRequestMetadataToJson(): String {
+    val obj = JSONObject()
+    when {
+        hasLifeMetadata() -> with(lifeMetadata) {
+            obj.put("type", "life")
+            obj.put("milestone_type", milestoneType.name)
+            obj.put("from", from)
+            obj.put("to", to)
+        }
+        hasEmploymentMetadata() -> with(employmentMetadata) {
+            obj.put("type", "employment")
+            obj.put("role", role)
+            obj.put("company_name", companyName)
+            obj.put("company_url", companyUrl)
+        }
+        hasEducationMetadata() -> with(educationMetadata) {
+            obj.put("type", "education")
+            obj.put("institution", institution)
+            obj.put("degree", degree)
+        }
+        hasTravelMetadata() -> with(travelMetadata) {
+            obj.put("type", "travel")
+            obj.put("countries", JSONArray(countriesList))
+            obj.put("cities", JSONArray(citiesList))
+        }
+        hasFlightMetadata() -> with(flightMetadata) {
+            obj.put("type", "flight")
+            obj.put("airline", airline)
+            obj.put("flight_number", flightNumber)
+            obj.put("aircraft_type", aircraftType)
+            obj.put("tail_number", tailNumber)
+            obj.put("origin_iata", originIata)
+            obj.put("destination_iata", destinationIata)
+            obj.put("scheduled_departure", scheduledDeparture)
+            obj.put("scheduled_arrival", scheduledArrival)
+            obj.put("actual_departure", actualDeparture)
+            obj.put("actual_arrival", actualArrival)
+        }
+        hasBookMetadata() -> with(bookMetadata) {
+            obj.put("type", "book")
+            obj.put("isbn", isbn)
+            obj.put("author", author)
+            obj.put("title", title)
+            obj.put("cover_image_url", coverImageUrl)
+            obj.put("preview_url", previewUrl)
+            obj.put("rating", rating)
+            obj.put("review", review)
+        }
+        hasFilmTvMetadata() -> with(filmTvMetadata) {
+            obj.put("type", "film_tv")
+            obj.put("tmdb_id", tmdbId)
+            obj.put("film_tv_type", type.name)
+            obj.put("poster_url", posterUrl)
+            obj.put("director", director)
+            obj.put("network", network)
+            obj.put("year", year)
+            obj.put("rating", rating)
+            obj.put("review", review)
+            if (hasSeasonsWatched()) obj.put("seasons_watched", seasonsWatched)
+        }
+        hasConcertMetadata() -> with(concertMetadata) {
+            obj.put("type", "concert")
+            obj.put("main_act", mainAct)
+            obj.put("opening_acts", JSONArray(openingActsList))
+            obj.put("playlist_url", playlistUrl)
+        }
+        hasFitnessMetadata() -> with(fitnessMetadata) {
+            obj.put("type", "fitness")
+            obj.put("activity", activity.name)
+            obj.put("duration", duration)
+            obj.put("garmin_activity_url", garminActivityUrl)
+            if (hasDistanceKm()) obj.put("distance_km", distanceKm)
+            if (hasElevationGainM()) obj.put("elevation_gain_m", elevationGainM)
+            if (hasAvgHeartRate()) obj.put("avg_heart_rate", avgHeartRate)
+            if (hasAvgPaceMinKm()) obj.put("avg_pace_min_km", avgPaceMinKm)
+            if (bike.isNotBlank()) obj.put("bike", bike)
+            if (hasAvgSpeedKmh()) obj.put("avg_speed_kmh", avgSpeedKmh)
+            if (trailName.isNotBlank()) obj.put("trail_name", trailName)
+            if (alltrailsUrl.isNotBlank()) obj.put("alltrails_url", alltrailsUrl)
+            if (resort.isNotBlank()) obj.put("resort", resort)
+            if (hasVerticalDropM()) obj.put("vertical_drop_m", verticalDropM)
+            if (hasRuns()) obj.put("runs", runs)
+            if (diveSite.isNotBlank()) obj.put("dive_site", diveSite)
+            if (hasMaxDepthM()) obj.put("max_depth_m", maxDepthM)
+            if (hasAvgDepthM()) obj.put("avg_depth_m", avgDepthM)
+            if (climbingType != ClimbingType.CLIMBING_TYPE_UNSPECIFIED) obj.put("climbing_type", climbingType.name)
+            if (routeName.isNotBlank()) obj.put("route_name", routeName)
+            if (problemName.isNotBlank()) obj.put("problem_name", problemName)
+            if (grade.isNotBlank()) obj.put("grade", grade)
+            if (courseName.isNotBlank()) obj.put("course_name", courseName)
+            if (hasHoles()) obj.put("holes", holes)
+            if (hasScore()) obj.put("score", score)
+            if (opponent.isNotBlank()) obj.put("opponent", opponent)
+            if (result.isNotBlank()) obj.put("result", result)
+        }
+        else -> obj.put("type", "none")
+    }
+    return obj.toString()
+}
+
+// Applies JSON metadata to a CreateEventRequest.Builder.
+// Keep in sync with applyMetadataToBuilder(UpdateEventRequest.Builder) when new types are added.
+private fun applyMetadataToCreateBuilder(builder: CreateEventRequest.Builder, json: String) {
+    val obj = try { JSONObject(json) } catch (_: Exception) { return }
+    when (obj.optString("type")) {
+        "life" -> builder.setLifeMetadata(
+            LifeMetadata.newBuilder()
+                .setMilestoneType(lifeMilestoneTypeFrom(obj.optString("milestone_type")))
+                .setFrom(obj.optString("from"))
+                .setTo(obj.optString("to"))
+                .build(),
+        )
+        "employment" -> builder.setEmploymentMetadata(
+            EmploymentMetadata.newBuilder()
+                .setRole(obj.optString("role"))
+                .setCompanyName(obj.optString("company_name"))
+                .setCompanyUrl(obj.optString("company_url"))
+                .build(),
+        )
+        "education" -> builder.setEducationMetadata(
+            EducationMetadata.newBuilder()
+                .setInstitution(obj.optString("institution"))
+                .setDegree(obj.optString("degree"))
+                .build(),
+        )
+        "travel" -> builder.setTravelMetadata(
+            TravelMetadata.newBuilder()
+                .addAllCountries(obj.optJSONArray("countries").toStringList())
+                .addAllCities(obj.optJSONArray("cities").toStringList())
+                .build(),
+        )
+        "flight" -> builder.setFlightMetadata(
+            FlightMetadata.newBuilder()
+                .setAirline(obj.optString("airline"))
+                .setFlightNumber(obj.optString("flight_number"))
+                .setAircraftType(obj.optString("aircraft_type"))
+                .setTailNumber(obj.optString("tail_number"))
+                .setOriginIata(obj.optString("origin_iata"))
+                .setDestinationIata(obj.optString("destination_iata"))
+                .setScheduledDeparture(obj.optString("scheduled_departure"))
+                .setScheduledArrival(obj.optString("scheduled_arrival"))
+                .setActualDeparture(obj.optString("actual_departure"))
+                .setActualArrival(obj.optString("actual_arrival"))
+                .build(),
+        )
+        "book" -> builder.setBookMetadata(
+            BookMetadata.newBuilder()
+                .setIsbn(obj.optString("isbn"))
+                .setAuthor(obj.optString("author"))
+                .setTitle(obj.optString("title"))
+                .setCoverImageUrl(obj.optString("cover_image_url"))
+                .setPreviewUrl(obj.optString("preview_url"))
+                .setRating(obj.optInt("rating"))
+                .setReview(obj.optString("review"))
+                .build(),
+        )
+        "film_tv" -> builder.setFilmTvMetadata(
+            FilmTVMetadata.newBuilder()
+                .setTmdbId(obj.optString("tmdb_id"))
+                .setType(filmTvTypeFrom(obj.optString("film_tv_type")))
+                .setPosterUrl(obj.optString("poster_url"))
+                .setDirector(obj.optString("director"))
+                .setNetwork(obj.optString("network"))
+                .setYear(obj.optInt("year"))
+                .setRating(obj.optInt("rating"))
+                .setReview(obj.optString("review"))
+                .also { b -> if (obj.has("seasons_watched")) b.setSeasonsWatched(obj.getInt("seasons_watched")) }
+                .build(),
+        )
+        "concert" -> builder.setConcertMetadata(
+            ConcertMetadata.newBuilder()
+                .setMainAct(obj.optString("main_act"))
+                .addAllOpeningActs(obj.optJSONArray("opening_acts").toStringList())
+                .setPlaylistUrl(obj.optString("playlist_url"))
+                .build(),
+        )
+        "fitness" -> builder.setFitnessMetadata(
+            FitnessMetadata.newBuilder()
+                .setActivity(fitnessActivityFrom(obj.optString("activity")))
+                .setDuration(obj.optString("duration"))
+                .setGarminActivityUrl(obj.optString("garmin_activity_url"))
+                .also { b -> if (obj.has("distance_km")) b.setDistanceKm(obj.getDouble("distance_km")) }
+                .also { b -> if (obj.has("elevation_gain_m")) b.setElevationGainM(obj.getInt("elevation_gain_m")) }
+                .also { b -> if (obj.has("avg_heart_rate")) b.setAvgHeartRate(obj.getInt("avg_heart_rate")) }
+                .also { b -> if (obj.has("avg_pace_min_km")) b.setAvgPaceMinKm(obj.getDouble("avg_pace_min_km")) }
+                .also { b -> if (obj.has("bike")) b.setBike(obj.getString("bike")) }
+                .also { b -> if (obj.has("avg_speed_kmh")) b.setAvgSpeedKmh(obj.getDouble("avg_speed_kmh")) }
+                .also { b -> if (obj.has("trail_name")) b.setTrailName(obj.getString("trail_name")) }
+                .also { b -> if (obj.has("alltrails_url")) b.setAlltrailsUrl(obj.getString("alltrails_url")) }
+                .also { b -> if (obj.has("resort")) b.setResort(obj.getString("resort")) }
+                .also { b -> if (obj.has("vertical_drop_m")) b.setVerticalDropM(obj.getInt("vertical_drop_m")) }
+                .also { b -> if (obj.has("runs")) b.setRuns(obj.getInt("runs")) }
+                .also { b -> if (obj.has("dive_site")) b.setDiveSite(obj.getString("dive_site")) }
+                .also { b -> if (obj.has("max_depth_m")) b.setMaxDepthM(obj.getDouble("max_depth_m")) }
+                .also { b -> if (obj.has("avg_depth_m")) b.setAvgDepthM(obj.getDouble("avg_depth_m")) }
+                .setClimbingType(climbingTypeFrom(obj.optString("climbing_type")))
+                .also { b -> if (obj.has("route_name")) b.setRouteName(obj.getString("route_name")) }
+                .also { b -> if (obj.has("problem_name")) b.setProblemName(obj.getString("problem_name")) }
+                .also { b -> if (obj.has("grade")) b.setGrade(obj.getString("grade")) }
+                .also { b -> if (obj.has("course_name")) b.setCourseName(obj.getString("course_name")) }
+                .also { b -> if (obj.has("holes")) b.setHoles(obj.getInt("holes")) }
+                .also { b -> if (obj.has("score")) b.setScore(obj.getInt("score")) }
+                .also { b -> if (obj.has("opponent")) b.setOpponent(obj.getString("opponent")) }
+                .also { b -> if (obj.has("result")) b.setResult(obj.getString("result")) }
+                .build(),
+        )
+    }
 }

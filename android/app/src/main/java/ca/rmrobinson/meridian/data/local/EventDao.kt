@@ -25,6 +25,9 @@ interface EventDao {
     @Query("SELECT line_key FROM events WHERE family_id = :familyId")
     suspend fun getLineKeysByFamilyId(familyId: String): List<String>
 
+    @Query("SELECT * FROM events WHERE sync_state = 'LOCAL_ONLY'")
+    suspend fun getLocalOnly(): List<EventEntity>
+
     @Query("DELETE FROM events WHERE id = :id")
     suspend fun deleteById(id: String)
 }
