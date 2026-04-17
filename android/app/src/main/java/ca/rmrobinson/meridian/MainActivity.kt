@@ -11,6 +11,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import ca.rmrobinson.meridian.ui.entry.EntryLandingScreen
+import ca.rmrobinson.meridian.ui.entry.flight.FlightLandingScreen
+import ca.rmrobinson.meridian.ui.entry.flight.FlightManualScreen
+import ca.rmrobinson.meridian.ui.entry.flight.FlightScanScreen
 import ca.rmrobinson.meridian.ui.entry.hobbies.HobbyLandingScreen
 import ca.rmrobinson.meridian.ui.entry.hobbies.book.BookManualScreen
 import ca.rmrobinson.meridian.ui.entry.hobbies.book.BookScanScreen
@@ -48,8 +52,16 @@ class MainActivity : ComponentActivity() {
                     composable("timeline") {
                         TimelineScreen(
                             onNavigateToSettings = { navController.navigate("settings") },
-                            onNavigateToEntry = { navController.navigate("entry/hobbies") },
+                            onNavigateToEntry = { navController.navigate("entry") },
                             onNavigateToEdit = { eventId -> navController.navigate("edit/$eventId") },
+                        )
+                    }
+
+                    composable("entry") {
+                        EntryLandingScreen(
+                            onNavigateToFlight = { navController.navigate("entry/flight") },
+                            onNavigateToHobbies = { navController.navigate("entry/hobbies") },
+                            onBack = { navController.popBackStack() },
                         )
                     }
 
@@ -113,9 +125,38 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    composable("entry/flight") {
+                        FlightLandingScreen(
+                            onNavigateToScan = { navController.navigate("entry/flight/scan") },
+                            onNavigateToManual = { navController.navigate("entry/flight/manual") },
+                            onBack = { navController.popBackStack() },
+                        )
+                    }
+
+                    composable("entry/flight/scan") { backStackEntry ->
+                        val scanResult by backStackEntry.savedStateHandle
+                            .getStateFlow<String?>(SCAN_RESULT_KEY, null)
+                            .collectAsState()
+                        FlightScanScreen(
+                            scanResult = scanResult,
+                            onNavigateToScanner = { navController.navigate("scanner/bcbp") },
+                            onSuccess = { navController.popBackStack("timeline", inclusive = false) },
+                            onBack = { navController.popBackStack() },
+                            onClearScanResult = {
+                                backStackEntry.savedStateHandle.remove<String>(SCAN_RESULT_KEY)
+                            },
+                        )
+                    }
+
+                    composable("entry/flight/manual") {
+                        FlightManualScreen(
+                            onBack = { navController.popBackStack() },
+                            onSuccess = { navController.popBackStack("timeline", inclusive = false) },
+                        )
+                    }
+
                     // Placeholder routes — implemented in later phases
                     composable("edit/{eventId}") { /* TODO Phase 7 */ }
-                    composable("entry/flight") { /* TODO Phase 5 */ }
                     composable("entry/fitness") { /* TODO Phase 8 */ }
                 }
             }
