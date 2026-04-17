@@ -164,4 +164,73 @@ class BcbpParserTest {
             assertEquals("012B", seatNumber)
         }
     }
+
+    @Test
+    fun `parses three-leg boarding pass — cursor advances correctly between repeated sections`() {
+        fun String.pad(len: Int) = padEnd(len).take(len)
+
+        // Leg 1: legCount=3, conditional size 00
+        val leg1 = buildLeg1(
+            name     = "DOE/JOHN",
+            origin   = "YYZ",
+            dest     = "ORD",
+            carrier  = "UA",
+            flight   = "0500",
+            julian   = "100",
+            seat     = "010A",
+            sequence = "00001",
+            legCount = '3',
+        )
+        assertEquals(60, leg1.length)
+
+        // Leg 2 repeated section (30 chars mandatory, condSize=00)
+        val leg2 = "ORD".pad(3) +
+            "DEN".pad(3) +
+            "UA".pad(3) +
+            "0700".pad(5) +
+            "100".pad(3) +
+            "Y" +
+            "020B".pad(4) +
+            "00002".pad(5) +
+            "0" +
+            "00"
+        assertEquals(30, leg2.length)
+
+        // Leg 3 repeated section (30 chars mandatory, condSize=00)
+        val leg3 = "DEN".pad(3) +
+            "LAX".pad(3) +
+            "UA".pad(3) +
+            "0800".pad(5) +
+            "100".pad(3) +
+            "Y" +
+            "030C".pad(4) +
+            "00003".pad(5) +
+            "0" +
+            "00"
+        assertEquals(30, leg3.length)
+
+        val bcbp = "$leg1>$leg2>$leg3"
+
+        val result = BcbpParser.parse(bcbp)
+        assertNotNull(result)
+        assertEquals(3, result!!.size)
+
+        with(result[0]) {
+            assertEquals("YYZ", originAirport)
+            assertEquals("ORD", destinationAirport)
+            assertEquals("0500", flightNumber)
+        }
+        with(result[1]) {
+            assertEquals("ORD", originAirport)
+            assertEquals("DEN", destinationAirport)
+            assertEquals("0700", flightNumber)
+            assertEquals("020B", seatNumber)
+        }
+        with(result[2]) {
+            assertEquals("DEN", originAirport)
+            assertEquals("LAX", destinationAirport)
+            assertEquals("0800", flightNumber)
+            assertEquals("030C", seatNumber)
+        }
+    }
 }

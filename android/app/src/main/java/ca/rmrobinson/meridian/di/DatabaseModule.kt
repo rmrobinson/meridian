@@ -19,7 +19,9 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideMeridianDatabase(@ApplicationContext context: Context): MeridianDatabase =
-        Room.databaseBuilder(context, MeridianDatabase::class.java, "meridian.db").build()
+        Room.databaseBuilder(context, MeridianDatabase::class.java, "meridian.db")
+            .fallbackToDestructiveMigration()
+            .build()
 
     @Provides
     fun provideEventDao(db: MeridianDatabase): EventDao = db.eventDao()

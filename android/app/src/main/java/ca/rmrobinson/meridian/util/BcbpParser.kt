@@ -77,10 +77,10 @@ object BcbpParser {
             val legStart = markerIdx + 1
             val repeated = parseRepeatedSection(bcbp, legStart, leg1.passengerName) ?: break
             results.add(repeated)
-            // Advance cursor: repeated section is 37 chars minimum + its own conditional block
-            val repConditionalHex = safeSubstring(bcbp, legStart + 35, legStart + 37)?.trim() ?: "00"
+            // Advance cursor: mandatory repeated data is 30 chars; conditional size at [28..29]
+            val repConditionalHex = safeSubstring(bcbp, legStart + 28, legStart + 30)?.trim() ?: "00"
             val repConditionalSize = repConditionalHex.toIntOrNull(16) ?: 0
-            cursor = legStart + 37 + repConditionalSize
+            cursor = legStart + 30 + repConditionalSize
         }
 
         return results

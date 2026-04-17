@@ -23,6 +23,7 @@ data class EventEntity(
     @ColumnInfo(name = "external_url") val externalUrl: String?,
     @ColumnInfo(name = "hero_image_url") val heroImageUrl: String?,
     @ColumnInfo(name = "metadata_json") val metadataJson: String,
+    @ColumnInfo(name = "visibility") val visibility: String,
     @ColumnInfo(name = "sync_state") val syncState: SyncState,
     @ColumnInfo(name = "created_at") val createdAt: Long,
     @ColumnInfo(name = "updated_at") val updatedAt: Long,

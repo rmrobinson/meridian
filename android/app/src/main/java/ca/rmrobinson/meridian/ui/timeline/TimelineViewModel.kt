@@ -6,6 +6,7 @@ import ca.rmrobinson.meridian.data.EventRepository
 import ca.rmrobinson.meridian.data.local.EventEntity
 import ca.rmrobinson.meridian.data.local.LineFamilyEntity
 import ca.rmrobinson.meridian.data.local.SyncState
+import ca.rmrobinson.meridian.data.toUpdateRequest
 import ca.rmrobinson.meridian.domain.usecase.SyncEventsUseCase
 import ca.rmrobinson.meridian.domain.usecase.UpdateEventUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,7 +18,6 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import meridian.v1.UpdateEventRequest
 import javax.inject.Inject
 
 sealed class TimelineItem {
@@ -112,24 +112,18 @@ class TimelineViewModel @Inject constructor(
     fun confirmMarkComplete(event: EventEntity, endDate: String) {
         _markCompleteEvent.update { null }
         viewModelScope.launch {
+            // Optimistic local write first so the UI updates immediately
+            val optimistic = event.copy(
+                endDate = endDate,
+                syncState = SyncState.PENDING_UPDATE,
+                updatedAt = System.currentTimeMillis(),
+            )
+            repository.saveLocal(optimistic)
             try {
-                val request = UpdateEventRequest.newBuilder()
-                    .setId(event.id)
-                    .setFamilyId(event.familyId)
-                    .setLineKey(event.lineKey)
-                    .setEndDate(endDate)
-                    .setTitle(event.title)
-                    .build()
-                // Optimistic local write first
-                repository.saveLocal(
-                    event.copy(
-                        endDate = endDate,
-                        syncState = SyncState.PENDING_UPDATE,
-                        updatedAt = System.currentTimeMillis(),
-                    )
-                )
-                updateEvent(request)
+                updateEvent(event.toUpdateRequest(newEndDate = endDate))
             } catch (e: Exception) {
+                // Roll back to the pre-update state on failure
+                repository.saveLocal(event)
                 _error.update { e.message ?: "Update failed" }
             }
         }

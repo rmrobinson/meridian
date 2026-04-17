@@ -62,7 +62,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import ca.rmrobinson.meridian.data.local.EventEntity
 import ca.rmrobinson.meridian.data.local.LineFamilyEntity
 import ca.rmrobinson.meridian.data.local.SyncState
-import ca.rmrobinson.meridian.data.local.toColor
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -368,6 +367,15 @@ private fun EventCard(
             }
         }
     }
+}
+
+private fun LineFamilyEntity.toColor(darkTheme: Boolean = false): Color {
+    val lightnessAdjust = if (darkTheme) 0.15f else 0f
+    return Color.hsl(
+        hue = baseColorH.toFloat(),
+        saturation = baseColorS / 100f,
+        lightness = (baseColorL / 100f + lightnessAdjust).coerceIn(0f, 1f),
+    )
 }
 
 private fun formatDateLabel(event: EventEntity): String {

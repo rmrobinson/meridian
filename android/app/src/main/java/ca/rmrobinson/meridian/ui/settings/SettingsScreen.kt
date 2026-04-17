@@ -8,14 +8,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -28,11 +33,17 @@ fun SettingsScreen(
     onBack: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
+    val uiState by viewModel.uiState.collectAsState()
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Settings") },
-                navigationIcon = { TextButton(onClick = onBack) { Text("Back") } },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
             )
         },
     ) { padding ->
@@ -44,14 +55,14 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             OutlinedTextField(
-                value = viewModel.grpcHost,
+                value = uiState.grpcHost,
                 onValueChange = viewModel::updateHost,
                 label = { Text("Host") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(
-                value = viewModel.grpcPort,
+                value = uiState.grpcPort,
                 onValueChange = viewModel::updatePort,
                 label = { Text("Port") },
                 singleLine = true,
@@ -59,7 +70,7 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(
-                value = viewModel.bearerToken,
+                value = uiState.bearerToken,
                 onValueChange = viewModel::updateToken,
                 label = { Text("Bearer Token") },
                 singleLine = true,
@@ -69,7 +80,7 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(12.dp))
             Button(
                 onClick = { viewModel.save(); onBack() },
-                enabled = viewModel.grpcHost.isNotBlank() && viewModel.bearerToken.isNotBlank(),
+                enabled = uiState.grpcHost.isNotBlank() && uiState.bearerToken.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Save")
