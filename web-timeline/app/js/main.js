@@ -744,7 +744,11 @@ function renderCardStack(anchorEl, mouseEvent, overlay, sheet, content) {
 
   // Position (desktop only — mobile is handled entirely by CSS bottom-sheet).
   if (window.innerWidth >= 480) {
-    positionCard(anchorEl, mouseEvent, sheet);
+    // Skip repositioning when there is no anchor (e.g. drilling into a cluster member
+    // or navigating back) so the card stays where the user opened it.
+    if (anchorEl) {
+      positionCard(anchorEl, mouseEvent, sheet);
+    }
   } else {
     // Remove any inline positioning set by a prior open.
     sheet.style.top  = '';

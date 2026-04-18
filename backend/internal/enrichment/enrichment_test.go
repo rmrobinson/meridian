@@ -12,6 +12,7 @@ import (
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 
 	"github.com/rmrobinson/meridian/backend/internal/domain"
+	"go.uber.org/zap"
 )
 
 // --- mock S3 client ---
@@ -145,6 +146,7 @@ func TestS3UploadFromURLIfNotExists_NotExists_Uploads(t *testing.T) {
 
 func newTestOpenLibraryEnricher(apiSrv, coverSrv *httptest.Server, uploader *S3Uploader) *OpenLibraryEnricher {
 	return &OpenLibraryEnricher{
+		logger:   zap.NewNop(),
 		uploader: uploader,
 		baseURL:  apiSrv.URL,
 		coverURL: coverSrv.URL,
@@ -186,8 +188,39 @@ func TestOpenLibrary_ValidISBN_PopulatesAuthorTitleAndDescription(t *testing.T) 
 	if m.Title != "Dune" {
 		t.Errorf("title: got %q, want Dune", m.Title)
 	}
+	if event.Title != "Dune" {
+		t.Errorf("event.Title: got %q, want Dune", event.Title)
+	}
 	if event.Description == nil || *event.Description != "A sci-fi epic." {
 		t.Errorf("description: got %v, want \"A sci-fi epic.\"", event.Description)
+	}
+}
+
+func TestOpenLibrary_PreexistingTitle_NotOverwritten(t *testing.T) {
+	const isbn = "9780441013593"
+
+	coverSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("img"))
+	}))
+	defer coverSrv.Close()
+
+	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, `{"ISBN:%s":{"details":{"title":"Dune","authors":[{"name":"Frank Herbert"}]}}}`, isbn)
+	}))
+	defer apiSrv.Close()
+
+	s3mock := &mockS3{}
+	uploader := newTestUploader(s3mock, coverSrv.Client())
+	enricher := newTestOpenLibraryEnricher(apiSrv, coverSrv, uploader)
+
+	event := bookEvent(isbn)
+	event.Title = "My Custom Title"
+	if err := enricher.Enrich(context.Background(), event); err != nil {
+		t.Fatalf("Enrich: %v", err)
+	}
+
+	if event.Title != "My Custom Title" {
+		t.Errorf("event.Title: got %q, want \"My Custom Title\" (should not be overwritten)", event.Title)
 	}
 }
 
@@ -313,7 +346,7 @@ func TestOpenLibrary_CoverAlreadyInS3_SkipsDownloadAndUpload(t *testing.T) {
 	}
 }
 
-func TestOpenLibrary_S3UploadFailure_ReturnsError(t *testing.T) {
+func TestOpenLibrary_S3UploadFailure_SucceedsWithoutCover(t *testing.T) {
 	const isbn = "9780441013593"
 
 	coverSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -330,9 +363,17 @@ func TestOpenLibrary_S3UploadFailure_ReturnsError(t *testing.T) {
 	uploader := newTestUploader(s3mock, coverSrv.Client())
 	enricher := newTestOpenLibraryEnricher(apiSrv, coverSrv, uploader)
 
-	err := enricher.Enrich(context.Background(), bookEvent(isbn))
-	if err == nil {
-		t.Error("expected error when S3 upload fails, got nil")
+	event := bookEvent(isbn)
+	err := enricher.Enrich(context.Background(), event)
+	if err != nil {
+		t.Errorf("unexpected error when S3 upload fails: %v", err)
+	}
+	m, _ := domain.ParseMetadata[domain.BookMetadata](event)
+	if m.CoverImageURL != "" {
+		t.Error("cover_image_url should not be set when S3 upload fails")
+	}
+	if m.Title != "Dune" {
+		t.Errorf("title should still be populated, got %q", m.Title)
 	}
 }
 
@@ -340,6 +381,7 @@ func TestOpenLibrary_S3UploadFailure_ReturnsError(t *testing.T) {
 
 func newTestTMDBEnricher(apiSrv *httptest.Server, uploader *S3Uploader) *TMDBEnricher {
 	return &TMDBEnricher{
+		logger:          zap.NewNop(),
 		readAccessToken: "test-token",
 		uploader:        uploader,
 		baseURL:         apiSrv.URL,

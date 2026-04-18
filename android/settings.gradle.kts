@@ -14,4 +14,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "meridian"
-include ':app'
+include(":app")

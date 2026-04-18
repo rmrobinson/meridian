@@ -1,0 +1,209 @@
+package ca.rmrobinson.meridian
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import ca.rmrobinson.meridian.ui.edit.EditEventScreen
+import ca.rmrobinson.meridian.ui.entry.fitness.FitnessLandingScreen
+import ca.rmrobinson.meridian.ui.entry.fitness.FitnessScreen
+import ca.rmrobinson.meridian.ui.entry.flight.FlightLandingScreen
+import ca.rmrobinson.meridian.ui.entry.flight.FlightManualScreen
+import ca.rmrobinson.meridian.ui.entry.flight.FlightScanScreen
+import ca.rmrobinson.meridian.ui.entry.hobbies.HobbyLandingScreen
+import ca.rmrobinson.meridian.ui.entry.hobbies.book.BookManualScreen
+import ca.rmrobinson.meridian.ui.entry.hobbies.book.BookScanScreen
+import ca.rmrobinson.meridian.ui.entry.hobbies.film.FilmScreen
+import ca.rmrobinson.meridian.ui.entry.hobbies.tv.TvScreen
+import ca.rmrobinson.meridian.ui.scanner.SCAN_RESULT_KEY
+import ca.rmrobinson.meridian.ui.scanner.ScannerScreen
+import ca.rmrobinson.meridian.ui.settings.SettingsScreen
+import ca.rmrobinson.meridian.ui.setup.SetupScreen
+import ca.rmrobinson.meridian.ui.theme.MeridianTheme
+import ca.rmrobinson.meridian.ui.timeline.TimelineScreen
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
+
+@AndroidEntryPoint
+class MainActivity : ComponentActivity() {
+
+    @Inject lateinit var appConfigStore: AppConfigStore
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContent {
+            MeridianTheme {
+                val navController = rememberNavController()
+                val startDestination = if (appConfigStore.current.isConfigured) "timeline" else "setup"
+
+                NavHost(navController = navController, startDestination = startDestination) {
+                    composable("setup") {
+                        SetupScreen(onConfigured = {
+                            navController.navigate("timeline") {
+                                popUpTo("setup") { inclusive = true }
+                            }
+                        })
+                    }
+
+                    composable("timeline") {
+                        TimelineScreen(
+                            onNavigateToSettings = { navController.navigate("settings") },
+                            onNavigateToFlight = { navController.navigate("entry/flight") },
+                            onNavigateToHobbies = { navController.navigate("entry/hobbies") },
+                            onNavigateToFitness = { navController.navigate("entry/fitness") },
+                            onNavigateToEdit = { eventId -> navController.navigate("edit/$eventId") },
+                        )
+                    }
+
+                    composable("settings") {
+                        SettingsScreen(onBack = { navController.popBackStack() })
+                    }
+
+                    composable("scanner/{mode}") { backStackEntry ->
+                        ScannerScreen(
+                            onBack = { navController.popBackStack() },
+                            onResult = { rawValue ->
+                                // Deliver result to the previous back-stack entry's SavedStateHandle
+                                navController
+                                    .previousBackStackEntry
+                                    ?.savedStateHandle
+                                    ?.set(SCAN_RESULT_KEY, rawValue)
+                            },
+                        )
+                    }
+
+                    composable("entry/hobbies") {
+                        HobbyLandingScreen(
+                            onNavigateToBook = { navController.navigate("entry/hobbies/book/scan") },
+                            onNavigateToFilm = { navController.navigate("entry/hobbies/film") },
+                            onNavigateToTv = { navController.navigate("entry/hobbies/tv") },
+                            onBack = { navController.popBackStack() },
+                        )
+                    }
+
+                    composable("entry/hobbies/book/scan") { backStackEntry ->
+                        val scanResult by backStackEntry.savedStateHandle
+                            .getStateFlow<String?>(SCAN_RESULT_KEY, null)
+                            .collectAsState()
+                        BookScanScreen(
+                            scanResult = scanResult,
+                            onNavigateToScanner = { navController.navigate("scanner/isbn") },
+                            onNavigateToManual = { isbn ->
+                                val route = if (isbn.isEmpty()) "entry/hobbies/book/manual"
+                                            else "entry/hobbies/book/manual?isbn=$isbn"
+                                navController.navigate(route)
+                            },
+                            onBack = { navController.popBackStack() },
+                            onClearScanResult = {
+                                backStackEntry.savedStateHandle.remove<String>(SCAN_RESULT_KEY)
+                            },
+                        )
+                    }
+
+                    composable(
+                        route = "entry/hobbies/book/manual?isbn={isbn}",
+                        arguments = listOf(
+                            navArgument("isbn") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            },
+                        ),
+                    ) {
+                        BookManualScreen(
+                            onBack = { navController.popBackStack() },
+                            onSuccess = {
+                                navController.popBackStack("timeline", inclusive = false)
+                            },
+                        )
+                    }
+
+                    composable("entry/hobbies/film") {
+                        FilmScreen(
+                            onBack = { navController.popBackStack() },
+                            onSuccess = {
+                                navController.popBackStack("timeline", inclusive = false)
+                            },
+                        )
+                    }
+
+                    composable("entry/hobbies/tv") {
+                        TvScreen(
+                            onBack = { navController.popBackStack() },
+                            onSuccess = {
+                                navController.popBackStack("timeline", inclusive = false)
+                            },
+                        )
+                    }
+
+                    composable("entry/flight") {
+                        FlightLandingScreen(
+                            onNavigateToScan = { navController.navigate("entry/flight/scan") },
+                            onNavigateToManual = { navController.navigate("entry/flight/manual") },
+                            onBack = { navController.popBackStack() },
+                        )
+                    }
+
+                    composable("entry/flight/scan") { backStackEntry ->
+                        val scanResult by backStackEntry.savedStateHandle
+                            .getStateFlow<String?>(SCAN_RESULT_KEY, null)
+                            .collectAsState()
+                        FlightScanScreen(
+                            scanResult = scanResult,
+                            onNavigateToScanner = { navController.navigate("scanner/bcbp") },
+                            onSuccess = { navController.popBackStack("timeline", inclusive = false) },
+                            onBack = { navController.popBackStack() },
+                            onClearScanResult = {
+                                backStackEntry.savedStateHandle.remove<String>(SCAN_RESULT_KEY)
+                            },
+                        )
+                    }
+
+                    composable("entry/flight/manual") {
+                        FlightManualScreen(
+                            onBack = { navController.popBackStack() },
+                            onSuccess = { navController.popBackStack("timeline", inclusive = false) },
+                        )
+                    }
+
+                    composable("edit/{eventId}") {
+                        EditEventScreen(
+                            onBack = { navController.popBackStack() },
+                            onSuccess = { navController.popBackStack() },
+                        )
+                    }
+
+                    composable("entry/fitness") {
+                        FitnessLandingScreen(
+                            onNavigateToActivity = { slug ->
+                                navController.navigate("entry/fitness/$slug")
+                            },
+                            onBack = { navController.popBackStack() },
+                        )
+                    }
+
+                    composable(
+                        route = "entry/fitness/{activity}",
+                        arguments = listOf(
+                            navArgument("activity") { type = NavType.StringType },
+                        ),
+                    ) {
+                        FitnessScreen(
+                            onBack = { navController.popBackStack() },
+                            onSuccess = {
+                                navController.popBackStack("timeline", inclusive = false)
+                            },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}

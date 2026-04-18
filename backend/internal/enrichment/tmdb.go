@@ -8,11 +8,13 @@ import (
 	"net/url"
 
 	"github.com/rmrobinson/meridian/backend/internal/domain"
+	"go.uber.org/zap"
 )
 
 // TMDBEnricher fetches film/TV metadata from the TMDB API and uploads the
 // poster image to S3.
 type TMDBEnricher struct {
+	logger          *zap.Logger
 	readAccessToken string
 	uploader        *S3Uploader
 	baseURL         string // overridable for tests
@@ -21,8 +23,9 @@ type TMDBEnricher struct {
 
 // NewTMDBEnricher creates a TMDBEnricher. readAccessToken is the API Read
 // Access Token from https://www.themoviedb.org/settings/api (v4 auth).
-func NewTMDBEnricher(readAccessToken string, uploader *S3Uploader) *TMDBEnricher {
+func NewTMDBEnricher(logger *zap.Logger, readAccessToken string, uploader *S3Uploader) *TMDBEnricher {
 	return &TMDBEnricher{
+		logger:          logger,
 		readAccessToken: readAccessToken,
 		uploader:        uploader,
 		baseURL:         "https://api.themoviedb.org/3",
@@ -230,7 +233,12 @@ func (e *TMDBEnricher) uploadPoster(ctx context.Context, m *domain.FilmTVMetadat
 	s3Key := fmt.Sprintf("timeline/film_tv/%s/poster.jpg", m.TMDBID)
 	s3URL, err := e.uploader.UploadFromURLIfNotExists(ctx, imageURL, s3Key)
 	if err != nil {
-		return fmt.Errorf("uploading poster: %w", err)
+		e.logger.Warn("poster image unavailable; skipping",
+			zap.String("tmdb_id", m.TMDBID),
+			zap.String("poster_url", imageURL),
+			zap.Error(err),
+		)
+		return nil
 	}
 	m.PosterURL = s3URL
 	return nil

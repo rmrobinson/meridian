@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/rmrobinson/meridian/backend/internal/domain"
+	"go.uber.org/zap"
 )
 
 // ErrNotFound is returned when the external API cannot find the requested resource.
@@ -17,6 +18,7 @@ var ErrNotFound = errors.New("not found")
 // OpenLibraryEnricher fetches book metadata from the OpenLibrary API and uploads
 // the cover image to S3. No API key is required.
 type OpenLibraryEnricher struct {
+	logger   *zap.Logger
 	uploader *S3Uploader
 	baseURL  string // overridable for tests; default: https://openlibrary.org
 	coverURL string // overridable for tests; default: https://covers.openlibrary.org
@@ -24,8 +26,9 @@ type OpenLibraryEnricher struct {
 }
 
 // NewOpenLibraryEnricher creates an OpenLibraryEnricher.
-func NewOpenLibraryEnricher(uploader *S3Uploader) *OpenLibraryEnricher {
+func NewOpenLibraryEnricher(logger *zap.Logger, uploader *S3Uploader) *OpenLibraryEnricher {
 	return &OpenLibraryEnricher{
+		logger:   logger,
 		uploader: uploader,
 		baseURL:  "https://openlibrary.org",
 		coverURL: "https://covers.openlibrary.org",
@@ -115,6 +118,9 @@ func (e *OpenLibraryEnricher) Enrich(ctx context.Context, event *domain.Event) e
 	details := book.Details
 	if details.Title != "" {
 		m.Title = details.Title
+		if event.Title == "" {
+			event.Title = details.Title
+		}
 	}
 	if len(details.Authors) > 0 {
 		m.Author = details.Authors[0].Name
@@ -128,9 +134,14 @@ func (e *OpenLibraryEnricher) Enrich(ctx context.Context, event *domain.Event) e
 	s3Key := fmt.Sprintf("timeline/books/%s/cover.jpg", isbn)
 	s3URL, err := e.uploader.UploadFromURLIfNotExists(ctx, imgURL, s3Key)
 	if err != nil {
-		return fmt.Errorf("uploading cover image: %w", err)
+		e.logger.Warn("cover image unavailable; skipping",
+			zap.String("isbn", isbn),
+			zap.String("cover_url", imgURL),
+			zap.Error(err),
+		)
+	} else {
+		m.CoverImageURL = s3URL
 	}
-	m.CoverImageURL = s3URL
 
 	return domain.SetMetadata(event, m)
 }

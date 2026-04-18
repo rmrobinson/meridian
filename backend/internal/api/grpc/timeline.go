@@ -32,8 +32,8 @@ var validFamilyIDs = map[string]bool{
 }
 
 func (s *Server) CreateEvent(ctx context.Context, req *pb.CreateEventRequest) (*pb.CreateEventResponse, error) {
-	if req.Title == "" {
-		return nil, status.Error(codes.InvalidArgument, "title is required")
+	if req.Title == "" && req.GetBookMetadata().GetIsbn() == "" {
+		return nil, status.Error(codes.InvalidArgument, "title or ISBN is required")
 	}
 	if !validFamilyIDs[req.FamilyId] {
 		return nil, status.Errorf(codes.InvalidArgument, "unknown family_id: %q", req.FamilyId)
@@ -104,8 +104,8 @@ func (s *Server) CreateEvent(ctx context.Context, req *pb.CreateEventRequest) (*
 }
 
 func (s *Server) UpdateEvent(ctx context.Context, req *pb.UpdateEventRequest) (*pb.UpdateEventResponse, error) {
-	if req.Title == "" {
-		return nil, status.Error(codes.InvalidArgument, "title is required")
+	if req.Title == "" && req.GetBookMetadata().GetIsbn() == "" {
+		return nil, status.Error(codes.InvalidArgument, "title or ISBN is required")
 	}
 
 	vis := protoToVisibility(req.Visibility)
@@ -201,9 +201,9 @@ func (s *Server) ImportEvents(ctx context.Context, req *pb.ImportEventsRequest) 
 	resp := &pb.ImportEventsResponse{}
 
 	for _, evtReq := range req.Events {
-		if evtReq.Title == "" {
+		if evtReq.Title == "" && evtReq.GetBookMetadata().GetIsbn() == "" {
 			resp.Failed++
-			resp.Errors = append(resp.Errors, "event missing title")
+			resp.Errors = append(resp.Errors, "event missing title or ISBN")
 			continue
 		}
 

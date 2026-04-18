@@ -3,6 +3,8 @@ syntax = "proto3";
 package meridian.v1;
 
 option go_package = "github.com/rmrobinson/meridian/backend/gen/go/meridian/v1;meridianv1";
+option java_multiple_files = true;
+option java_package = "meridian.v1";
 
 // --- Per-family metadata messages ---
 
