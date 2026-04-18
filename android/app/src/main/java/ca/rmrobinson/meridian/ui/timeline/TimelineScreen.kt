@@ -75,6 +75,7 @@ fun TimelineScreen(
     onNavigateToSettings: () -> Unit,
     onNavigateToFlight: () -> Unit,
     onNavigateToHobbies: () -> Unit,
+    onNavigateToFitness: () -> Unit,
     onNavigateToEdit: (String) -> Unit,
     viewModel: TimelineViewModel = hiltViewModel(),
 ) {
@@ -203,6 +204,10 @@ fun TimelineScreen(
                 showAddSheet = false
                 onNavigateToHobbies()
             },
+            onNavigateToFitness = {
+                showAddSheet = false
+                onNavigateToFitness()
+            },
         )
     }
 }
@@ -213,6 +218,7 @@ private fun AddEventSheet(
     onDismiss: () -> Unit,
     onNavigateToFlight: () -> Unit,
     onNavigateToHobbies: () -> Unit,
+    onNavigateToFitness: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -234,7 +240,7 @@ private fun AddEventSheet(
             )
             AddEventCategoryCard(label = "Travel", onClick = onNavigateToFlight, enabled = true)
             AddEventCategoryCard(label = "Hobbies", onClick = onNavigateToHobbies, enabled = true)
-            AddEventCategoryCard(label = "Fitness", onClick = {}, enabled = false)
+            AddEventCategoryCard(label = "Fitness", onClick = onNavigateToFitness, enabled = true)
         }
     }
 }

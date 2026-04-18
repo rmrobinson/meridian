@@ -12,6 +12,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import ca.rmrobinson.meridian.ui.edit.EditEventScreen
+import ca.rmrobinson.meridian.ui.entry.fitness.FitnessLandingScreen
+import ca.rmrobinson.meridian.ui.entry.fitness.FitnessScreen
 import ca.rmrobinson.meridian.ui.entry.flight.FlightLandingScreen
 import ca.rmrobinson.meridian.ui.entry.flight.FlightManualScreen
 import ca.rmrobinson.meridian.ui.entry.flight.FlightScanScreen
@@ -56,6 +58,7 @@ class MainActivity : ComponentActivity() {
                             onNavigateToSettings = { navController.navigate("settings") },
                             onNavigateToFlight = { navController.navigate("entry/flight") },
                             onNavigateToHobbies = { navController.navigate("entry/hobbies") },
+                            onNavigateToFitness = { navController.navigate("entry/fitness") },
                             onNavigateToEdit = { eventId -> navController.navigate("edit/$eventId") },
                         )
                     }
@@ -177,8 +180,28 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    // Placeholder route — Fitness entry not yet implemented
-                    composable("entry/fitness") { }
+                    composable("entry/fitness") {
+                        FitnessLandingScreen(
+                            onNavigateToActivity = { slug ->
+                                navController.navigate("entry/fitness/$slug")
+                            },
+                            onBack = { navController.popBackStack() },
+                        )
+                    }
+
+                    composable(
+                        route = "entry/fitness/{activity}",
+                        arguments = listOf(
+                            navArgument("activity") { type = NavType.StringType },
+                        ),
+                    ) {
+                        FitnessScreen(
+                            onBack = { navController.popBackStack() },
+                            onSuccess = {
+                                navController.popBackStack("timeline", inclusive = false)
+                            },
+                        )
+                    }
                 }
             }
         }

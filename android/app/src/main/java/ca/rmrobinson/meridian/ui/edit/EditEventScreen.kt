@@ -23,11 +23,15 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -38,6 +42,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.Surface
+import meridian.v1.ClimbingType
+import meridian.v1.FitnessActivity
 import meridian.v1.Visibility
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
@@ -280,6 +286,7 @@ private fun EditEventForm(
                 FilmTvMetadataSection(uiState, viewModel)
             }
             "flight"  -> FlightMetadataSection(uiState, viewModel)
+            "fitness" -> FitnessMetadataSection(uiState, viewModel)
         }
 
         Spacer(Modifier.height(4.dp))
@@ -498,6 +505,349 @@ private fun FlightMetadataSection(
             modifier = Modifier.weight(1f),
         )
     }
+}
+
+@Composable
+private fun FitnessMetadataSection(
+    uiState: EditEventViewModel.UiState,
+    viewModel: EditEventViewModel,
+) {
+    val activity = uiState.fitnessActivity
+
+    // Activity label (read-only)
+    Text(
+        "Activity: ${fitnessActivityLabel(activity)}",
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+
+    // Duration
+    OutlinedTextField(
+        value = uiState.duration,
+        onValueChange = viewModel::setDuration,
+        label = { Text("Duration (e.g. 1:23:45)") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+
+    // Distance (run, cycle, hike, ski)
+    if (activity in fitnessDistanceActivities) {
+        OutlinedTextField(
+            value = uiState.distanceKm,
+            onValueChange = viewModel::setDistanceKm,
+            label = { Text("Distance (km)") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+
+    // Elevation gain (cycle, hike, ski)
+    if (activity in fitnessElevationActivities) {
+        OutlinedTextField(
+            value = uiState.elevationGainM,
+            onValueChange = viewModel::setElevationGainM,
+            label = { Text("Elevation gain (m)") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+
+    // Heart rate (run, cycle, hike, ski, squash)
+    if (activity in fitnessHeartRateActivities) {
+        OutlinedTextField(
+            value = uiState.avgHeartRate,
+            onValueChange = viewModel::setAvgHeartRate,
+            label = { Text("Avg heart rate (bpm)") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+
+    // Activity-specific fields
+    when (activity) {
+        FitnessActivity.FITNESS_ACTIVITY_RUN -> OutlinedTextField(
+            value = uiState.avgPaceMinKm,
+            onValueChange = viewModel::setAvgPaceMinKm,
+            label = { Text("Avg pace (min/km)") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        FitnessActivity.FITNESS_ACTIVITY_CYCLE -> Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            OutlinedTextField(
+                value = uiState.bike,
+                onValueChange = viewModel::setBike,
+                label = { Text("Bike (optional)") },
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+            )
+            OutlinedTextField(
+                value = uiState.avgSpeedKmh,
+                onValueChange = viewModel::setAvgSpeedKmh,
+                label = { Text("Avg speed (km/h)") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.weight(1f),
+            )
+        }
+        FitnessActivity.FITNESS_ACTIVITY_HIKE -> {
+            OutlinedTextField(
+                value = uiState.trailName,
+                onValueChange = viewModel::setTrailName,
+                label = { Text("Trail name (optional)") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = uiState.alltrailsUrl,
+                onValueChange = viewModel::setAlltrailsUrl,
+                label = { Text("AllTrails URL (optional)") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        FitnessActivity.FITNESS_ACTIVITY_SKI -> {
+            OutlinedTextField(
+                value = uiState.resort,
+                onValueChange = viewModel::setResort,
+                label = { Text("Resort (optional)") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedTextField(
+                    value = uiState.verticalDropM,
+                    onValueChange = viewModel::setVerticalDropM,
+                    label = { Text("Vertical drop (m)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.weight(1f),
+                )
+                OutlinedTextField(
+                    value = uiState.runs,
+                    onValueChange = viewModel::setRuns,
+                    label = { Text("Runs") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+        FitnessActivity.FITNESS_ACTIVITY_SCUBA -> {
+            OutlinedTextField(
+                value = uiState.diveSite,
+                onValueChange = viewModel::setDiveSite,
+                label = { Text("Dive site (optional)") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedTextField(
+                    value = uiState.maxDepthM,
+                    onValueChange = viewModel::setMaxDepthM,
+                    label = { Text("Max depth (m)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.weight(1f),
+                )
+                OutlinedTextField(
+                    value = uiState.avgDepthM,
+                    onValueChange = viewModel::setAvgDepthM,
+                    label = { Text("Avg depth (m)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+        FitnessActivity.FITNESS_ACTIVITY_CLIMB -> FitnessClimbFields(uiState, viewModel)
+        FitnessActivity.FITNESS_ACTIVITY_GOLF -> {
+            OutlinedTextField(
+                value = uiState.courseName,
+                onValueChange = viewModel::setCourseName,
+                label = { Text("Course name (optional)") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedTextField(
+                    value = uiState.holes,
+                    onValueChange = viewModel::setHoles,
+                    label = { Text("Holes") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.weight(1f),
+                )
+                OutlinedTextField(
+                    value = uiState.score,
+                    onValueChange = viewModel::setScore,
+                    label = { Text("Score") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+        FitnessActivity.FITNESS_ACTIVITY_SQUASH -> Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            OutlinedTextField(
+                value = uiState.opponent,
+                onValueChange = viewModel::setOpponent,
+                label = { Text("Opponent (optional)") },
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+            )
+            OutlinedTextField(
+                value = uiState.result,
+                onValueChange = viewModel::setResult,
+                label = { Text("Result (optional)") },
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        else -> {}
+    }
+
+    // Garmin URL
+    OutlinedTextField(
+        value = uiState.garminUrl,
+        onValueChange = viewModel::setGarminUrl,
+        label = { Text("Garmin activity URL (optional)") },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FitnessClimbFields(
+    uiState: EditEventViewModel.UiState,
+    viewModel: EditEventViewModel,
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        OutlinedTextField(
+            value = fitnessClimbingTypeLabel(uiState.climbingType),
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Climbing type") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                .fillMaxWidth(),
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            fitnessClimbingTypeOptions.forEach { (type, label) ->
+                DropdownMenuItem(
+                    text = { Text(label) },
+                    onClick = {
+                        viewModel.setClimbingType(type)
+                        expanded = false
+                    },
+                )
+            }
+        }
+    }
+
+    if (uiState.climbingType == ClimbingType.CLIMBING_TYPE_SPORT) {
+        OutlinedTextField(
+            value = uiState.routeName,
+            onValueChange = viewModel::setRouteName,
+            label = { Text("Route name (optional)") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+    if (uiState.climbingType == ClimbingType.CLIMBING_TYPE_BOULDERING) {
+        OutlinedTextField(
+            value = uiState.problemName,
+            onValueChange = viewModel::setProblemName,
+            label = { Text("Problem name (optional)") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+    OutlinedTextField(
+        value = uiState.grade,
+        onValueChange = viewModel::setGrade,
+        label = { Text("Grade (optional)") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+private val fitnessDistanceActivities = setOf(
+    FitnessActivity.FITNESS_ACTIVITY_RUN,
+    FitnessActivity.FITNESS_ACTIVITY_CYCLE,
+    FitnessActivity.FITNESS_ACTIVITY_HIKE,
+    FitnessActivity.FITNESS_ACTIVITY_SKI,
+)
+
+private val fitnessElevationActivities = setOf(
+    FitnessActivity.FITNESS_ACTIVITY_CYCLE,
+    FitnessActivity.FITNESS_ACTIVITY_HIKE,
+    FitnessActivity.FITNESS_ACTIVITY_SKI,
+)
+
+private val fitnessHeartRateActivities = setOf(
+    FitnessActivity.FITNESS_ACTIVITY_RUN,
+    FitnessActivity.FITNESS_ACTIVITY_CYCLE,
+    FitnessActivity.FITNESS_ACTIVITY_HIKE,
+    FitnessActivity.FITNESS_ACTIVITY_SKI,
+    FitnessActivity.FITNESS_ACTIVITY_SQUASH,
+)
+
+private val fitnessClimbingTypeOptions = listOf(
+    ClimbingType.CLIMBING_TYPE_UNSPECIFIED to "Unspecified",
+    ClimbingType.CLIMBING_TYPE_SPORT       to "Sport",
+    ClimbingType.CLIMBING_TYPE_BOULDERING  to "Bouldering",
+    ClimbingType.CLIMBING_TYPE_GYM         to "Gym",
+)
+
+private fun fitnessClimbingTypeLabel(type: ClimbingType): String = when (type) {
+    ClimbingType.CLIMBING_TYPE_SPORT       -> "Sport"
+    ClimbingType.CLIMBING_TYPE_BOULDERING  -> "Bouldering"
+    ClimbingType.CLIMBING_TYPE_GYM         -> "Gym"
+    else                                   -> "Unspecified"
+}
+
+private fun fitnessActivityLabel(activity: FitnessActivity): String = when (activity) {
+    FitnessActivity.FITNESS_ACTIVITY_RUN    -> "Run"
+    FitnessActivity.FITNESS_ACTIVITY_CYCLE  -> "Cycle"
+    FitnessActivity.FITNESS_ACTIVITY_HIKE   -> "Hike"
+    FitnessActivity.FITNESS_ACTIVITY_SKI    -> "Ski"
+    FitnessActivity.FITNESS_ACTIVITY_SCUBA  -> "Scuba"
+    FitnessActivity.FITNESS_ACTIVITY_CLIMB  -> "Climb"
+    FitnessActivity.FITNESS_ACTIVITY_GOLF   -> "Golf"
+    FitnessActivity.FITNESS_ACTIVITY_SQUASH -> "Squash"
+    else                                    -> "Activity"
 }
 
 // ---------------------------------------------------------------------------
