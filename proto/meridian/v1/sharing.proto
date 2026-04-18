@@ -6,6 +6,8 @@ import "google/protobuf/timestamp.proto";
 import "meridian/v1/timeline.proto";
 
 option go_package = "github.com/rmrobinson/meridian/backend/gen/go/meridian/v1;meridianv1";
+option java_multiple_files = true;
+option java_package = "meridian.v1";
 
 service SharingService {
   rpc CreateSharingToken(CreateSharingTokenRequest) returns (CreateSharingTokenResponse);

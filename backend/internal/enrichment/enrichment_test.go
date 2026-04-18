@@ -346,7 +346,7 @@ func TestOpenLibrary_CoverAlreadyInS3_SkipsDownloadAndUpload(t *testing.T) {
 	}
 }
 
-func TestOpenLibrary_S3UploadFailure_ReturnsError(t *testing.T) {
+func TestOpenLibrary_S3UploadFailure_SucceedsWithoutCover(t *testing.T) {
 	const isbn = "9780441013593"
 
 	coverSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -363,9 +363,17 @@ func TestOpenLibrary_S3UploadFailure_ReturnsError(t *testing.T) {
 	uploader := newTestUploader(s3mock, coverSrv.Client())
 	enricher := newTestOpenLibraryEnricher(apiSrv, coverSrv, uploader)
 
-	err := enricher.Enrich(context.Background(), bookEvent(isbn))
-	if err == nil {
-		t.Error("expected error when S3 upload fails, got nil")
+	event := bookEvent(isbn)
+	err := enricher.Enrich(context.Background(), event)
+	if err != nil {
+		t.Errorf("unexpected error when S3 upload fails: %v", err)
+	}
+	m, _ := domain.ParseMetadata[domain.BookMetadata](event)
+	if m.CoverImageURL != "" {
+		t.Error("cover_image_url should not be set when S3 upload fails")
+	}
+	if m.Title != "Dune" {
+		t.Errorf("title should still be populated, got %q", m.Title)
 	}
 }
 

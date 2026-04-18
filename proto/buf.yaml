@@ -10,3 +10,5 @@ breaking:
   ignore_unstable_packages: false
   except:
     - FILE_NO_DELETE
+    - FILE_SAME_JAVA_MULTIPLE_FILES
+    - FILE_SAME_JAVA_PACKAGE
