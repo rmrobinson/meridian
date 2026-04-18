@@ -24,6 +24,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -36,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.minimumInteractiveComponentSize
+import meridian.v1.Visibility
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -202,6 +204,12 @@ private fun EditEventForm(
             minLines = 2,
             maxLines = 5,
             modifier = Modifier.fillMaxWidth(),
+        )
+
+        // Visibility selector
+        VisibilitySelector(
+            selected = uiState.visibility,
+            onSelect = viewModel::setVisibility,
         )
 
         // Date field(s) — layout depends on event type
@@ -472,8 +480,34 @@ private fun FlightMetadataSection(
 }
 
 // ---------------------------------------------------------------------------
-// Shared composable
+// Shared composables
 // ---------------------------------------------------------------------------
+
+private val VISIBILITY_OPTIONS = listOf(
+    Visibility.VISIBILITY_PUBLIC   to "Public",
+    Visibility.VISIBILITY_FRIENDS  to "Friends",
+    Visibility.VISIBILITY_FAMILY   to "Family",
+    Visibility.VISIBILITY_PERSONAL to "Personal",
+)
+
+@Composable
+private fun VisibilitySelector(
+    selected: Visibility,
+    onSelect: (Visibility) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text("Visibility", style = MaterialTheme.typography.labelLarge)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            VISIBILITY_OPTIONS.forEach { (vis, label) ->
+                FilterChip(
+                    selected = selected == vis,
+                    onClick = { onSelect(vis) },
+                    label = { Text(label) },
+                )
+            }
+        }
+    }
+}
 
 @Composable
 private fun StarRatingRow(rating: Int, onRatingChange: (Int) -> Unit) {

@@ -1,5 +1,6 @@
 package ca.rmrobinson.meridian.ui.timeline
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ca.rmrobinson.meridian.data.EventRepository
@@ -36,6 +37,8 @@ data class TimelineUiState(
     /** Event awaiting mark-complete in the bottom sheet, null = sheet hidden. */
     val markCompleteEvent: EventEntity? = null,
 )
+
+private const val TAG = "TimelineViewModel"
 
 @HiltViewModel
 class TimelineViewModel @Inject constructor(
@@ -90,11 +93,14 @@ class TimelineViewModel @Inject constructor(
 
     fun sync() {
         viewModelScope.launch {
+            Log.d(TAG, "sync: starting")
             _syncState.update { true }
             _error.update { null }
             try {
                 syncEvents()
+                Log.d(TAG, "sync: complete")
             } catch (e: Exception) {
+                Log.e(TAG, "sync: failed", e)
                 _error.update { e.message ?: "Sync failed" }
             } finally {
                 _syncState.update { false }

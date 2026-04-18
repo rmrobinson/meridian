@@ -115,6 +115,9 @@ func (e *OpenLibraryEnricher) Enrich(ctx context.Context, event *domain.Event) e
 	details := book.Details
 	if details.Title != "" {
 		m.Title = details.Title
+		if event.Title == "" {
+			event.Title = details.Title
+		}
 	}
 	if len(details.Authors) > 0 {
 		m.Author = details.Authors[0].Name

@@ -1,5 +1,6 @@
 package ca.rmrobinson.meridian.data.remote
 
+import android.util.Log
 import ca.rmrobinson.meridian.AppConfig
 import ca.rmrobinson.meridian.AppConfigStore
 import io.grpc.CallCredentials
@@ -10,6 +11,8 @@ import meridian.v1.TimelineServiceGrpcKt
 import java.util.concurrent.Executor
 import javax.inject.Inject
 import javax.inject.Singleton
+
+private const val TAG = "GrpcClient"
 
 @Singleton
 class GrpcClient @Inject constructor(store: AppConfigStore) {
@@ -29,6 +32,7 @@ class GrpcClient @Inject constructor(store: AppConfigStore) {
 
     @Synchronized
     fun reconfigure(config: AppConfig) {
+        Log.i(TAG, "Reconfiguring gRPC channel")
         channel?.shutdown()
         _timelineStub = null
         channel = null
@@ -37,13 +41,19 @@ class GrpcClient @Inject constructor(store: AppConfigStore) {
 
     @Synchronized
     private fun buildChannel(config: AppConfig) {
-        val ch = ManagedChannelBuilder
-            .forAddress(config.grpcHost, config.grpcPort)
-            .useTransportSecurity()
-            .build()
+        val transport = if (config.usePlaintext) "plaintext" else "TLS"
+        Log.i(TAG, "Building gRPC channel: ${config.grpcHost}:${config.grpcPort} transport=$transport")
+        val builder = ManagedChannelBuilder.forAddress(config.grpcHost, config.grpcPort)
+        if (config.usePlaintext) {
+            builder.usePlaintext()
+        } else {
+            builder.useTransportSecurity()
+        }
+        val ch = builder.build()
         channel = ch
         _timelineStub = TimelineServiceGrpcKt.TimelineServiceCoroutineStub(ch)
             .withCallCredentials(BearerTokenCredentials(config.bearerToken))
+        Log.i(TAG, "gRPC channel ready")
     }
 }
 

@@ -54,8 +54,8 @@ class BookEntryViewModel @Inject constructor(
 
     fun submit() {
         val state = _uiState.value
-        if (state.title.isBlank()) {
-            _uiState.update { it.copy(error = "Title is required") }
+        if (state.title.isBlank() && state.isbn.isBlank()) {
+            _uiState.update { it.copy(error = "Title or ISBN is required") }
             return
         }
         if (state.endDate != null && state.endDate < state.startDate) {
@@ -72,7 +72,7 @@ class BookEntryViewModel @Inject constructor(
                     .setStartDate(state.startDate.toString())
                     .apply { if (state.endDate != null) setEndDate(state.endDate.toString()) }
                     .setLineKey("$familyId-${state.startDate}")
-                    .setVisibility(Visibility.VISIBILITY_PERSONAL)
+                    .setVisibility(Visibility.VISIBILITY_FRIENDS)
                     .setBookMetadata(
                         BookMetadata.newBuilder()
                             .setIsbn(state.isbn.trim())

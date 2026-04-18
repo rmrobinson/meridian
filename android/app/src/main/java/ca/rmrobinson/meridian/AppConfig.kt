@@ -11,6 +11,7 @@ data class AppConfig(
     val grpcHost: String,
     val grpcPort: Int,
     val bearerToken: String,
+    val usePlaintext: Boolean = false,
 ) {
     val isConfigured: Boolean
         get() = grpcHost.isNotBlank() && bearerToken.isNotBlank()
@@ -22,6 +23,7 @@ data class AppConfig(
             grpcHost = prefs.getString("grpc_host", "") ?: "",
             grpcPort = prefs.getInt("grpc_port", 443),
             bearerToken = prefs.getString("bearer_token", "") ?: "",
+            usePlaintext = prefs.getBoolean("use_plaintext", false),
         )
     }
 
@@ -30,6 +32,7 @@ data class AppConfig(
             .putString("grpc_host", grpcHost)
             .putInt("grpc_port", grpcPort)
             .putString("bearer_token", bearerToken)
+            .putBoolean("use_plaintext", usePlaintext)
             .apply()
     }
 }

@@ -106,7 +106,7 @@ fun BookManualScreen(
             OutlinedTextField(
                 value = uiState.title,
                 onValueChange = viewModel::setTitle,
-                label = { Text("Title *") },
+                label = { Text("Title") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -114,7 +114,7 @@ fun BookManualScreen(
             OutlinedTextField(
                 value = uiState.isbn,
                 onValueChange = viewModel::setIsbn,
-                label = { Text("ISBN (optional)") },
+                label = { Text("ISBN") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )

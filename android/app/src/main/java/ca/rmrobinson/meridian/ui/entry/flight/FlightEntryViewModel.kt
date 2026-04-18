@@ -77,7 +77,7 @@ class FlightEntryViewModel @Inject constructor(
                     .setTitle(title)
                     .setStartDate(state.departureDate.toString())
                     .setLineKey("$FAMILY_ID-${state.departureDate}")
-                    .setVisibility(Visibility.VISIBILITY_PERSONAL)
+                    .setVisibility(Visibility.VISIBILITY_PUBLIC)
                     .setFlightMetadata(
                         FlightMetadata.newBuilder()
                             .setAirline(state.airline.trim())

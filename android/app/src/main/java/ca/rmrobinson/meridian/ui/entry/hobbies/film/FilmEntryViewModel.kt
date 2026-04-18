@@ -85,7 +85,7 @@ class FilmEntryViewModel @Inject constructor(
                     .setTitle(state.title.trim())
                     .setStartDate(state.watchedDate.toString())
                     .setLineKey(lineKey)
-                    .setVisibility(Visibility.VISIBILITY_PERSONAL)
+                    .setVisibility(Visibility.VISIBILITY_FRIENDS)
                     .setFilmTvMetadata(metadata)
                     .build()
                 createEventUseCase(request)

@@ -16,6 +16,7 @@ data class SetupUiState(
     val grpcHost: String = "",
     val grpcPort: String = "443",
     val bearerToken: String = "",
+    val usePlaintext: Boolean = false,
 )
 
 @HiltViewModel
@@ -31,6 +32,7 @@ class SetupViewModel @Inject constructor(
     fun updateHost(value: String) = _uiState.update { it.copy(grpcHost = value) }
     fun updatePort(value: String) = _uiState.update { it.copy(grpcPort = value) }
     fun updateToken(value: String) = _uiState.update { it.copy(bearerToken = value) }
+    fun updateUsePlaintext(value: Boolean) = _uiState.update { it.copy(usePlaintext = value) }
 
     fun save(onSuccess: () -> Unit) {
         val state = _uiState.value
@@ -38,6 +40,7 @@ class SetupViewModel @Inject constructor(
             grpcHost = state.grpcHost.trim(),
             grpcPort = state.grpcPort.toIntOrNull() ?: 443,
             bearerToken = state.bearerToken.trim(),
+            usePlaintext = state.usePlaintext,
         )
         config.saveToPrefs(prefs)
         store.update(config)

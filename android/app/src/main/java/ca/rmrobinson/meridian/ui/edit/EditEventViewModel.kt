@@ -6,7 +6,9 @@ import androidx.lifecycle.viewModelScope
 import ca.rmrobinson.meridian.data.EventRepository
 import ca.rmrobinson.meridian.data.local.EventEntity
 import ca.rmrobinson.meridian.data.toUpdateRequest
+import ca.rmrobinson.meridian.domain.usecase.SyncEventsUseCase
 import ca.rmrobinson.meridian.domain.usecase.UpdateEventUseCase
+import android.util.Log
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,6 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import meridian.v1.FilmTVType
+import meridian.v1.Visibility
 import org.json.JSONObject
 import java.time.LocalDate
 import javax.inject.Inject
@@ -22,6 +25,7 @@ import javax.inject.Inject
 class EditEventViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: EventRepository,
+    private val syncEventsUseCase: SyncEventsUseCase,
     private val updateEventUseCase: UpdateEventUseCase,
 ) : ViewModel() {
 
@@ -58,6 +62,8 @@ class EditEventViewModel @Inject constructor(
         val flightNumber: String = "",
         val originIata: String = "",
         val destinationIata: String = "",
+        // Visibility
+        val visibility: Visibility = Visibility.VISIBILITY_PERSONAL,
         // Submission
         val isSubmitting: Boolean = false,
         val error: String? = null,
@@ -69,11 +75,19 @@ class EditEventViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
+            // Sync first so the form is always populated with server-enriched data
+            // (e.g. book author, TMDB year/director). Failure is non-fatal — we fall
+            // back to whatever is in Room.
+            try { syncEventsUseCase() } catch (e: Exception) {
+                Log.w(TAG, "sync before edit failed, using cached entity", e)
+            }
+
             val entity = repository.getEvent(eventId)
             if (entity == null) {
                 _uiState.update { it.copy(isLoading = false, notFound = true) }
                 return@launch
             }
+            Log.d(TAG, "populateFromEntity id=$eventId metadataJson=${entity.metadataJson}")
             _entity = entity
             populateFromEntity(entity)
         }
@@ -88,6 +102,13 @@ class EditEventViewModel @Inject constructor(
         val startDate = entity.startDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
         val endDate = entity.endDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
 
+        val visibility = when (entity.visibility) {
+            "VISIBILITY_PUBLIC"   -> Visibility.VISIBILITY_PUBLIC
+            "VISIBILITY_FRIENDS"  -> Visibility.VISIBILITY_FRIENDS
+            "VISIBILITY_FAMILY"   -> Visibility.VISIBILITY_FAMILY
+            else                  -> Visibility.VISIBILITY_PERSONAL
+        }
+
         _uiState.update {
             UiState(
                 isLoading = false,
@@ -96,7 +117,11 @@ class EditEventViewModel @Inject constructor(
                 eventType = entity.type,
                 metadataType = metadataType,
                 filmTvSubtype = filmTvSubtype,
-                title = entity.title,
+                title = entity.title.ifBlank {
+                    // Enricher may have filled in the title inside metadata (e.g. book ISBN lookup)
+                    // while leaving the top-level event title empty if none was provided at creation.
+                    if (metadataType == "book") json.optString("title", "") else ""
+                },
                 description = entity.description ?: "",
                 date = date,
                 startDate = startDate,
@@ -118,6 +143,7 @@ class EditEventViewModel @Inject constructor(
                 flightNumber = if (metadataType == "flight") json.optString("flight_number") else "",
                 originIata = if (metadataType == "flight") json.optString("origin_iata") else "",
                 destinationIata = if (metadataType == "flight") json.optString("destination_iata") else "",
+                visibility = visibility,
             )
         }
     }
@@ -153,9 +179,11 @@ class EditEventViewModel @Inject constructor(
     fun setFlightNumber(value: String) = _uiState.update { it.copy(flightNumber = value) }
     fun setOriginIata(value: String) = _uiState.update { it.copy(originIata = value.uppercase()) }
     fun setDestinationIata(value: String) = _uiState.update { it.copy(destinationIata = value.uppercase()) }
+    fun setVisibility(value: Visibility) = _uiState.update { it.copy(visibility = value) }
     fun dismissError() = _uiState.update { it.copy(error = null) }
 
     companion object {
+        private const val TAG = "EditEventViewModel"
         const val YEAR_MIN_FILM = 1888  // matches FilmEntryViewModel
         const val YEAR_MIN_TV   = 1925  // matches TvEntryViewModel
         const val YEAR_MAX      = 2100
@@ -217,6 +245,7 @@ class EditEventViewModel @Inject constructor(
                 val builder = entity.toUpdateRequest().toBuilder()
 
                 // Common overrides
+                builder.setVisibility(state.visibility)
                 builder.setTitle(state.title.trim())
                 if (state.description.isBlank()) builder.clearDescription()
                 else builder.setDescription(state.description.trim())

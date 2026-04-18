@@ -1,5 +1,6 @@
 package ca.rmrobinson.meridian.data
 
+import android.util.Log
 import ca.rmrobinson.meridian.data.local.EventDao
 import ca.rmrobinson.meridian.data.local.EventEntity
 import ca.rmrobinson.meridian.data.local.LineFamilyDao
@@ -11,6 +12,8 @@ import meridian.v1.CreateEventRequest
 import meridian.v1.UpdateEventRequest
 import javax.inject.Inject
 import javax.inject.Singleton
+
+private const val TAG = "EventRepository"
 
 @Singleton
 class EventRepository @Inject constructor(
@@ -73,6 +76,7 @@ class EventRepository @Inject constructor(
      */
     suspend fun retryLocalOnly() {
         val localOnly = eventDao.getLocalOnly()
+        Log.d(TAG, "retryLocalOnly: ${localOnly.size} LOCAL_ONLY events to retry")
         for (entity in localOnly) {
             try {
                 val serverEntity = createEventRemote(entity.toCreateRequest()) ?: continue
@@ -80,8 +84,9 @@ class EventRepository @Inject constructor(
                 // can't leave the user with no record.
                 eventDao.upsert(serverEntity)
                 eventDao.deleteById(entity.id)
-            } catch (_: Exception) {
-                // Leave as LOCAL_ONLY; will retry on next sync
+                Log.d(TAG, "retryLocalOnly: promoted localId=${entity.id} to serverId=${serverEntity.id}")
+            } catch (e: Exception) {
+                Log.w(TAG, "retryLocalOnly: failed for localId=${entity.id}, will retry on next sync", e)
             }
         }
     }
