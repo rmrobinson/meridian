@@ -96,7 +96,7 @@ class FlightScanViewModel @Inject constructor(
                         .setTitle(resolved.title)
                         .setStartDate(resolved.date.toString())
                         .setLineKey(lineKey)
-                        .setVisibility(Visibility.VISIBILITY_PERSONAL)
+                        .setVisibility(Visibility.VISIBILITY_PUBLIC)
                         .setFlightMetadata(
                             FlightMetadata.newBuilder()
                                 .setAirline(resolved.parsed.operatingCarrierDesignator)

@@ -75,7 +75,7 @@ class BookEntryViewModel @Inject constructor(
                     .setStartDate(state.startDate.toString())
                     .apply { if (state.endDate != null) setEndDate(state.endDate.toString()) }
                     .setLineKey(lineKey)
-                    .setVisibility(Visibility.VISIBILITY_FRIENDS)
+                    .setVisibility(Visibility.VISIBILITY_PUBLIC)
                     .setBookMetadata(
                         BookMetadata.newBuilder()
                             .setIsbn(state.isbn.trim())

@@ -103,7 +103,7 @@ class TvEntryViewModel @Inject constructor(
                     .setStartDate(state.startDate.toString())
                     .apply { if (state.endDate != null) setEndDate(state.endDate.toString()) }
                     .setLineKey(lineKey)
-                    .setVisibility(Visibility.VISIBILITY_FRIENDS)
+                    .setVisibility(Visibility.VISIBILITY_PUBLIC)
                     .setFilmTvMetadata(metadata)
                     .build()
                 createEventUseCase(request)
