@@ -28,12 +28,14 @@ data class AppConfig(
     }
 
     fun saveToPrefs(prefs: SharedPreferences) {
+        // commit() is synchronous: ensures the bearer token is persisted to disk before
+        // control returns to the caller, preventing credential loss on an immediate process kill.
         prefs.edit()
             .putString("grpc_host", grpcHost)
             .putInt("grpc_port", grpcPort)
             .putString("bearer_token", bearerToken)
             .putBoolean("use_plaintext", usePlaintext)
-            .apply()
+            .commit()
     }
 }
 

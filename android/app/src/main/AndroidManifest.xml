@@ -7,6 +7,7 @@
 
     <application
         android:name=".MeridianApp"
+        android:icon="@mipmap/ic_launcher"
         android:label="Meridian"
         android:supportsRtl="true"
         android:theme="@style/Theme.Meridian"

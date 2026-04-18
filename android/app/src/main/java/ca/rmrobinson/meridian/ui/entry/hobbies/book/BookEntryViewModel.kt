@@ -3,6 +3,7 @@ package ca.rmrobinson.meridian.ui.entry.hobbies.book
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import ca.rmrobinson.meridian.data.EventRepository
 import ca.rmrobinson.meridian.domain.usecase.CreateEventUseCase
 import ca.rmrobinson.meridian.ui.entry.hobbies.HobbyEntryViewModel
 import ca.rmrobinson.meridian.ui.entry.hobbies.HobbyType
@@ -23,6 +24,7 @@ import javax.inject.Inject
 class BookEntryViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val createEventUseCase: CreateEventUseCase,
+    private val repository: EventRepository,
 ) : ViewModel() {
 
     private val familyId = HobbyEntryViewModel.familyIdFor(HobbyType.BOOK)
@@ -65,13 +67,14 @@ class BookEntryViewModel @Inject constructor(
         _uiState.update { it.copy(isSubmitting = true, error = null) }
         viewModelScope.launch {
             try {
+                val lineKey = repository.nextLineKeyForDate(familyId, state.startDate.toString())
                 val request = CreateEventRequest.newBuilder()
                     .setFamilyId(familyId)
                     .setType(EventType.EVENT_TYPE_SPAN)
                     .setTitle(state.title.trim())
                     .setStartDate(state.startDate.toString())
                     .apply { if (state.endDate != null) setEndDate(state.endDate.toString()) }
-                    .setLineKey("$familyId-${state.startDate}")
+                    .setLineKey(lineKey)
                     .setVisibility(Visibility.VISIBILITY_FRIENDS)
                     .setBookMetadata(
                         BookMetadata.newBuilder()

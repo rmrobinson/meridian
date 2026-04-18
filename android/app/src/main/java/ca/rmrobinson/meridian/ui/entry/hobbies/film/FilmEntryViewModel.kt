@@ -71,7 +71,7 @@ class FilmEntryViewModel @Inject constructor(
         _uiState.update { it.copy(isSubmitting = true, error = null) }
         viewModelScope.launch {
             try {
-                val lineKey = nextLineKey("$familyId-${state.watchedDate}")
+                val lineKey = repository.nextLineKeyForDate(familyId, state.watchedDate.toString())
                 val metadata = FilmTVMetadata.newBuilder()
                     .setType(FilmTVType.FILM_TV_TYPE_MOVIE)
                     .setRating(state.rating)
@@ -96,14 +96,6 @@ class FilmEntryViewModel @Inject constructor(
                 }
             }
         }
-    }
-
-    private suspend fun nextLineKey(base: String): String {
-        val existing = repository.getLineKeysByFamilyId(familyId)
-        if (!existing.contains(base)) return base
-        var suffix = 2
-        while (existing.contains("$base-$suffix")) suffix++
-        return "$base-$suffix"
     }
 
     companion object {

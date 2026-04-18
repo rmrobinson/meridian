@@ -10,6 +10,7 @@ import ca.rmrobinson.meridian.data.remote.EventRemoteSource
 import kotlinx.coroutines.flow.Flow
 import meridian.v1.CreateEventRequest
 import meridian.v1.UpdateEventRequest
+import ca.rmrobinson.meridian.data.toUpdateRequest
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -33,6 +34,21 @@ class EventRepository @Inject constructor(
 
     suspend fun getLineKeysByFamilyId(familyId: String): Set<String> =
         eventDao.getLineKeysByFamilyId(familyId).toSet()
+
+    /**
+     * Returns the next available line key for a given family and date in the form
+     * `{familyId}-{date}-{n}` where `n` is one greater than the highest existing suffix.
+     * The first event on a given day gets `-1`; subsequent events on the same day get
+     * `-2`, `-3`, etc.
+     */
+    suspend fun nextLineKeyForDate(familyId: String, date: String): String {
+        val prefix = "$familyId-$date-"
+        val maxSuffix = eventDao.getLineKeysByFamilyId(familyId)
+            .filter { it.startsWith(prefix) }
+            .mapNotNull { it.removePrefix(prefix).toIntOrNull() }
+            .maxOrNull() ?: 0
+        return "$prefix${maxSuffix + 1}"
+    }
 
     // --- Sync (pull from server) ---
 
@@ -71,7 +87,7 @@ class EventRepository @Inject constructor(
 
     /**
      * Attempts to push all LOCAL_ONLY events to the server.
-     * On success for each event: deletes the local placeholder, saves the server entity.
+     * On success for each event: saves the server entity, then deletes the local placeholder.
      * Failures are swallowed per-event so a single failure doesn't block the rest.
      */
     suspend fun retryLocalOnly() {
@@ -87,6 +103,26 @@ class EventRepository @Inject constructor(
                 Log.d(TAG, "retryLocalOnly: promoted localId=${entity.id} to serverId=${serverEntity.id}")
             } catch (e: Exception) {
                 Log.w(TAG, "retryLocalOnly: failed for localId=${entity.id}, will retry on next sync", e)
+            }
+        }
+    }
+
+    /**
+     * Attempts to push all PENDING_UPDATE events to the server.
+     * These are events that were optimistically updated locally but whose RPC never completed
+     * (e.g. because the app crashed mid-flight). On success the server entity (SYNCED) replaces
+     * the local row. Failures are swallowed per-event.
+     */
+    suspend fun retryPendingUpdates() {
+        val pending = eventDao.getPendingUpdate()
+        Log.d(TAG, "retryPendingUpdates: ${pending.size} PENDING_UPDATE events to retry")
+        for (entity in pending) {
+            try {
+                val serverEntity = updateEventRemote(entity.toUpdateRequest()) ?: continue
+                eventDao.upsert(serverEntity)
+                Log.d(TAG, "retryPendingUpdates: synced id=${entity.id}")
+            } catch (e: Exception) {
+                Log.w(TAG, "retryPendingUpdates: failed for id=${entity.id}, will retry on next sync", e)
             }
         }
     }

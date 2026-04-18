@@ -3,6 +3,7 @@ package ca.rmrobinson.meridian.ui.entry.flight
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import ca.rmrobinson.meridian.data.EventRepository
 import ca.rmrobinson.meridian.domain.usecase.CreateEventUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +22,7 @@ import javax.inject.Inject
 class FlightEntryViewModel @Inject constructor(
     @Suppress("UNUSED_PARAMETER") savedStateHandle: SavedStateHandle,
     private val createEventUseCase: CreateEventUseCase,
+    private val repository: EventRepository,
 ) : ViewModel() {
 
     data class UiState(
@@ -71,12 +73,13 @@ class FlightEntryViewModel @Inject constructor(
                     state.originIata,
                     state.destinationIata,
                 )
+                val lineKey = repository.nextLineKeyForDate(FAMILY_ID, state.departureDate.toString())
                 val request = CreateEventRequest.newBuilder()
                     .setFamilyId(FAMILY_ID)
                     .setType(EventType.EVENT_TYPE_POINT)
                     .setTitle(title)
                     .setStartDate(state.departureDate.toString())
-                    .setLineKey("$FAMILY_ID-${state.departureDate}")
+                    .setLineKey(lineKey)
                     .setVisibility(Visibility.VISIBILITY_PUBLIC)
                     .setFlightMetadata(
                         FlightMetadata.newBuilder()

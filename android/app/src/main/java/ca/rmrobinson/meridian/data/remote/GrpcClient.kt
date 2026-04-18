@@ -30,30 +30,34 @@ class GrpcClient @Inject constructor(store: AppConfigStore) {
         if (config.isConfigured) buildChannel(config)
     }
 
-    @Synchronized
     fun reconfigure(config: AppConfig) {
-        Log.i(TAG, "Reconfiguring gRPC channel")
-        channel?.shutdown()
-        _timelineStub = null
-        channel = null
-        if (config.isConfigured) buildChannel(config)
+        synchronized(this) {
+            Log.i(TAG, "Reconfiguring gRPC channel")
+            // shutdownNow() cancels all in-flight calls immediately. This is intentional
+            // for a configuration change — the user has explicitly chosen a new server.
+            channel?.shutdownNow()
+            _timelineStub = null
+            channel = null
+            if (config.isConfigured) buildChannel(config)
+        }
     }
 
-    @Synchronized
     private fun buildChannel(config: AppConfig) {
-        val transport = if (config.usePlaintext) "plaintext" else "TLS"
-        Log.i(TAG, "Building gRPC channel: ${config.grpcHost}:${config.grpcPort} transport=$transport")
-        val builder = ManagedChannelBuilder.forAddress(config.grpcHost, config.grpcPort)
-        if (config.usePlaintext) {
-            builder.usePlaintext()
-        } else {
-            builder.useTransportSecurity()
+        synchronized(this) {
+            val transport = if (config.usePlaintext) "plaintext" else "TLS"
+            Log.i(TAG, "Building gRPC channel: ${config.grpcHost}:${config.grpcPort} transport=$transport")
+            val builder = ManagedChannelBuilder.forAddress(config.grpcHost, config.grpcPort)
+            if (config.usePlaintext) {
+                builder.usePlaintext()
+            } else {
+                builder.useTransportSecurity()
+            }
+            val ch = builder.build()
+            channel = ch
+            _timelineStub = TimelineServiceGrpcKt.TimelineServiceCoroutineStub(ch)
+                .withCallCredentials(BearerTokenCredentials(config.bearerToken))
+            Log.i(TAG, "gRPC channel ready")
         }
-        val ch = builder.build()
-        channel = ch
-        _timelineStub = TimelineServiceGrpcKt.TimelineServiceCoroutineStub(ch)
-            .withCallCredentials(BearerTokenCredentials(config.bearerToken))
-        Log.i(TAG, "gRPC channel ready")
     }
 }
 

@@ -153,11 +153,11 @@ func buildEnrichers(cfg *config.Config, logger *zap.Logger) (book domain.Enriche
 	})
 	uploader := enrichment.NewS3Uploader(s3Client, e.S3Bucket, e.S3Region)
 
-	book = enrichment.NewOpenLibraryEnricher(uploader)
+	book = enrichment.NewOpenLibraryEnricher(logger, uploader)
 	logger.Info("OpenLibrary book enricher enabled")
 
 	if e.TMDBReadAccessToken != "" {
-		filmTV = enrichment.NewTMDBEnricher(e.TMDBReadAccessToken, uploader)
+		filmTV = enrichment.NewTMDBEnricher(logger, e.TMDBReadAccessToken, uploader)
 		logger.Info("TMDB enricher enabled")
 	}
 

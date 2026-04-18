@@ -30,16 +30,22 @@ class NetworkMonitor @Inject constructor(
         // Track all networks that satisfy the request. Querying cm.activeNetwork inside
         // onLost() is racy — the OS may not have updated it by the time the callback fires.
         // Instead, maintain a local set: add on available, remove on lost, emit emptiness check.
+        // The lock guards the mutableSetOf so the remove + isNotEmpty check is atomic even if
+        // ConnectivityManager delivers callbacks from multiple threads concurrently.
+        val lock = Any()
         val activeNetworks = mutableSetOf<Network>()
 
         val callback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
-                activeNetworks.add(network)
+                synchronized(lock) { activeNetworks.add(network) }
                 trySend(true)
             }
             override fun onLost(network: Network) {
-                activeNetworks.remove(network)
-                trySend(activeNetworks.isNotEmpty())
+                val hasMore = synchronized(lock) {
+                    activeNetworks.remove(network)
+                    activeNetworks.isNotEmpty()
+                }
+                trySend(hasMore)
             }
         }
 

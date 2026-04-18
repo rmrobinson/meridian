@@ -7,5 +7,6 @@ class Converters {
     fun fromSyncState(value: SyncState): String = value.name
 
     @TypeConverter
-    fun toSyncState(value: String): SyncState = SyncState.valueOf(value)
+    fun toSyncState(value: String): SyncState =
+        SyncState.entries.firstOrNull { it.name == value } ?: SyncState.SYNCED
 }

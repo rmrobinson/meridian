@@ -76,6 +76,10 @@ protobuf {
     }
 }
 
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
     // AndroidX Core
     implementation(libs.core.ktx)

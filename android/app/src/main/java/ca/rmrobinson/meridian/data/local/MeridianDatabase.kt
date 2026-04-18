@@ -7,7 +7,7 @@ import androidx.room.TypeConverters
 @Database(
     entities = [EventEntity::class, LineFamilyEntity::class],
     version = 2,
-    exportSchema = false,
+    exportSchema = true,
 )
 @TypeConverters(Converters::class)
 abstract class MeridianDatabase : RoomDatabase() {

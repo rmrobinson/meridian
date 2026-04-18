@@ -2,6 +2,7 @@ package ca.rmrobinson.meridian.ui.entry.flight
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import ca.rmrobinson.meridian.data.EventRepository
 import ca.rmrobinson.meridian.domain.usecase.CreateEventUseCase
 import ca.rmrobinson.meridian.util.BcbpParser
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,6 +21,7 @@ import javax.inject.Inject
 @HiltViewModel
 class FlightScanViewModel @Inject constructor(
     private val createEventUseCase: CreateEventUseCase,
+    private val repository: EventRepository,
 ) : ViewModel() {
 
     /**
@@ -73,13 +75,20 @@ class FlightScanViewModel @Inject constructor(
         _uiState.update { it.copy(isSubmitting = true, submitError = null) }
         viewModelScope.launch {
             try {
-                // Track used keys per date to suffix same-day legs: travel-2025-07-03, travel-2025-07-03-2, ...
-                val usedLineKeys = mutableMapOf<String, Int>()
+                // Load all existing line keys for the travel family once, then track keys
+                // allocated in this batch so that same-day legs in the same scan don't collide.
+                val allocatedKeys = repository.getLineKeysByFamilyId(FlightEntryViewModel.FAMILY_ID)
+                    .toMutableSet()
+
                 flights.forEach { resolved ->
-                    val baseKey = "${FlightEntryViewModel.FAMILY_ID}-${resolved.date}"
-                    val count = (usedLineKeys[baseKey] ?: 0) + 1
-                    usedLineKeys[baseKey] = count
-                    val lineKey = if (count == 1) baseKey else "$baseKey-$count"
+                    val base = "${FlightEntryViewModel.FAMILY_ID}-${resolved.date}"
+                    val prefix = "$base-"
+                    val maxSuffix = allocatedKeys
+                        .filter { it.startsWith(prefix) }
+                        .mapNotNull { it.removePrefix(prefix).toIntOrNull() }
+                        .maxOrNull() ?: 0
+                    val lineKey = "$prefix${maxSuffix + 1}"
+                    allocatedKeys.add(lineKey)
 
                     val request = CreateEventRequest.newBuilder()
                         .setFamilyId(FlightEntryViewModel.FAMILY_ID)

@@ -12,6 +12,7 @@ import (
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 
 	"github.com/rmrobinson/meridian/backend/internal/domain"
+	"go.uber.org/zap"
 )
 
 // --- mock S3 client ---
@@ -145,6 +146,7 @@ func TestS3UploadFromURLIfNotExists_NotExists_Uploads(t *testing.T) {
 
 func newTestOpenLibraryEnricher(apiSrv, coverSrv *httptest.Server, uploader *S3Uploader) *OpenLibraryEnricher {
 	return &OpenLibraryEnricher{
+		logger:   zap.NewNop(),
 		uploader: uploader,
 		baseURL:  apiSrv.URL,
 		coverURL: coverSrv.URL,
@@ -371,6 +373,7 @@ func TestOpenLibrary_S3UploadFailure_ReturnsError(t *testing.T) {
 
 func newTestTMDBEnricher(apiSrv *httptest.Server, uploader *S3Uploader) *TMDBEnricher {
 	return &TMDBEnricher{
+		logger:          zap.NewNop(),
 		readAccessToken: "test-token",
 		uploader:        uploader,
 		baseURL:         apiSrv.URL,

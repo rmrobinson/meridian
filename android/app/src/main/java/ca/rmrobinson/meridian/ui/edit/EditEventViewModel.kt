@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import ca.rmrobinson.meridian.data.EventRepository
 import ca.rmrobinson.meridian.data.local.EventEntity
 import ca.rmrobinson.meridian.data.toUpdateRequest
+import ca.rmrobinson.meridian.data.visibilityFromString
 import ca.rmrobinson.meridian.domain.usecase.SyncEventsUseCase
 import ca.rmrobinson.meridian.domain.usecase.UpdateEventUseCase
 import android.util.Log
@@ -102,12 +103,7 @@ class EditEventViewModel @Inject constructor(
         val startDate = entity.startDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
         val endDate = entity.endDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
 
-        val visibility = when (entity.visibility) {
-            "VISIBILITY_PUBLIC"   -> Visibility.VISIBILITY_PUBLIC
-            "VISIBILITY_FRIENDS"  -> Visibility.VISIBILITY_FRIENDS
-            "VISIBILITY_FAMILY"   -> Visibility.VISIBILITY_FAMILY
-            else                  -> Visibility.VISIBILITY_PERSONAL
-        }
+        val visibility = visibilityFromString(entity.visibility)
 
         _uiState.update {
             UiState(

@@ -28,6 +28,9 @@ interface EventDao {
     @Query("SELECT * FROM events WHERE sync_state = 'LOCAL_ONLY'")
     suspend fun getLocalOnly(): List<EventEntity>
 
+    @Query("SELECT * FROM events WHERE sync_state = 'PENDING_UPDATE'")
+    suspend fun getPendingUpdate(): List<EventEntity>
+
     @Query("DELETE FROM events WHERE id = :id")
     suspend fun deleteById(id: String)
 }
