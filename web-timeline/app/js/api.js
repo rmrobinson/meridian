@@ -107,7 +107,13 @@ export function normalize(raw) {
   // can always read event.metadata.age without needing person.birth_date.
   injectBirthdayAge(events, person.birth_date);
 
-  const birthdays = generateBirthdays(person.birth_date, events);
+  // Derive visibility for auto-generated birthdays from any explicit birthday
+  // event — they should all share the same visibility level.
+  const birthdayVisibility = events.find(
+    (e) => e.metadata_type === 'life' && e.metadata?.milestone_type === 'birthday',
+  )?.visibility ?? 'public';
+
+  const birthdays = generateBirthdays(person.birth_date, events, birthdayVisibility);
 
   const allEvents = [...events, ...birthdays];
   return {
@@ -212,8 +218,23 @@ export function resolveFlights(events) {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
+const FITNESS_ACTIVITY_ICONS = {
+  run:    'mdi:run',
+  cycle:  'mdi:bike',
+  hike:   'mdi:hiking',
+  ski:    'mdi:ski',
+  scuba:  'mdi:diving-scuba',
+  climb:  'mdi:terrain',
+  golf:   'mdi:golf',
+  squash: 'mdi:tennis-ball',
+};
+
 function normalizeEvent(evt) {
-  const icon = evt.icon ?? null;
+  const rawIcon = evt.icon ?? null;
+  const icon = rawIcon
+    ?? (evt.metadata_type === 'fitness'
+      ? (FITNESS_ACTIVITY_ICONS[evt.metadata?.activity] ?? null)
+      : null);
   return {
     id: evt.id,
     family_id: evt.family_id,
@@ -236,6 +257,7 @@ function normalizeEvent(evt) {
     hero_image_url: evt.hero_image_url ?? null,
     photos: normalizePhotos(evt.photos),
     metadata: evt.metadata ?? {},
+    visibility: evt.visibility ?? 'public',
   };
 }
 
@@ -269,7 +291,7 @@ function normalizePhotos(photos) {
  * @param {object[]} existingEvents - already-normalized events
  * @returns {object[]}
  */
-export function generateBirthdays(birthDateStr, existingEvents = []) {
+export function generateBirthdays(birthDateStr, existingEvents = [], visibility = 'public') {
   if (!birthDateStr) return [];
   const birth = new Date(birthDateStr);
   if (isNaN(birth.getTime())) return [];
@@ -313,6 +335,7 @@ export function generateBirthdays(birthDateStr, existingEvents = []) {
       hero_image_url: null,
       photos: [],
       metadata: { milestone_type: 'birthday', age },
+      visibility,
     });
   }
 
