@@ -223,6 +223,7 @@ function bookCard(event) {
   layout.appendChild(info);
 
   wrap.appendChild(layout);
+  appendVisibilityBadge(wrap, event);
   appendDatesFooter(wrap, event);
   return wrap;
 }
@@ -271,6 +272,7 @@ function filmTvCard(event) {
   layout.appendChild(info);
 
   wrap.appendChild(layout);
+  appendVisibilityBadge(wrap, event);
   appendDatesFooter(wrap, event);
   return wrap;
 }
@@ -565,6 +567,24 @@ function appendShared(parent, event, { skipTitle = false, skipDates = false } = 
   if (event.location?.label) {
     parent.appendChild(el('p', 'card-location', event.location.label));
   }
+  appendVisibilityBadge(parent, event);
+}
+
+/**
+ * Append a visibility badge if the event is not public.
+ *
+ * @param {HTMLElement} parent
+ * @param {object}      event
+ */
+function appendVisibilityBadge(parent, event) {
+  const LABELS = {
+    friends:  '🔒 Friends',
+    family:   '🔒 Family',
+    personal: '🔒 Private',
+  };
+  const label = LABELS[event.visibility];
+  if (!label) return;
+  parent.appendChild(el('span', 'card-visibility', label));
 }
 
 /**
@@ -643,7 +663,7 @@ function starsFor(rating) {
 function formatDate(date) {
   if (!date) return '';
   return new Date(date).toLocaleDateString('en-GB', {
-    day: 'numeric', month: 'short', year: 'numeric',
+    day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC',
   });
 }
 
