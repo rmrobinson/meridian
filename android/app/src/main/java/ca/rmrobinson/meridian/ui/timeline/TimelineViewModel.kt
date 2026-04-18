@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -89,6 +90,15 @@ class TimelineViewModel @Inject constructor(
 
     init {
         sync()
+        // Auto-sync when connectivity is restored. drop(1) skips the initial StateFlow
+        // value so we don't race with the sync() call above on startup.
+        viewModelScope.launch {
+            networkMonitor.isOnline
+                .drop(1)
+                .collect { isOnline ->
+                    if (isOnline && !_syncState.value) sync()
+                }
+        }
     }
 
     fun sync() {

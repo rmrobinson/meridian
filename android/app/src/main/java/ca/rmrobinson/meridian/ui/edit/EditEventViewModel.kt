@@ -42,6 +42,7 @@ class EditEventViewModel @Inject constructor(
         val eventType: String = "",      // "span" or "point"
         val metadataType: String = "",   // "book", "film_tv", "flight", "life", etc.
         val filmTvSubtype: String = "",  // "FILM_TV_TYPE_MOVIE" or "FILM_TV_TYPE_TV"
+        val createdAt: Long = 0L,
         // Common editable
         val title: String = "",
         val description: String = "",
@@ -113,6 +114,7 @@ class EditEventViewModel @Inject constructor(
                 eventType = entity.type,
                 metadataType = metadataType,
                 filmTvSubtype = filmTvSubtype,
+                createdAt = entity.createdAt,
                 title = entity.title.ifBlank {
                     // Enricher may have filled in the title inside metadata (e.g. book ISBN lookup)
                     // while leaving the top-level event title empty if none was provided at creation.

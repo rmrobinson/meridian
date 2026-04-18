@@ -132,6 +132,11 @@ dependencies {
     // AndroidX Security
     implementation(libs.security.crypto)
 
+    // WorkManager + Hilt integration
+    implementation(libs.work.runtime.ktx)
+    implementation(libs.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
+
     // Testing
     testImplementation(libs.junit)
 }

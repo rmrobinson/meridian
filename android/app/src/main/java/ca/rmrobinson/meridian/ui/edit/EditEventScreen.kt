@@ -37,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.material3.Surface
 import meridian.v1.Visibility
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
@@ -58,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
@@ -164,6 +166,12 @@ private fun EditEventForm(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         // Read-only context header
+        val createdLabel = if (uiState.createdAt > 0L) {
+            "Created: " + Instant.ofEpochMilli(uiState.createdAt)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate()
+                .format(formatter)
+        } else null
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
@@ -172,18 +180,31 @@ private fun EditEventForm(
         ) {
             Column(
                 modifier = Modifier.padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        "Family: ${uiState.familyId}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    EventTypeChip(uiState.eventType)
+                }
                 Text(
-                    "Family: ${uiState.familyId}  ·  Type: ${uiState.eventType}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    uiState.lineKey,
+                    "Line key: ${uiState.lineKey}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (createdLabel != null) {
+                    Text(
+                        createdLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
 
@@ -482,6 +503,22 @@ private fun FlightMetadataSection(
 // ---------------------------------------------------------------------------
 // Shared composables
 // ---------------------------------------------------------------------------
+
+@Composable
+private fun EventTypeChip(eventType: String) {
+    val (label, color) = when (eventType) {
+        "span" -> "Span"  to MaterialTheme.colorScheme.secondaryContainer
+        else   -> "Point" to MaterialTheme.colorScheme.primaryContainer
+    }
+    Surface(shape = MaterialTheme.shapes.small, color = color) {
+        Text(
+            text = label,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
 
 private val VISIBILITY_OPTIONS = listOf(
     Visibility.VISIBILITY_PUBLIC   to "Public",
