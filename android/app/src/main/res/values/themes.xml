@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Minimal host theme for the Compose activity. All real theming is handled
-         by MeridianTheme in Compose. The platform theme just suppresses the
-         action bar so Compose owns the full window. -->
+         by MeridianTheme in Compose. DayNight parent ensures the system window
+         background respects the device light/dark setting (avoids a white flash
+         before Compose draws its first frame). -->
     <style name="Theme.Meridian" parent="android:Theme.Material.Light.NoActionBar" />
 </resources>

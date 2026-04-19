@@ -7,11 +7,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
+enum class ThemeMode { SYSTEM, LIGHT, DARK }
+
 data class AppConfig(
     val grpcHost: String,
     val grpcPort: Int,
     val bearerToken: String,
     val usePlaintext: Boolean = false,
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
 ) {
     val isConfigured: Boolean
         get() = grpcHost.isNotBlank() && bearerToken.isNotBlank()
@@ -24,6 +27,9 @@ data class AppConfig(
             grpcPort = prefs.getInt("grpc_port", 443),
             bearerToken = prefs.getString("bearer_token", "") ?: "",
             usePlaintext = prefs.getBoolean("use_plaintext", false),
+            themeMode = ThemeMode.entries.getOrElse(
+                prefs.getInt("theme_mode", 0)
+            ) { ThemeMode.SYSTEM },
         )
     }
 
@@ -35,6 +41,7 @@ data class AppConfig(
             .putInt("grpc_port", grpcPort)
             .putString("bearer_token", bearerToken)
             .putBoolean("use_plaintext", usePlaintext)
+            .putInt("theme_mode", themeMode.ordinal)
             .commit()
     }
 }
