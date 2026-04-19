@@ -4,6 +4,7 @@ import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
 import ca.rmrobinson.meridian.AppConfig
 import ca.rmrobinson.meridian.AppConfigStore
+import ca.rmrobinson.meridian.ThemeMode
 import ca.rmrobinson.meridian.data.remote.GrpcClient
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,6 +18,7 @@ data class SettingsUiState(
     val grpcPort: String = "443",
     val bearerToken: String = "",
     val usePlaintext: Boolean = false,
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
 )
 
 @HiltViewModel
@@ -33,6 +35,7 @@ class SettingsViewModel @Inject constructor(
                 grpcPort = cfg.grpcPort.toString(),
                 bearerToken = cfg.bearerToken,
                 usePlaintext = cfg.usePlaintext,
+                themeMode = cfg.themeMode,
             )
         },
     )
@@ -42,6 +45,7 @@ class SettingsViewModel @Inject constructor(
     fun updatePort(value: String) = _uiState.update { it.copy(grpcPort = value) }
     fun updateToken(value: String) = _uiState.update { it.copy(bearerToken = value) }
     fun updateUsePlaintext(value: Boolean) = _uiState.update { it.copy(usePlaintext = value) }
+    fun updateThemeMode(value: ThemeMode) = _uiState.update { it.copy(themeMode = value) }
 
     fun save() {
         val state = _uiState.value
@@ -50,6 +54,7 @@ class SettingsViewModel @Inject constructor(
             grpcPort = state.grpcPort.toIntOrNull() ?: 443,
             bearerToken = state.bearerToken.trim(),
             usePlaintext = state.usePlaintext,
+            themeMode = state.themeMode,
         )
         config.saveToPrefs(prefs)
         store.update(config)

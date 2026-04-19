@@ -40,7 +40,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MeridianTheme {
+            val config by appConfigStore.configFlow.collectAsState()
+            MeridianTheme(themeMode = config.themeMode) {
                 val navController = rememberNavController()
                 val startDestination = if (appConfigStore.current.isConfigured) "timeline" else "setup"
 

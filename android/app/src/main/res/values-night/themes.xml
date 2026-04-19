@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark-mode host theme. android:Theme.Material.NoActionBar is the dark
+         variant of the platform Material theme. Compose's MeridianTheme owns
+         all real colours; this just ensures the system window background is
+         dark before the first Compose frame is drawn. -->
+    <style name="Theme.Meridian" parent="android:Theme.Material.NoActionBar" />
+</resources>

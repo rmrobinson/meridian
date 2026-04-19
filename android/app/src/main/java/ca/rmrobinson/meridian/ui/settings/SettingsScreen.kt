@@ -17,6 +17,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -29,6 +32,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import ca.rmrobinson.meridian.ThemeMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -90,6 +94,25 @@ fun SettingsScreen(
                     checked = uiState.usePlaintext,
                     onCheckedChange = viewModel::updateUsePlaintext,
                 )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Theme")
+                val themeModes = listOf(ThemeMode.SYSTEM, ThemeMode.LIGHT, ThemeMode.DARK)
+                val themeLabels = listOf("System", "Light", "Dark")
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    themeModes.forEachIndexed { index, mode ->
+                        SegmentedButton(
+                            selected = uiState.themeMode == mode,
+                            onClick = { viewModel.updateThemeMode(mode) },
+                            shape = SegmentedButtonDefaults.itemShape(
+                                index = index,
+                                count = themeModes.size,
+                            ),
+                        ) {
+                            Text(themeLabels[index])
+                        }
+                    }
+                }
             }
             Spacer(modifier = Modifier.height(12.dp))
             Button(
