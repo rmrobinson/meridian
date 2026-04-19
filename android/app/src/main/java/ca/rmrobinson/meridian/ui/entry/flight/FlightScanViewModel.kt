@@ -16,6 +16,7 @@ import meridian.v1.EventType
 import meridian.v1.FlightMetadata
 import meridian.v1.Visibility
 import java.time.LocalDate
+import java.time.LocalTime
 import javax.inject.Inject
 
 @HiltViewModel
@@ -33,6 +34,7 @@ class FlightScanViewModel @Inject constructor(
         val parsed: BcbpParser.ParsedFlight,
         val date: LocalDate,
         val title: String,
+        val scheduledDeparture: LocalTime? = null,
     )
 
     data class UiState(
@@ -64,6 +66,14 @@ class FlightScanViewModel @Inject constructor(
                 )
             }
             _uiState.update { it.copy(resolvedFlights = resolved, parseError = null) }
+        }
+    }
+
+    fun setScheduledDeparture(index: Int, value: LocalTime?) {
+        _uiState.update { state ->
+            val updated = state.resolvedFlights.toMutableList()
+            if (index in updated.indices) updated[index] = updated[index].copy(scheduledDeparture = value)
+            state.copy(resolvedFlights = updated)
         }
     }
 
@@ -103,6 +113,11 @@ class FlightScanViewModel @Inject constructor(
                                 .setFlightNumber(resolved.parsed.flightNumber)
                                 .setOriginIata(resolved.parsed.originAirport)
                                 .setDestinationIata(resolved.parsed.destinationAirport)
+                                .also { b ->
+                                    resolved.scheduledDeparture?.let {
+                                        b.setScheduledDeparture(it.format(FlightEntryViewModel.TIME_FORMATTER))
+                                    }
+                                }
                                 .build(),
                         )
                         .build()
