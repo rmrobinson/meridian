@@ -1,8 +1,10 @@
 package ca.rmrobinson.meridian.data
 
+import ca.rmrobinson.meridian.data.healthconnect.HealthActivity
 import ca.rmrobinson.meridian.data.local.EventEntity
 import ca.rmrobinson.meridian.data.local.LineFamilyEntity
 import ca.rmrobinson.meridian.data.local.SyncState
+import androidx.health.connect.client.records.ExerciseSessionRecord
 import meridian.v1.BookMetadata
 import meridian.v1.ClimbingType
 import meridian.v1.ConcertMetadata
@@ -25,6 +27,7 @@ import meridian.v1.UpdateEventRequest
 import meridian.v1.Visibility
 import org.json.JSONArray
 import org.json.JSONObject
+import java.time.ZoneId
 
 // ---------------------------------------------------------------------------
 // Neutral metadata container — one subclass per family type.
@@ -516,4 +519,167 @@ private fun climbingTypeFrom(s: String): ClimbingType = when (s) {
 private fun JSONArray?.toStringList(): List<String> {
     if (this == null) return emptyList()
     return (0 until length()).map { getString(it) }
+}
+
+// ---------------------------------------------------------------------------
+// Health Connect → EventEntity / CreateEventRequest
+// ---------------------------------------------------------------------------
+
+/**
+ * Maps a raw Health Connect exercise type int to the closest Meridian FitnessActivity enum.
+ * Types without a direct mapping fall back to UNSPECIFIED.
+ */
+fun healthExerciseTypeToFitnessActivity(exerciseType: Int): FitnessActivity = when (exerciseType) {
+    ExerciseSessionRecord.EXERCISE_TYPE_RUNNING,
+    ExerciseSessionRecord.EXERCISE_TYPE_RUNNING_TREADMILL -> FitnessActivity.FITNESS_ACTIVITY_RUN
+
+    ExerciseSessionRecord.EXERCISE_TYPE_BIKING,
+    ExerciseSessionRecord.EXERCISE_TYPE_BIKING_STATIONARY -> FitnessActivity.FITNESS_ACTIVITY_CYCLE
+
+    ExerciseSessionRecord.EXERCISE_TYPE_HIKING            -> FitnessActivity.FITNESS_ACTIVITY_HIKE
+
+    ExerciseSessionRecord.EXERCISE_TYPE_SKIING,
+    ExerciseSessionRecord.EXERCISE_TYPE_SNOWBOARDING       -> FitnessActivity.FITNESS_ACTIVITY_SKI
+
+    ExerciseSessionRecord.EXERCISE_TYPE_SCUBA_DIVING       -> FitnessActivity.FITNESS_ACTIVITY_SCUBA
+
+    ExerciseSessionRecord.EXERCISE_TYPE_ROCK_CLIMBING      -> FitnessActivity.FITNESS_ACTIVITY_CLIMB
+
+    ExerciseSessionRecord.EXERCISE_TYPE_GOLF               -> FitnessActivity.FITNESS_ACTIVITY_GOLF
+
+    ExerciseSessionRecord.EXERCISE_TYPE_SQUASH             -> FitnessActivity.FITNESS_ACTIVITY_SQUASH
+
+    ExerciseSessionRecord.EXERCISE_TYPE_SWIMMING_OPEN_WATER,
+    ExerciseSessionRecord.EXERCISE_TYPE_SWIMMING_POOL      -> FitnessActivity.FITNESS_ACTIVITY_UNSPECIFIED
+
+    ExerciseSessionRecord.EXERCISE_TYPE_WALKING            -> FitnessActivity.FITNESS_ACTIVITY_UNSPECIFIED
+
+    else                                                   -> FitnessActivity.FITNESS_ACTIVITY_UNSPECIFIED
+}
+
+/** Builds the metadataJson for a Health Connect activity, including hc_id + source. */
+private fun HealthActivity.buildHcMetadataJson(fitnessActivity: FitnessActivity): String {
+    val meta = FitnessMetadata.newBuilder()
+        .setActivity(fitnessActivity)
+        .apply { distanceMeters?.let { setDistanceKm(it / 1000.0) } }
+        .apply { elevationGainedMeters?.let { setElevationGainM(it.toInt()) } }
+        .build()
+    val obj = JSONObject(SerializableMetadata.Fitness(meta).toJson())
+    obj.put("hc_id", healthConnectId)
+    obj.put("source", sourcePackageName ?: "health_connect")
+    return obj.toString()
+}
+
+/**
+ * Derives the title for a Health Connect activity.
+ * Uses the source-provided title if present; falls back to "{ActivityLabel} on {date}".
+ */
+fun HealthActivity.derivedTitle(fitnessActivity: FitnessActivity): String {
+    if (!title.isNullOrBlank()) return title
+    val dateLabel = startTime.atZone(ZoneId.systemDefault()).toLocalDate().toString()
+    val activityLabel = when (fitnessActivity) {
+        FitnessActivity.FITNESS_ACTIVITY_RUN    -> "Run"
+        FitnessActivity.FITNESS_ACTIVITY_CYCLE  -> "Cycle"
+        FitnessActivity.FITNESS_ACTIVITY_HIKE   -> "Hike"
+        FitnessActivity.FITNESS_ACTIVITY_SKI    -> "Ski"
+        FitnessActivity.FITNESS_ACTIVITY_SCUBA  -> "Scuba"
+        FitnessActivity.FITNESS_ACTIVITY_CLIMB  -> "Climb"
+        FitnessActivity.FITNESS_ACTIVITY_GOLF   -> "Golf"
+        FitnessActivity.FITNESS_ACTIVITY_SQUASH -> "Squash"
+        else                                    -> "Activity"
+    }
+    return "$activityLabel on $dateLabel"
+}
+
+/**
+ * Builds a [CreateEventRequest] for sending to the gRPC server.
+ * The `hc_id` is not included in the proto — it is stored in the local Room entity only.
+ */
+fun HealthActivity.toCreateRequest(fitnessActivity: FitnessActivity): CreateEventRequest {
+    val zone = ZoneId.systemDefault()
+    val start = startTime.atZone(zone).toLocalDate()
+    val end = endTime.atZone(zone).toLocalDate()
+    val isPoint = start == end
+
+    val meta = FitnessMetadata.newBuilder()
+        .setActivity(fitnessActivity)
+        .apply { distanceMeters?.let { setDistanceKm(it / 1000.0) } }
+        .apply { elevationGainedMeters?.let { setElevationGainM(it.toInt()) } }
+        .build()
+
+    val builder = CreateEventRequest.newBuilder()
+        .setFamilyId("fitness")
+        .setLineKey("fitness")
+        .setTitle(derivedTitle(fitnessActivity))
+        .setVisibility(Visibility.VISIBILITY_PUBLIC)
+        .setFitnessMetadata(meta)
+
+    if (isPoint) {
+        builder.setType(EventType.EVENT_TYPE_POINT).setDate(start.toString())
+    } else {
+        builder.setType(EventType.EVENT_TYPE_SPAN)
+            .setStartDate(start.toString())
+            .setEndDate(end.toString())
+    }
+
+    return builder.build()
+}
+
+/**
+ * Builds a LOCAL_ONLY [EventEntity] for a Health Connect activity.
+ * Unlike `CreateEventRequest.toLocalEntity()`, this includes `hc_id` and `source`
+ * in the metadataJson so Room-side deduplication works correctly.
+ */
+fun HealthActivity.toLocalEntity(localId: String, now: Long): EventEntity {
+    val fitnessActivity = healthExerciseTypeToFitnessActivity(exerciseType)
+    val zone = ZoneId.systemDefault()
+    val start = startTime.atZone(zone).toLocalDate()
+    val end = endTime.atZone(zone).toLocalDate()
+    val isPoint = start == end
+
+    return EventEntity(
+        id = localId,
+        familyId = "fitness",
+        lineKey = "fitness",
+        type = if (isPoint) "point" else "span",
+        title = derivedTitle(fitnessActivity),
+        startDate = if (!isPoint) start.toString() else null,
+        endDate = if (!isPoint) end.toString() else null,
+        date = if (isPoint) start.toString() else null,
+        locationLabel = null,
+        locationLat = null,
+        locationLng = null,
+        description = null,
+        externalUrl = null,
+        heroImageUrl = null,
+        metadataJson = buildHcMetadataJson(fitnessActivity),
+        visibility = Visibility.VISIBILITY_PUBLIC.name,
+        syncState = SyncState.LOCAL_ONLY,
+        createdAt = now,
+        updatedAt = now,
+    )
+}
+
+/**
+ * Patches Health Connect fields (hc_id, source, distance, elevation) into an existing
+ * fitness event's metadataJson, preserving all other existing fields. Used by the MERGE flow.
+ */
+fun patchHcFieldsIntoMetadataJson(
+    existingJson: String,
+    activity: HealthActivity,
+): String {
+    val obj = try { JSONObject(existingJson) } catch (_: Exception) { JSONObject() }
+    obj.put("hc_id", activity.healthConnectId)
+    obj.put("source", activity.sourcePackageName ?: "health_connect")
+    activity.distanceMeters?.let {
+        if (!obj.has("distance_km") || obj.getDouble("distance_km") == 0.0) {
+            obj.put("distance_km", it / 1000.0)
+        }
+    }
+    activity.elevationGainedMeters?.let {
+        if (!obj.has("elevation_gain_m") || obj.getInt("elevation_gain_m") == 0) {
+            obj.put("elevation_gain_m", it.toInt())
+        }
+    }
+    return obj.toString()
 }

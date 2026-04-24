@@ -14,6 +14,7 @@ import androidx.navigation.navArgument
 import ca.rmrobinson.meridian.ui.edit.EditEventScreen
 import ca.rmrobinson.meridian.ui.entry.fitness.FitnessLandingScreen
 import ca.rmrobinson.meridian.ui.entry.fitness.FitnessScreen
+import ca.rmrobinson.meridian.ui.entry.fitness.HealthConnectReviewScreen
 import ca.rmrobinson.meridian.ui.entry.flight.FlightLandingScreen
 import ca.rmrobinson.meridian.ui.entry.flight.FlightManualScreen
 import ca.rmrobinson.meridian.ui.entry.flight.FlightScanScreen
@@ -186,7 +187,17 @@ class MainActivity : ComponentActivity() {
                             onNavigateToActivity = { slug ->
                                 navController.navigate("entry/fitness/$slug")
                             },
+                            onNavigateToHealthConnectReview = {
+                                navController.navigate("entry/fitness/healthconnect")
+                            },
                             onBack = { navController.popBackStack() },
+                        )
+                    }
+
+                    composable("entry/fitness/healthconnect") {
+                        HealthConnectReviewScreen(
+                            onBack = { navController.popBackStack() },
+                            onDone = { navController.popBackStack("timeline", inclusive = false) },
                         )
                     }
 

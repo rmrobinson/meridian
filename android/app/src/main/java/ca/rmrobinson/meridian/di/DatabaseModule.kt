@@ -3,6 +3,7 @@ package ca.rmrobinson.meridian.di
 import android.content.Context
 import androidx.room.Room
 import ca.rmrobinson.meridian.data.local.EventDao
+import ca.rmrobinson.meridian.data.local.HcEventLinkDao
 import ca.rmrobinson.meridian.data.local.LineFamilyDao
 import ca.rmrobinson.meridian.data.local.MeridianDatabase
 import dagger.Module
@@ -28,4 +29,7 @@ object DatabaseModule {
 
     @Provides
     fun provideLineFamilyDao(db: MeridianDatabase): LineFamilyDao = db.lineFamilyDao()
+
+    @Provides
+    fun provideHcEventLinkDao(db: MeridianDatabase): HcEventLinkDao = db.hcEventLinkDao()
 }

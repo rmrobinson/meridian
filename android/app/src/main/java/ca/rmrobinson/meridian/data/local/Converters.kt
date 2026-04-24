@@ -9,4 +9,11 @@ class Converters {
     @TypeConverter
     fun toSyncState(value: String): SyncState =
         SyncState.entries.firstOrNull { it.name == value } ?: SyncState.SYNCED
+
+    @TypeConverter
+    fun fromHcLinkStatus(value: HcLinkStatus): String = value.name
+
+    @TypeConverter
+    fun toHcLinkStatus(value: String): HcLinkStatus =
+        HcLinkStatus.entries.firstOrNull { it.name == value } ?: HcLinkStatus.IMPORTED
 }
