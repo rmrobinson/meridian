@@ -12,6 +12,7 @@
         android:label="Meridian"
         android:supportsRtl="true"
         android:theme="@style/Theme.Meridian"
+        android:fullBackupContent="@xml/backup_rules"
         android:usesCleartextTraffic="true">
 
         <activity
