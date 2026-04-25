@@ -1,0 +1,28 @@
+[Unit]
+Description=Meridian backend server
+Documentation=https://github.com/rmrobinson/meridian
+After=network.target
+
+[Service]
+Type=simple
+User=meridiand
+Group=meridiand
+
+WorkingDirectory=/opt/meridiand
+ExecStart=/opt/meridiand/meridiand --config /etc/meridiand/config.yaml
+Restart=on-failure
+RestartSec=5s
+
+# Write stdout/stderr to a dedicated log file so logrotate can manage it.
+StandardOutput=append:/var/log/meridiand/meridiand.log
+StandardError=append:/var/log/meridiand/meridiand.log
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/meridiand /var/log/meridiand
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
