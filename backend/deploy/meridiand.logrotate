@@ -1,0 +1,14 @@
+/var/log/meridiand/meridiand.log {
+    daily
+    rotate 7
+    compress
+    delaycompress
+    missingok
+    notifempty
+
+    # copytruncate: copies the log then truncates the original in-place so the
+    # process can keep writing to its open fd without needing a reopen signal.
+    # Tiny window of potential log loss between copy and truncate is acceptable
+    # for this use case.
+    copytruncate
+}
