@@ -113,6 +113,7 @@ class FlightScanViewModel @Inject constructor(
                                 .setFlightNumber(resolved.parsed.flightNumber)
                                 .setOriginIata(resolved.parsed.originAirport)
                                 .setDestinationIata(resolved.parsed.destinationAirport)
+                                .setBookingCode(resolved.parsed.bookingCode)
                                 .also { b ->
                                     resolved.scheduledDeparture?.let {
                                         b.setScheduledDeparture(it.format(FlightEntryViewModel.TIME_FORMATTER))
