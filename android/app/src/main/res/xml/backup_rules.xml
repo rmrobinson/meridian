@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Exclude the encrypted SharedPreferences and Room database from Android Auto Backup.
+    Both are either tied to the Keystore key (which is lost on uninstall) or are purely
+    a local cache of server-side data and should be rebuilt fresh on reinstall.
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="meridian_prefs.xml" />
+    <exclude domain="database" path="meridian.db" />
+</full-backup-content>
