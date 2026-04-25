@@ -69,6 +69,7 @@ class EditEventViewModel @Inject constructor(
         val flightNumber: String = "",
         val originIata: String = "",
         val destinationIata: String = "",
+        val bookingCode: String = "",
         val scheduledDeparture: LocalTime? = null,
         val actualDeparture: LocalTime? = null,
         val actualArrival: LocalTime? = null,
@@ -176,6 +177,7 @@ class EditEventViewModel @Inject constructor(
                 flightNumber = if (metadataType == "flight") json.optString("flight_number") else "",
                 originIata = if (metadataType == "flight") json.optString("origin_iata") else "",
                 destinationIata = if (metadataType == "flight") json.optString("destination_iata") else "",
+                bookingCode = if (metadataType == "flight") json.optString("booking_code") else "",
                 scheduledDeparture = if (metadataType == "flight") parseFlightTime(json.optString("scheduled_departure")) else null,
                 actualDeparture = if (metadataType == "flight") parseFlightTime(json.optString("actual_departure")) else null,
                 actualArrival = if (metadataType == "flight") parseFlightTime(json.optString("actual_arrival")) else null,
@@ -241,6 +243,7 @@ class EditEventViewModel @Inject constructor(
     fun setFlightNumber(value: String) = _uiState.update { it.copy(flightNumber = value) }
     fun setOriginIata(value: String) = _uiState.update { it.copy(originIata = value.uppercase()) }
     fun setDestinationIata(value: String) = _uiState.update { it.copy(destinationIata = value.uppercase()) }
+    fun setBookingCode(value: String) = _uiState.update { it.copy(bookingCode = value.uppercase()) }
     fun setScheduledDeparture(value: LocalTime?) = _uiState.update { it.copy(scheduledDeparture = value) }
     fun setActualDeparture(value: LocalTime?) = _uiState.update { it.copy(actualDeparture = value) }
     fun setActualArrival(value: LocalTime?) = _uiState.update { it.copy(actualArrival = value) }
@@ -469,6 +472,7 @@ private class FitnessParseContext {
                             .setFlightNumber(state.flightNumber.trim())
                             .setOriginIata(state.originIata.trim())
                             .setDestinationIata(state.destinationIata.trim())
+                            .setBookingCode(state.bookingCode.trim())
                         if (state.scheduledDeparture == null) metaBuilder.clearScheduledDeparture()
                         else metaBuilder.setScheduledDeparture(state.scheduledDeparture.format(TIME_FORMATTER))
                         if (state.actualDeparture == null) metaBuilder.clearActualDeparture()

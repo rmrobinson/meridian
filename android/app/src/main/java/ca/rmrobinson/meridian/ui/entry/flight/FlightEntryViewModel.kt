@@ -32,6 +32,7 @@ class FlightEntryViewModel @Inject constructor(
         val flightNumber: String = "",
         val originIata: String = "",
         val destinationIata: String = "",
+        val bookingCode: String = "",
         val departureDate: LocalDate = LocalDate.now(),
         val scheduledDeparture: LocalTime? = null,
         val isSubmitting: Boolean = false,
@@ -46,6 +47,7 @@ class FlightEntryViewModel @Inject constructor(
     fun setFlightNumber(value: String) = _uiState.update { it.copy(flightNumber = value) }
     fun setOriginIata(value: String) = _uiState.update { it.copy(originIata = value.uppercase()) }
     fun setDestinationIata(value: String) = _uiState.update { it.copy(destinationIata = value.uppercase()) }
+    fun setBookingCode(value: String) = _uiState.update { it.copy(bookingCode = value.uppercase()) }
     fun setDepartureDate(value: LocalDate) = _uiState.update { it.copy(departureDate = value) }
     fun setScheduledDeparture(value: LocalTime?) = _uiState.update { it.copy(scheduledDeparture = value) }
     fun dismissError() = _uiState.update { it.copy(error = null) }
@@ -91,6 +93,7 @@ class FlightEntryViewModel @Inject constructor(
                             .setFlightNumber(state.flightNumber.trim())
                             .setOriginIata(state.originIata.trim())
                             .setDestinationIata(state.destinationIata.trim())
+                            .setBookingCode(state.bookingCode.trim())
                             .also { b ->
                                 state.scheduledDeparture?.let { b.setScheduledDeparture(it.format(TIME_FORMATTER)) }
                             }

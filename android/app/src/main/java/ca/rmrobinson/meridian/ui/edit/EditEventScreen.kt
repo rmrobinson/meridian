@@ -570,6 +570,17 @@ private fun FlightMetadataSection(
             modifier = Modifier.weight(1f),
         )
     }
+    OutlinedTextField(
+        value = uiState.bookingCode,
+        onValueChange = viewModel::setBookingCode,
+        label = { Text("Booking code") },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Text,
+            capitalization = KeyboardCapitalization.Characters,
+        ),
+        modifier = Modifier.fillMaxWidth(),
+    )
     val timeFormatter = remember { EditEventViewModel.TIME_FORMATTER }
     Row(
         modifier = Modifier.fillMaxWidth(),

@@ -145,6 +145,16 @@ fun FlightManualScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
 
+            OutlinedTextField(
+                value = uiState.bookingCode,
+                onValueChange = viewModel::setBookingCode,
+                label = { Text("Booking code") },
+                placeholder = { Text("e.g. ABC123") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
+                modifier = Modifier.fillMaxWidth(),
+            )
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),

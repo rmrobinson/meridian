@@ -43,6 +43,8 @@ object BcbpParser {
         val compartmentCode: String,
         val seatNumber: String,
         val sequenceNumber: String,
+        /** PNR / booking reference from the mandatory section (chars 23–29), shared across all legs. */
+        val bookingCode: String,
     )
 
     /**
@@ -75,7 +77,7 @@ object BcbpParser {
             val markerIdx = bcbp.indexOf('>', cursor)
             if (markerIdx < 0) break
             val legStart = markerIdx + 1
-            val repeated = parseRepeatedSection(bcbp, legStart, leg1.passengerName) ?: break
+            val repeated = parseRepeatedSection(bcbp, legStart, leg1.passengerName, leg1.bookingCode) ?: break
             results.add(repeated)
             // Advance cursor: mandatory repeated data is 30 chars; conditional size at [28..29]
             val repConditionalHex = safeSubstring(bcbp, legStart + 28, legStart + 30)?.trim() ?: "00"
@@ -94,6 +96,7 @@ object BcbpParser {
         return try {
             ParsedFlight(
                 passengerName              = bcbp.substring(2, 22).trim(),
+                bookingCode                = bcbp.substring(23, 30).trim(),
                 operatingCarrierDesignator = bcbp.substring(36, 39).trim(),
                 flightNumber               = bcbp.substring(39, 44).trim(),
                 originAirport              = bcbp.substring(30, 33).trim(),
@@ -121,10 +124,11 @@ object BcbpParser {
      *   [27]    passenger status    1 char
      *   [28..29] field size (hex)   2 char
      */
-    private fun parseRepeatedSection(bcbp: String, start: Int, passengerName: String): ParsedFlight? {
+    private fun parseRepeatedSection(bcbp: String, start: Int, passengerName: String, bookingCode: String): ParsedFlight? {
         return try {
             ParsedFlight(
                 passengerName              = passengerName,
+                bookingCode                = bookingCode,
                 originAirport              = bcbp.substring(start, start + 3).trim(),
                 destinationAirport         = bcbp.substring(start + 3, start + 6).trim(),
                 operatingCarrierDesignator = bcbp.substring(start + 6, start + 9).trim(),

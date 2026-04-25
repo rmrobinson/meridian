@@ -306,6 +306,7 @@ func jsonToEventMetadata(e *domain.Event, out *pb.Event) {
 			ScheduledArrival:   m.ScheduledArrival,
 			ActualDeparture:    m.ActualDeparture,
 			ActualArrival:      m.ActualArrival,
+			BookingCode:        m.BookingCode,
 		}}
 	case "book":
 		m, err := domain.ParseMetadata[domain.BookMetadata](e)
@@ -408,6 +409,7 @@ func protoToFlightMetadata(p *pb.FlightMetadata) *domain.FlightMetadata {
 		ScheduledArrival:   p.GetScheduledArrival(),
 		ActualDeparture:    p.GetActualDeparture(),
 		ActualArrival:      p.GetActualArrival(),
+		BookingCode:        p.GetBookingCode(),
 	}
 }
 
