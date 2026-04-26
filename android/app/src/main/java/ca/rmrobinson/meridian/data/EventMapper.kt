@@ -120,6 +120,7 @@ private fun SerializableMetadata?.toJson(): String {
             obj.put("scheduled_arrival", scheduledArrival)
             obj.put("actual_departure", actualDeparture)
             obj.put("actual_arrival", actualArrival)
+            obj.put("booking_code", bookingCode)
         }
         is SerializableMetadata.Book -> with(proto) {
             obj.put("type", "book")
@@ -227,6 +228,7 @@ private fun parseMetadataFromJson(json: String): SerializableMetadata? {
                 .setScheduledArrival(obj.optString("scheduled_arrival"))
                 .setActualDeparture(obj.optString("actual_departure"))
                 .setActualArrival(obj.optString("actual_arrival"))
+                .setBookingCode(obj.optString("booking_code"))
                 .build(),
         )
         "book" -> SerializableMetadata.Book(

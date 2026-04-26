@@ -16,6 +16,8 @@ import meridian.v1.EventType
 import meridian.v1.FlightMetadata
 import meridian.v1.Visibility
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
 @HiltViewModel
@@ -30,7 +32,9 @@ class FlightEntryViewModel @Inject constructor(
         val flightNumber: String = "",
         val originIata: String = "",
         val destinationIata: String = "",
+        val bookingCode: String = "",
         val departureDate: LocalDate = LocalDate.now(),
+        val scheduledDeparture: LocalTime? = null,
         val isSubmitting: Boolean = false,
         val error: String? = null,
         val isSuccess: Boolean = false,
@@ -43,7 +47,9 @@ class FlightEntryViewModel @Inject constructor(
     fun setFlightNumber(value: String) = _uiState.update { it.copy(flightNumber = value) }
     fun setOriginIata(value: String) = _uiState.update { it.copy(originIata = value.uppercase()) }
     fun setDestinationIata(value: String) = _uiState.update { it.copy(destinationIata = value.uppercase()) }
+    fun setBookingCode(value: String) = _uiState.update { it.copy(bookingCode = value.uppercase()) }
     fun setDepartureDate(value: LocalDate) = _uiState.update { it.copy(departureDate = value) }
+    fun setScheduledDeparture(value: LocalTime?) = _uiState.update { it.copy(scheduledDeparture = value) }
     fun dismissError() = _uiState.update { it.copy(error = null) }
 
     fun submit() {
@@ -87,6 +93,10 @@ class FlightEntryViewModel @Inject constructor(
                             .setFlightNumber(state.flightNumber.trim())
                             .setOriginIata(state.originIata.trim())
                             .setDestinationIata(state.destinationIata.trim())
+                            .setBookingCode(state.bookingCode.trim())
+                            .also { b ->
+                                state.scheduledDeparture?.let { b.setScheduledDeparture(it.format(TIME_FORMATTER)) }
+                            }
                             .build(),
                     )
                     .build()
@@ -102,6 +112,7 @@ class FlightEntryViewModel @Inject constructor(
 
     companion object {
         const val FAMILY_ID = "travel"
+        val TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
         /**
          * Converts an IATA Julian day-of-year (1–366) to a [LocalDate].

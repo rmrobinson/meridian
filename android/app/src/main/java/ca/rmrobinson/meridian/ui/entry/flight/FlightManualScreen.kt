@@ -13,6 +13,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
@@ -28,8 +30,11 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
+import java.time.LocalTime
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -56,7 +61,14 @@ fun FlightManualScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val formatter = remember { DateTimeFormatter.ISO_LOCAL_DATE }
+    val timeFormatter = remember { FlightEntryViewModel.TIME_FORMATTER }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+    val scheduledDeparturePickerState = rememberTimePickerState(
+        initialHour = uiState.scheduledDeparture?.hour ?: 0,
+        initialMinute = uiState.scheduledDeparture?.minute ?: 0,
+        is24Hour = true,
+    )
 
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
@@ -133,11 +145,37 @@ fun FlightManualScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            OutlinedButton(
-                onClick = { showDatePicker = true },
+            OutlinedTextField(
+                value = uiState.bookingCode,
+                onValueChange = viewModel::setBookingCode,
+                label = { Text("Booking code") },
+                placeholder = { Text("e.g. ABC123") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
                 modifier = Modifier.fillMaxWidth(),
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("Departure date: ${uiState.departureDate.format(formatter)}")
+                OutlinedButton(
+                    onClick = { showDatePicker = true },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("Date: ${uiState.departureDate.format(formatter)}")
+                }
+                OutlinedButton(
+                    onClick = { showTimePicker = true },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(uiState.scheduledDeparture?.format(timeFormatter)?.let { "Dep: $it" } ?: "Sched. dep.")
+                }
+            }
+            if (uiState.scheduledDeparture != null) {
+                TextButton(onClick = { viewModel.setScheduledDeparture(null) }) {
+                    Text("Clear sched. dep.")
+                }
             }
 
             if (uiState.airline.isNotBlank() || uiState.flightNumber.isNotBlank()) {
@@ -195,5 +233,21 @@ fun FlightManualScreen(
                 TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
             },
         ) { DatePicker(state = pickerState) }
+    }
+
+    if (showTimePicker) {
+        AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.setScheduledDeparture(LocalTime.of(scheduledDeparturePickerState.hour, scheduledDeparturePickerState.minute))
+                    showTimePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimePicker = false }) { Text("Cancel") }
+            },
+            text = { TimePicker(state = scheduledDeparturePickerState) },
+        )
     }
 }

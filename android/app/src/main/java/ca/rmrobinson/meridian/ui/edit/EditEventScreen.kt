@@ -21,6 +21,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
@@ -39,13 +40,16 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.Surface
+import androidx.compose.material3.rememberTimePickerState
 import meridian.v1.ClimbingType
 import meridian.v1.FitnessActivity
 import meridian.v1.Visibility
 import androidx.compose.material3.rememberDatePickerState
+import java.time.LocalTime
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -146,12 +150,14 @@ private fun EditEventForm(
     viewModel: EditEventViewModel,
 ) {
     val formatter = remember { DateTimeFormatter.ISO_LOCAL_DATE }
+    val timeFormatter = remember { EditEventViewModel.TIME_FORMATTER }
     var showPrimaryDatePicker by remember { mutableStateOf(false) }
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
+    var showScheduledDeparturePicker by remember { mutableStateOf(false) }
     val today = remember { LocalDate.now() }
 
-    // All three picker states hoisted unconditionally; fallback to today when optional dates absent
+    // All picker states hoisted unconditionally; fallback to today/midnight when values absent
     val primaryDatePickerState = rememberDatePickerState(
         initialSelectedDateMillis = (uiState.date ?: uiState.startDate ?: today)
             .atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
@@ -163,6 +169,11 @@ private fun EditEventForm(
     val endPickerState = rememberDatePickerState(
         initialSelectedDateMillis = (uiState.endDate ?: today)
             .atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
+    )
+    val scheduledDeparturePickerState = rememberTimePickerState(
+        initialHour = uiState.scheduledDeparture?.hour ?: 0,
+        initialMinute = uiState.scheduledDeparture?.minute ?: 0,
+        is24Hour = true,
     )
 
     Column(
@@ -268,11 +279,36 @@ private fun EditEventForm(
             }
         } else {
             val primaryDate = uiState.date ?: uiState.startDate
-            OutlinedButton(
-                onClick = { showPrimaryDatePicker = true },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("Date: ${primaryDate?.format(formatter) ?: "Select date"}")
+            if (uiState.metadataType == "flight") {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    OutlinedButton(
+                        onClick = { showPrimaryDatePicker = true },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text("Date: ${primaryDate?.format(formatter) ?: "Select date"}")
+                    }
+                    OutlinedButton(
+                        onClick = { showScheduledDeparturePicker = true },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(uiState.scheduledDeparture?.format(timeFormatter)?.let { "Dep: $it" } ?: "Sched. dep.")
+                    }
+                }
+                if (uiState.scheduledDeparture != null) {
+                    TextButton(onClick = { viewModel.setScheduledDeparture(null) }) {
+                        Text("Clear sched. dep.")
+                    }
+                }
+            } else {
+                OutlinedButton(
+                    onClick = { showPrimaryDatePicker = true },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Date: ${primaryDate?.format(formatter) ?: "Select date"}")
+                }
             }
         }
 
@@ -365,6 +401,22 @@ private fun EditEventForm(
             },
         ) { DatePicker(state = endPickerState) }
     }
+
+    if (showScheduledDeparturePicker) {
+        AlertDialog(
+            onDismissRequest = { showScheduledDeparturePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.setScheduledDeparture(LocalTime.of(scheduledDeparturePickerState.hour, scheduledDeparturePickerState.minute))
+                    showScheduledDeparturePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showScheduledDeparturePicker = false }) { Text("Cancel") }
+            },
+            text = { TimePicker(state = scheduledDeparturePickerState) },
+        )
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -450,11 +502,24 @@ private fun FilmTvMetadataSection(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FlightMetadataSection(
     uiState: EditEventViewModel.UiState,
     viewModel: EditEventViewModel,
 ) {
+    var showActualDeparturePicker by remember { mutableStateOf(false) }
+    var showActualArrivalPicker by remember { mutableStateOf(false) }
+    val actualDeparturePickerState = rememberTimePickerState(
+        initialHour = uiState.actualDeparture?.hour ?: 0,
+        initialMinute = uiState.actualDeparture?.minute ?: 0,
+        is24Hour = true,
+    )
+    val actualArrivalPickerState = rememberTimePickerState(
+        initialHour = uiState.actualArrival?.hour ?: 0,
+        initialMinute = uiState.actualArrival?.minute ?: 0,
+        is24Hour = true,
+    )
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -503,6 +568,78 @@ private fun FlightMetadataSection(
                 capitalization = KeyboardCapitalization.Characters,
             ),
             modifier = Modifier.weight(1f),
+        )
+    }
+    OutlinedTextField(
+        value = uiState.bookingCode,
+        onValueChange = viewModel::setBookingCode,
+        label = { Text("Booking code") },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Text,
+            capitalization = KeyboardCapitalization.Characters,
+        ),
+        modifier = Modifier.fillMaxWidth(),
+    )
+    val timeFormatter = remember { EditEventViewModel.TIME_FORMATTER }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        OutlinedButton(
+            onClick = { showActualDeparturePicker = true },
+            modifier = Modifier.weight(1f),
+        ) {
+            Text(uiState.actualDeparture?.format(timeFormatter)?.let { "Dep: $it" } ?: "Actual departure")
+        }
+        OutlinedButton(
+            onClick = { showActualArrivalPicker = true },
+            modifier = Modifier.weight(1f),
+        ) {
+            Text(uiState.actualArrival?.format(timeFormatter)?.let { "Arr: $it" } ?: "Actual arrival")
+        }
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (uiState.actualDeparture != null) {
+            TextButton(onClick = { viewModel.setActualDeparture(null) }) { Text("Clear departure") }
+        }
+        if (uiState.actualArrival != null) {
+            TextButton(onClick = { viewModel.setActualArrival(null) }) { Text("Clear arrival") }
+        }
+    }
+
+    if (showActualDeparturePicker) {
+        AlertDialog(
+            onDismissRequest = { showActualDeparturePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.setActualDeparture(LocalTime.of(actualDeparturePickerState.hour, actualDeparturePickerState.minute))
+                    showActualDeparturePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showActualDeparturePicker = false }) { Text("Cancel") }
+            },
+            text = { TimePicker(state = actualDeparturePickerState) },
+        )
+    }
+
+    if (showActualArrivalPicker) {
+        AlertDialog(
+            onDismissRequest = { showActualArrivalPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.setActualArrival(LocalTime.of(actualArrivalPickerState.hour, actualArrivalPickerState.minute))
+                    showActualArrivalPicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showActualArrivalPicker = false }) { Text("Cancel") }
+            },
+            text = { TimePicker(state = actualArrivalPickerState) },
         )
     }
 }

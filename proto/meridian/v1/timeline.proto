@@ -58,6 +58,7 @@ message FlightMetadata {
   string scheduled_arrival = 8;
   string actual_departure = 9;
   string actual_arrival = 10;
+  string booking_code = 11;
 }
 
 message BookMetadata {

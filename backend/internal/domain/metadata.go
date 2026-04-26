@@ -61,6 +61,7 @@ type FlightMetadata struct {
 	ScheduledArrival    string `json:"scheduled_arrival,omitempty"`
 	ActualDeparture     string `json:"actual_departure,omitempty"`
 	ActualArrival       string `json:"actual_arrival,omitempty"`
+	BookingCode         string `json:"booking_code,omitempty"`
 }
 
 type BookMetadata struct {

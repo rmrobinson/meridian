@@ -182,6 +182,74 @@ Pass the JWT returned by `CreateSharingToken` as a bearer token on any REST requ
 curl -H "Authorization: Bearer <sharing_jwt>" http://localhost:8080/api/timeline
 ```
 
+## Deploying with systemd
+
+The `deploy/` directory contains a systemd service unit and a logrotate config.
+
+### 1. Build the binary
+
+```bash
+make generate
+make build
+```
+
+### 2. Create the service user and directories
+
+```bash
+sudo useradd -r -s /sbin/nologin meridiand
+sudo mkdir -p /opt/meridiand /etc/meridiand /var/log/meridiand /var/lib/meridiand
+sudo chown meridiand:meridiand /var/log/meridiand /var/lib/meridiand
+sudo chmod 0750 /var/log/meridiand /var/lib/meridiand
+```
+
+### 3. Install the binary and config
+
+```bash
+sudo cp bin/server /opt/meridiand/meridiand
+sudo cp config.yaml /etc/meridiand/config.yaml
+sudo chown root:meridiand /etc/meridiand/config.yaml
+sudo chmod 0640 /etc/meridiand/config.yaml
+```
+
+Update `database.path` in `/etc/meridiand/config.yaml` to a path under `/var/lib/meridiand/`, e.g. `/var/lib/meridiand/meridian.db`.
+
+### 4. Install the systemd unit
+
+```bash
+sudo cp deploy/meridiand.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now meridiand
+```
+
+Check it started cleanly:
+
+```bash
+sudo systemctl status meridiand
+```
+
+### 5. Install log rotation
+
+```bash
+sudo cp deploy/meridiand.logrotate /etc/logrotate.d/meridiand
+```
+
+Logs are written to `/var/log/meridiand/meridiand.log`, rotated daily, and kept for 7 days. Older files are compressed automatically.
+
+To test rotation immediately:
+
+```bash
+sudo logrotate --debug /etc/logrotate.d/meridiand
+```
+
+### Updating the binary
+
+```bash
+make build
+sudo systemctl stop meridiand
+sudo cp bin/server /opt/meridiand/meridiand
+sudo systemctl start meridiand
+```
+
 ## Makefile targets
 
 | Target     | Description                        |

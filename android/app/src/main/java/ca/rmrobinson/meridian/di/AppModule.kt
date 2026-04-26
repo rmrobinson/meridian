@@ -42,16 +42,28 @@ abstract class AppModule {
         @Provides
         @Singleton
         fun provideEncryptedSharedPreferences(@ApplicationContext context: Context): SharedPreferences {
-            val masterKey = MasterKey.Builder(context)
-                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                .build()
-            return EncryptedSharedPreferences.create(
-                context,
-                "meridian_prefs",
-                masterKey,
-                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
-            )
+            val prefsName = "meridian_prefs"
+            fun buildPrefs(): SharedPreferences {
+                val masterKey = MasterKey.Builder(context)
+                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                    .build()
+                return EncryptedSharedPreferences.create(
+                    context,
+                    prefsName,
+                    masterKey,
+                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+                )
+            }
+            return try {
+                buildPrefs()
+            } catch (e: Exception) {
+                // The Keystore key was deleted (e.g. app uninstall/reinstall) but the encrypted
+                // prefs file survived via backup, making decryption impossible. Delete the stale
+                // file and recreate with a fresh key.
+                context.deleteSharedPreferences(prefsName)
+                buildPrefs()
+            }
         }
 
         @Provides

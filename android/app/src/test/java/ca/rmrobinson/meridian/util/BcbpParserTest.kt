@@ -76,6 +76,7 @@ class BcbpParserTest {
         assertEquals(1, result!!.size)
         with(result[0]) {
             assertEquals("DOE/JOHN", passengerName)
+            assertEquals("ABC1234", bookingCode)
             assertEquals("AC", operatingCarrierDesignator)
             assertEquals("0301", flightNumber)
             assertEquals("YYZ", originAirport)
@@ -157,6 +158,7 @@ class BcbpParserTest {
         }
         with(result[1]) {
             assertEquals("DOE/JOHN", passengerName)  // inherited from leg 1
+            assertEquals("ABC1234", bookingCode)     // inherited from leg 1
             assertEquals("ORD", originAirport)
             assertEquals("LHR", destinationAirport)
             assertEquals("UA", operatingCarrierDesignator)

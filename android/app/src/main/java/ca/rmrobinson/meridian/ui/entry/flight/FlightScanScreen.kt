@@ -8,10 +8,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -25,12 +27,18 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import java.time.LocalTime
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -119,11 +127,15 @@ fun FlightScanScreen(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(
+                    itemsIndexed(
                         items = uiState.resolvedFlights,
-                        key = { "${it.parsed.originAirport}-${it.parsed.destinationAirport}-${it.parsed.julianDate}" },
-                    ) { resolved ->
-                        FlightSummaryCard(resolved = resolved, formatter = formatter)
+                        key = { _, it -> "${it.parsed.originAirport}-${it.parsed.destinationAirport}-${it.parsed.julianDate}" },
+                    ) { index, resolved ->
+                        FlightSummaryCard(
+                            resolved = resolved,
+                            formatter = formatter,
+                            onSetDeparture = { viewModel.setScheduledDeparture(index, it) },
+                        )
                     }
                 }
                 Spacer(Modifier.height(12.dp))
@@ -155,11 +167,21 @@ fun FlightScanScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FlightSummaryCard(
     resolved: FlightScanViewModel.ResolvedFlight,
     formatter: DateTimeFormatter,
+    onSetDeparture: (LocalTime?) -> Unit,
 ) {
+    var showTimePicker by remember { mutableStateOf(false) }
+    val timeFormatter = remember { FlightEntryViewModel.TIME_FORMATTER }
+    val timePickerState = rememberTimePickerState(
+        initialHour = resolved.scheduledDeparture?.hour ?: 0,
+        initialMinute = resolved.scheduledDeparture?.minute ?: 0,
+        is24Hour = true,
+    )
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -181,6 +203,30 @@ private fun FlightSummaryCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { showTimePicker = true }) {
+                    Text(resolved.scheduledDeparture?.format(timeFormatter)?.let { "Dep: $it" } ?: "Sched. dep.")
+                }
+                if (resolved.scheduledDeparture != null) {
+                    TextButton(onClick = { onSetDeparture(null) }) { Text("Clear") }
+                }
+            }
         }
+    }
+
+    if (showTimePicker) {
+        AlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    onSetDeparture(LocalTime.of(timePickerState.hour, timePickerState.minute))
+                    showTimePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimePicker = false }) { Text("Cancel") }
+            },
+            text = { TimePicker(state = timePickerState) },
+        )
     }
 }

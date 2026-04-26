@@ -23,6 +23,8 @@ import meridian.v1.FitnessMetadata
 import meridian.v1.Visibility
 import org.json.JSONObject
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
 @HiltViewModel
@@ -67,6 +69,10 @@ class EditEventViewModel @Inject constructor(
         val flightNumber: String = "",
         val originIata: String = "",
         val destinationIata: String = "",
+        val bookingCode: String = "",
+        val scheduledDeparture: LocalTime? = null,
+        val actualDeparture: LocalTime? = null,
+        val actualArrival: LocalTime? = null,
         // Fitness metadata
         val fitnessActivity: FitnessActivity = FitnessActivity.FITNESS_ACTIVITY_UNSPECIFIED,
         val duration: String = "",
@@ -171,6 +177,10 @@ class EditEventViewModel @Inject constructor(
                 flightNumber = if (metadataType == "flight") json.optString("flight_number") else "",
                 originIata = if (metadataType == "flight") json.optString("origin_iata") else "",
                 destinationIata = if (metadataType == "flight") json.optString("destination_iata") else "",
+                bookingCode = if (metadataType == "flight") json.optString("booking_code") else "",
+                scheduledDeparture = if (metadataType == "flight") parseFlightTime(json.optString("scheduled_departure")) else null,
+                actualDeparture = if (metadataType == "flight") parseFlightTime(json.optString("actual_departure")) else null,
+                actualArrival = if (metadataType == "flight") parseFlightTime(json.optString("actual_arrival")) else null,
                 fitnessActivity = if (metadataType == "fitness") fitnessActivityFromName(json.optString("activity")) else FitnessActivity.FITNESS_ACTIVITY_UNSPECIFIED,
                 duration = if (metadataType == "fitness") json.optString("duration") else "",
                 distanceKm = if (metadataType == "fitness" && json.has("distance_km")) json.getDouble("distance_km").toString() else "",
@@ -233,6 +243,10 @@ class EditEventViewModel @Inject constructor(
     fun setFlightNumber(value: String) = _uiState.update { it.copy(flightNumber = value) }
     fun setOriginIata(value: String) = _uiState.update { it.copy(originIata = value.uppercase()) }
     fun setDestinationIata(value: String) = _uiState.update { it.copy(destinationIata = value.uppercase()) }
+    fun setBookingCode(value: String) = _uiState.update { it.copy(bookingCode = value.uppercase()) }
+    fun setScheduledDeparture(value: LocalTime?) = _uiState.update { it.copy(scheduledDeparture = value) }
+    fun setActualDeparture(value: LocalTime?) = _uiState.update { it.copy(actualDeparture = value) }
+    fun setActualArrival(value: LocalTime?) = _uiState.update { it.copy(actualArrival = value) }
     fun setDuration(value: String) = _uiState.update { it.copy(duration = value) }
     fun setDistanceKm(value: String) = _uiState.update { it.copy(distanceKm = value) }
     fun setElevationGainM(value: String) = _uiState.update { it.copy(elevationGainM = value) }
@@ -266,6 +280,13 @@ class EditEventViewModel @Inject constructor(
         const val YEAR_MIN_FILM = 1888  // matches FilmEntryViewModel
         const val YEAR_MIN_TV   = 1925  // matches TvEntryViewModel
         const val YEAR_MAX      = 2100
+        val TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+
+        fun parseFlightTime(value: String): LocalTime? {
+            if (value.isBlank()) return null
+            return runCatching { LocalTime.parse(value, TIME_FORMATTER) }.getOrNull()
+                ?: runCatching { LocalTime.parse(value) }.getOrNull()
+        }
     }
 
 private fun fitnessActivityFromName(s: String): FitnessActivity = when (s) {
@@ -446,13 +467,19 @@ private class FitnessParseContext {
                         builder.setFilmTvMetadata(metaBuilder.build())
                     }
                     "flight" -> {
-                        val updated = builder.flightMetadata.toBuilder()
+                        val metaBuilder = builder.flightMetadata.toBuilder()
                             .setAirline(state.airline.trim())
                             .setFlightNumber(state.flightNumber.trim())
                             .setOriginIata(state.originIata.trim())
                             .setDestinationIata(state.destinationIata.trim())
-                            .build()
-                        builder.setFlightMetadata(updated)
+                            .setBookingCode(state.bookingCode.trim())
+                        if (state.scheduledDeparture == null) metaBuilder.clearScheduledDeparture()
+                        else metaBuilder.setScheduledDeparture(state.scheduledDeparture.format(TIME_FORMATTER))
+                        if (state.actualDeparture == null) metaBuilder.clearActualDeparture()
+                        else metaBuilder.setActualDeparture(state.actualDeparture.format(TIME_FORMATTER))
+                        if (state.actualArrival == null) metaBuilder.clearActualArrival()
+                        else metaBuilder.setActualArrival(state.actualArrival.format(TIME_FORMATTER))
+                        builder.setFlightMetadata(metaBuilder.build())
                     }
                     "fitness" -> {
                         val updated = builder.fitnessMetadata.toBuilder()
