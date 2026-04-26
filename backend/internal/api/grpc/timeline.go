@@ -103,6 +103,23 @@ func (s *Server) CreateEvent(ctx context.Context, req *pb.CreateEventRequest) (*
 	return &pb.CreateEventResponse{Event: eventToProto(e, nil)}, nil
 }
 
+func (s *Server) GetEvent(ctx context.Context, req *pb.GetEventRequest) (*pb.GetEventResponse, error) {
+	e, err := s.db.GetEventByID(ctx, req.Id)
+	if err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			return nil, status.Errorf(codes.NotFound, "event %q not found", req.Id)
+		}
+		s.logger.Error("fetching event", zap.String("id", req.Id), zap.Error(err))
+		return nil, status.Error(codes.Internal, "internal error")
+	}
+	photos, err := s.db.ListPhotosForEvent(ctx, req.Id)
+	if err != nil {
+		s.logger.Error("listing photos for event", zap.String("id", req.Id), zap.Error(err))
+		return nil, status.Error(codes.Internal, "internal error")
+	}
+	return &pb.GetEventResponse{Event: eventToProto(e, photos)}, nil
+}
+
 func (s *Server) UpdateEvent(ctx context.Context, req *pb.UpdateEventRequest) (*pb.UpdateEventResponse, error) {
 	if req.Title == "" && req.GetBookMetadata().GetIsbn() == "" {
 		return nil, status.Error(codes.InvalidArgument, "title or ISBN is required")
@@ -127,9 +144,9 @@ func (s *Server) UpdateEvent(ctx context.Context, req *pb.UpdateEventRequest) (*
 		Date:          strPtr(req.Date),
 		StartDate:     strPtr(req.StartDate),
 		EndDate:       strPtr(req.EndDate),
-		ExternalURL:  strPtr(req.ExternalUrl),
-		HeroImageURL: strPtr(req.HeroImageUrl),
-		Visibility:   vis,
+		ExternalURL:   strPtr(req.ExternalUrl),
+		HeroImageURL:  strPtr(req.HeroImageUrl),
+		Visibility:    vis,
 	}
 	updateMeta, updateMetaType := extractUpdateMetadata(req)
 	e.Metadata = updateMeta

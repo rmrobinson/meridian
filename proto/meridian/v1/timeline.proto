@@ -184,6 +184,7 @@ message ListLineFamiliesResponse {
 
 service TimelineService {
   rpc CreateEvent(CreateEventRequest) returns (CreateEventResponse);
+  rpc GetEvent(GetEventRequest) returns (GetEventResponse);
   rpc UpdateEvent(UpdateEventRequest) returns (UpdateEventResponse);
   rpc DeleteEvent(DeleteEventRequest) returns (DeleteEventResponse);
   rpc ListEvents(ListEventsRequest) returns (ListEventsResponse);
@@ -407,6 +408,14 @@ message MergeEventsRequest {
 
 message UnmergeEventRequest {
   string id = 1;
+}
+
+message GetEventRequest {
+  string id = 1;
+}
+
+message GetEventResponse {
+  Event event = 1;
 }
 
 message CreateEventResponse {

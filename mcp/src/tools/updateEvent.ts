@@ -200,35 +200,53 @@ function buildMetadata(args: UpdateEventArgs) {
 }
 
 export async function updateEvent(args: UpdateEventArgs) {
-  const hasLocation =
-    args.location_label !== undefined ||
-    args.location_lat !== undefined ||
-    args.location_lng !== undefined;
-
   try {
+    // Fetch the current event so we can send a complete replacement (PUT semantics).
+    const getResponse = await client.getEvent({ id: args.id });
+    const current = getResponse.event;
+    if (!current) {
+      return `Event ${args.id} not found.`;
+    }
+
+    // Determine location: caller-supplied fields win; fall back to existing per-field.
+    const location = {
+      label: args.location_label ?? current.location?.label ?? "",
+      lat: args.location_lat ?? current.location?.lat ?? 0,
+      lng: args.location_lng ?? current.location?.lng ?? 0,
+    };
+    const hasLocation =
+      location.label !== "" || location.lat !== 0 || location.lng !== 0;
+
+    // Determine visibility: use caller value if supplied, otherwise preserve existing.
+    const visibility = args.visibility
+      ? (visibilityMap[args.visibility] ?? current.visibility)
+      : current.visibility;
+
+    // Determine metadata: use caller-supplied if provided, otherwise re-use existing.
+    const callerMetadata = buildMetadata(args);
+    const hasCallerMetadata = Object.keys(callerMetadata).length > 0;
+    const metadata = hasCallerMetadata
+      ? callerMetadata
+      : extractExistingMetadata(current);
+
     const response = await client.updateEvent({
       id: args.id,
-      title: args.title ?? "",
-      date: args.date ?? "",
-      startDate: args.start_date ?? "",
-      endDate: args.end_date ?? "",
-      description: args.description ?? "",
-      visibility: args.visibility
-        ? (visibilityMap[args.visibility] ?? Visibility.VISIBILITY_UNSPECIFIED)
-        : Visibility.VISIBILITY_UNSPECIFIED,
-      lineKey: args.line_key ?? "",
-      parentLineKey: args.parent_line_key ?? "",
-      location: hasLocation
-        ? { label: args.location_label ?? "", lat: args.location_lat ?? 0, lng: args.location_lng ?? 0 }
-        : undefined,
-      externalUrl: args.external_url ?? "",
-      label: args.label ?? "",
-      icon: args.icon ?? "",
-      // type and familyId intentionally omitted — backend treats zero-value as "no change"
-      type: EventType.EVENT_TYPE_UNSPECIFIED,
-      familyId: "",
-      endIcon: "",
-      ...buildMetadata(args),
+      familyId: current.familyId,
+      lineKey: args.line_key ?? current.lineKey,
+      parentLineKey: args.parent_line_key ?? current.parentLineKey,
+      type: current.type,
+      title: args.title ?? current.title,
+      label: args.label ?? current.label,
+      icon: args.icon ?? current.icon,
+      endIcon: current.endIcon,
+      date: args.date ?? current.date,
+      startDate: args.start_date ?? current.startDate,
+      endDate: args.end_date ?? current.endDate,
+      description: args.description ?? current.description,
+      location: hasLocation ? location : undefined,
+      externalUrl: args.external_url ?? current.externalUrl,
+      visibility,
+      ...metadata,
     });
 
     const event = response.event;
@@ -239,4 +257,37 @@ export async function updateEvent(args: UpdateEventArgs) {
   } catch (err) {
     return mapGrpcError(err);
   }
+}
+
+// extractExistingMetadata converts the oneof metadata from a fetched Event back into the
+// shape expected by UpdateEventRequest, so we can round-trip it unchanged.
+function extractExistingMetadata(event: import("../../proto-gen/meridian/v1/timeline.js").Event): object {
+  if (event.lifeMetadata !== undefined) {
+    return { lifeMetadata: event.lifeMetadata };
+  }
+  if (event.employmentMetadata !== undefined) {
+    return { employmentMetadata: event.employmentMetadata };
+  }
+  if (event.educationMetadata !== undefined) {
+    return { educationMetadata: event.educationMetadata };
+  }
+  if (event.travelMetadata !== undefined) {
+    return { travelMetadata: event.travelMetadata };
+  }
+  if (event.flightMetadata !== undefined) {
+    return { flightMetadata: event.flightMetadata };
+  }
+  if (event.bookMetadata !== undefined) {
+    return { bookMetadata: event.bookMetadata };
+  }
+  if (event.filmTvMetadata !== undefined) {
+    return { filmTvMetadata: event.filmTvMetadata };
+  }
+  if (event.concertMetadata !== undefined) {
+    return { concertMetadata: event.concertMetadata };
+  }
+  if (event.fitnessMetadata !== undefined) {
+    return { fitnessMetadata: event.fitnessMetadata };
+  }
+  return {};
 }
