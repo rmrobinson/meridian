@@ -5,6 +5,13 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.health.READ_EXERCISE" />
+    <uses-permission android:name="android.permission.health.READ_DISTANCE" />
+    <uses-permission android:name="android.permission.health.READ_ELEVATION_GAINED" />
+
+    <queries>
+        <package android:name="com.google.android.apps.healthdata" />
+    </queries>
 
     <application
         android:name=".MeridianApp"
@@ -24,6 +31,26 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+            Displays data-access rationale when the user navigates here from Health Connect's
+            "App permissions" screen. Required by Health Connect policy; without this alias
+            the HC permissions dialog auto-dismisses with an empty grant set.
+        -->
+        <activity
+            android:name=".HealthConnectRationaleActivity"
+            android:exported="true" />
+
+        <activity-alias
+            android:name=".HealthConnectPermissionRationaleActivity"
+            android:exported="true"
+            android:targetActivity=".HealthConnectRationaleActivity"
+            android:permission="android.permission.START_VIEW_PERMISSION_USAGE">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
+            </intent-filter>
+        </activity-alias>
 
         <!--
             Remove the default WorkManager startup initializer so we can supply
