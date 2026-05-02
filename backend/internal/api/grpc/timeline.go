@@ -49,11 +49,16 @@ func (s *Server) CreateEvent(ctx context.Context, req *pb.CreateEventRequest) (*
 		vis = domain.VisibilityPersonal
 	}
 
+	lineKey := req.LineKey
+	if lineKey == "" {
+		lineKey = req.FamilyId
+	}
+
 	now := time.Now().UTC()
 	e := &domain.Event{
 		ID:            id,
 		FamilyID:      req.FamilyId,
-		LineKey:       req.LineKey,
+		LineKey:       lineKey,
 		ParentLineKey: strPtr(req.ParentLineKey),
 		Type:          protoToEventType(req.Type),
 		Title:         req.Title,
@@ -130,10 +135,15 @@ func (s *Server) UpdateEvent(ctx context.Context, req *pb.UpdateEventRequest) (*
 		vis = domain.VisibilityPersonal
 	}
 
+	updateLineKey := req.LineKey
+	if updateLineKey == "" {
+		updateLineKey = req.FamilyId
+	}
+
 	e := &domain.Event{
 		ID:            req.Id,
 		FamilyID:      req.FamilyId,
-		LineKey:       req.LineKey,
+		LineKey:       updateLineKey,
 		ParentLineKey: strPtr(req.ParentLineKey),
 		Type:          protoToEventType(req.Type),
 		Title:         req.Title,
@@ -297,11 +307,16 @@ func (s *Server) ImportEvents(ctx context.Context, req *pb.ImportEventsRequest) 
 			vis = domain.VisibilityPersonal
 		}
 
+		importLineKey := evtReq.LineKey
+		if importLineKey == "" {
+			importLineKey = evtReq.FamilyId
+		}
+
 		now := time.Now().UTC()
 		e := &domain.Event{
 			ID:            id,
 			FamilyID:      evtReq.FamilyId,
-			LineKey:       evtReq.LineKey,
+			LineKey:       importLineKey,
 			ParentLineKey: strPtr(evtReq.ParentLineKey),
 			Type:          protoToEventType(evtReq.Type),
 			Title:         evtReq.Title,

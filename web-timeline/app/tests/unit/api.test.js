@@ -47,6 +47,25 @@ describe('generateBirthdays()', () => {
     expect(birthdays[0].metadata.age).toBe(0);
     expect(birthdays[1].metadata.age).toBe(1);
   });
+
+  it('suppresses age-0 birthday when a birth event exists on the birth date', () => {
+    const existingEvents = [
+      {
+        family_id: 'spine',
+        metadata_type: 'life',
+        date: BIRTH,
+        metadata: { milestone_type: 'birth' },
+      },
+    ];
+    const birthdays = generateBirthdays(BIRTH, existingEvents);
+    expect(birthdays.find((b) => b.metadata.age === 0)).toBeUndefined();
+    expect(birthdays.find((b) => b.metadata.age === 1)).toBeDefined();
+  });
+
+  it('does not suppress age-0 birthday when no birth event exists', () => {
+    const birthdays = generateBirthdays(BIRTH);
+    expect(birthdays.find((b) => b.metadata.age === 0)).toBeDefined();
+  });
 });
 
 describe('photo normalization', () => {
