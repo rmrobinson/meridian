@@ -307,6 +307,11 @@ export function generateBirthdays(birthDateStr, existingEvents = [], visibility 
       .map((e) => e.date),
   );
 
+  // Suppress age-0 birthday when an explicit birth event exists on the birth date.
+  const hasBirthEvent = existingEvents.some(
+    (e) => e.metadata_type === 'life' && e.metadata?.milestone_type === 'birth',
+  );
+
   const birthdays = [];
   for (let age = 0; ; age++) {
     const bday = new Date(birth);
@@ -315,6 +320,7 @@ export function generateBirthdays(birthDateStr, existingEvents = [], visibility 
 
     const isoDate = bday.toISOString().slice(0, 10);
     if (explicitDates.has(isoDate)) continue; // explicit event replaces auto
+    if (age === 0 && hasBirthEvent) continue; // birth event is more descriptive
 
     birthdays.push({
       id: `auto_birthday_${age}`,
