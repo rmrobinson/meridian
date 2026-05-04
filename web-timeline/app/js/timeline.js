@@ -360,6 +360,14 @@ function buildSpanLine(obj, spineX) {
   const laneX   = spineX + laneOffset;
   const parentX = spineX + (parentOffset ?? 0);
 
+  // Clamp curve height so bezier curves fit within the span's pixel extent.
+  // yStart > yEnd (start is older = larger Y). For merge spans both curves must
+  // fit, so each gets at most half; for terminate only the branch curve needs to fit.
+  const spanH       = yStart - yEnd;
+  const effectiveCH = on_end === 'merge'
+    ? Math.min(curveHeight, Math.max(0, spanH / 2))
+    : Math.min(curveHeight, Math.max(0, spanH));
+
   const g = svgEl('g');
   const secondaryChild = (obj.parentOffset ?? 0) !== 0;
   g.setAttribute('class', `span-line span-line--${familyId}${secondaryChild ? ' span-line--secondary-child' : ''}`);
@@ -376,37 +384,40 @@ function buildSpanLine(obj, spineX) {
     g.dataset.siblingIndex = String(obj.siblingIndex);
   }
 
-  // Branch: parent line → lane at the event start date.
-  // Departs parent at (parentX, yStart + curveHeight), arrives lane at (laneX, yStart).
+  // Branch: spine at the event start date → lane inward at yStart - effectiveCH.
+  // Departs spine at (parentX, yStart), curves to lane at (laneX, yStart - effectiveCH).
   const branch = svgEl('path');
   branch.setAttribute('class', 'span-branch');
-  branch.setAttribute('d', branchBezier(parentX, laneX, yStart, curveHeight));
+  branch.setAttribute('d', branchBezier(parentX, laneX, yStart, effectiveCH));
   branch.setAttribute('stroke', color);
 
-  // Straight segment: lane, from branch arrival (yStart) to merge departure (yEnd).
+  // Straight segment: lane, from branch arrival to merge departure.
+  // Both curves eat into the span interior, so the segment is shorter than the spine span.
+  const segStart = yStart - effectiveCH;
+  const segEnd   = on_end === 'merge' ? yEnd + effectiveCH : yEnd;
   const segment = svgEl('path');
   segment.setAttribute('class', 'span-segment');
-  segment.setAttribute('d', straightSegment(laneX, yStart, yEnd));
+  segment.setAttribute('d', straightSegment(laneX, segStart, segEnd));
   segment.setAttribute('stroke', color);
 
   g.appendChild(branch);
   g.appendChild(segment);
 
-  // Merge (only when on_end === 'merge'): lane → parent line at the event end date.
-  // Departs lane at (laneX, yEnd), arrives parent at (parentX, yEnd - curveHeight).
+  // Merge (only when on_end === 'merge'): lane → spine at the event end date.
+  // Departs lane at (laneX, yEnd + effectiveCH) inward, curves to spine at (parentX, yEnd).
   if (on_end === 'merge') {
     const merge = svgEl('path');
     merge.setAttribute('class', 'span-merge');
-    merge.setAttribute('d', mergeBezier(laneX, parentX, yEnd, curveHeight));
+    merge.setAttribute('d', mergeBezier(laneX, parentX, yEnd, effectiveCH));
     merge.setAttribute('stroke', color);
     g.appendChild(merge);
   }
 
-  // Transparent wide hit path over the straight segment for easier mouse/touch targeting.
+  // Transparent wide hit path over the span extent for easier mouse/touch targeting.
   // Appended last so it sits on top of the visual paths and captures events first.
   const hit = svgEl('path');
   hit.setAttribute('class', 'span-hit');
-  hit.setAttribute('d', straightSegment(laneX, yStart, yEnd));
+  hit.setAttribute('d', straightSegment(laneX, segStart, segEnd));
   g.appendChild(hit);
 
   return g;
