@@ -50,23 +50,26 @@ export function straightSegment(x, yStart, yEnd) {
  * Generate the SVG path `d` for a branch-off bezier.
  *
  * The branch sits at the *older* end of the span (larger Y = further down the
- * canvas = further in the past). It departs the spine at
- * (parentX, branchY + curveHeight) — curveHeight pixels *below* (older than)
- * the event start date — and arrives at the lane at (laneX, branchY), which
- * is exactly the event start date. This places the spine connection point
- * outside (below) the span's Y extent.
+ * canvas = further in the past). It departs the spine at (parentX, branchY) —
+ * exactly the event start date — and arrives at the lane at
+ * (laneX, branchY - curveHeight), curveHeight pixels *above* (more recent than,
+ * inside the span). The curve eats into the span interior so the total lane
+ * segment is shorter than the spine span by curveHeight at each end.
+ *
+ * Control points: CP1=(laneX, branchY) produces a horizontal departure from
+ * the spine; CP2=(laneX, branchY-ch/2) produces a vertical arrival at the lane.
  *
  * @param {number} parentX
  * @param {number} laneX
- * @param {number} branchY    - Y of the event start date (arrival point on the lane)
- * @param {number} [curveHeight=30]
+ * @param {number} branchY    - Y of the event start date (departure point on the spine)
+ * @param {number} [curveHeight=CURVE_HEIGHT]
  * @returns {string}
  */
 export function branchBezier(parentX, laneX, branchY, curveHeight = CURVE_HEIGHT) {
-  const cy = branchY + curveHeight / 2;
+  const cy = branchY - curveHeight / 2;
   return (
-    `M ${parentX},${branchY + curveHeight} ` +
-    `C ${parentX},${cy} ${laneX},${cy} ${laneX},${branchY}`
+    `M ${parentX},${branchY} ` +
+    `C ${laneX},${branchY} ${laneX},${cy} ${laneX},${branchY - curveHeight}`
   );
 }
 
@@ -74,23 +77,26 @@ export function branchBezier(parentX, laneX, branchY, curveHeight = CURVE_HEIGHT
  * Generate the SVG path `d` for a merge-back bezier.
  *
  * The merge sits at the *more recent* end of the span (smaller Y = further up
- * the canvas = closer to today). It departs the lane at (laneX, mergeY) —
- * exactly the event end date — and arrives at the spine at
- * (parentX, mergeY - curveHeight), curveHeight pixels *above* (more recent
- * than) the event end date. This places the spine connection point outside
- * (above) the span's Y extent, mirroring the branch geometry.
+ * the canvas = closer to today). It departs the lane at
+ * (laneX, mergeY + curveHeight), curveHeight pixels *below* (older than, inside
+ * the span) — and arrives at the spine at (parentX, mergeY), exactly the event
+ * end date. Mirrors the branch geometry: curves eat inward from both ends.
+ *
+ * Control points: CP1=(laneX, mergeY+ch/2) produces a vertical departure from
+ * the lane; CP2=(midX, mergeY) produces a horizontal arrival at the spine.
  *
  * @param {number} laneX
  * @param {number} parentX
- * @param {number} mergeY - Y of the event end date (departure point on the lane)
- * @param {number} [curveHeight=30]
+ * @param {number} mergeY - Y of the event end date (arrival point on the spine)
+ * @param {number} [curveHeight=CURVE_HEIGHT]
  * @returns {string}
  */
 export function mergeBezier(laneX, parentX, mergeY, curveHeight = CURVE_HEIGHT) {
-  const cy = mergeY - curveHeight / 2;
+  const midX = (laneX + parentX) / 2;
+  const cy   = mergeY + curveHeight / 2;
   return (
-    `M ${laneX},${mergeY} ` +
-    `C ${laneX},${cy} ${parentX},${cy} ${parentX},${mergeY - curveHeight}`
+    `M ${laneX},${mergeY + curveHeight} ` +
+    `C ${laneX},${cy} ${midX},${mergeY} ${parentX},${mergeY}`
   );
 }
 

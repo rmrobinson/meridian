@@ -276,10 +276,9 @@ function buildRenderObjects(data, pxPerDay) {
     const clampedYEnd   = spanObj.yEnd;
 
     // Start station: departure dot on the PARENT line at the exact point where
-    // the branch bezier departs — (parentX, clampedYStart + curveHeight).
-    // branchBezier departs from (parentX, branchY + curveHeight), so the station
-    // sits curveHeight pixels below (older than) the event start date.
-    const startStationY = clampedYStart + CURVE_HEIGHT;
+    // the branch bezier departs — (parentX, clampedYStart).
+    // branchBezier departs from the spine at branchY (the actual start date).
+    const startStationY = clampedYStart;
     if (startStationY >= 0 && startStationY <= totalHeight) {
       const startStation = {
         type: 'station', id: evt.id,
@@ -293,10 +292,10 @@ function buildRenderObjects(data, pxPerDay) {
     }
 
     // End station: termination dot only — no label or icon.
-    // merge:     arrival dot on PARENT line where the merge bezier ends (yEnd − curveHeight).
+    // merge:     arrival dot on PARENT line where the merge bezier arrives (yEnd — the actual end date).
     // terminate: dot on the branch lane at yEnd.
     if (family.on_end === 'merge') {
-      const endY = clampedYEnd - CURVE_HEIGHT;
+      const endY = clampedYEnd;
       if (endY >= 0 && endY <= totalHeight) {
         const endStation = {
           type: 'station', id: `${evt.id}-end`,
