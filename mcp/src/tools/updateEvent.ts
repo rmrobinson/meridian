@@ -39,7 +39,7 @@ export const updateEventSchema = {
     .optional()
     .describe("Metadata for spine family events"),
   employment_metadata: z
-    .object({ role: z.string(), company_name: z.string(), company_url: z.string().optional() })
+    .object({ role: z.string(), company_name: z.string(), company_url: z.string().optional(), role_details_url: z.string().optional().describe("URL linking to details about the role") })
     .optional()
     .describe("Metadata for employment family events"),
   education_metadata: z
@@ -124,7 +124,7 @@ type UpdateEventArgs = {
   label?: string;
   icon?: string;
   life_metadata?: { milestone_type: string; from?: string; to?: string };
-  employment_metadata?: { role: string; company_name: string; company_url?: string };
+  employment_metadata?: { role: string; company_name: string; company_url?: string; role_details_url?: string };
   education_metadata?: { institution: string; degree?: string };
   travel_metadata?: { countries?: string[]; cities?: string[] };
   flight_metadata?: { airline: string; flight_number: string; aircraft_type?: string; tail_number?: string; origin_iata?: string; destination_iata?: string; scheduled_departure?: string; scheduled_arrival?: string; actual_departure?: string; actual_arrival?: string };
@@ -165,7 +165,7 @@ function buildMetadata(args: UpdateEventArgs) {
     return { lifeMetadata: { milestoneType: lifeMilestoneTypeMap[args.life_metadata.milestone_type] ?? LifeMilestoneType.LIFE_MILESTONE_TYPE_UNSPECIFIED, from: args.life_metadata.from ?? "", to: args.life_metadata.to ?? "" } };
   }
   if (args.employment_metadata) {
-    return { employmentMetadata: { role: args.employment_metadata.role, companyName: args.employment_metadata.company_name, companyUrl: args.employment_metadata.company_url ?? "" } };
+    return { employmentMetadata: { role: args.employment_metadata.role, companyName: args.employment_metadata.company_name, companyUrl: args.employment_metadata.company_url ?? "", roleDetailsUrl: args.employment_metadata.role_details_url ?? "" } };
   }
   if (args.education_metadata) {
     return { educationMetadata: { institution: args.education_metadata.institution, degree: args.education_metadata.degree ?? "" } };

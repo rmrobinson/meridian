@@ -28,6 +28,7 @@ const employmentMetadataSchema = z
     role: z.string().describe("Job title or role"),
     company_name: z.string().describe("Employer name"),
     company_url: z.string().optional().describe("Employer website URL"),
+    role_details_url: z.string().optional().describe("URL linking to details about the role"),
   })
   .optional()
   .describe("Required for employment family events");
@@ -214,7 +215,7 @@ type CreateEventArgs = {
   icon?: string;
   source_event_id?: string;
   life_metadata?: { milestone_type: string; from?: string; to?: string };
-  employment_metadata?: { role: string; company_name: string; company_url?: string };
+  employment_metadata?: { role: string; company_name: string; company_url?: string; role_details_url?: string };
   education_metadata?: { institution: string; degree?: string };
   travel_metadata?: { countries?: string[]; cities?: string[] };
   flight_metadata?: {
@@ -268,7 +269,7 @@ function buildMetadata(args: CreateEventArgs) {
     return { lifeMetadata: { milestoneType: lifeMilestoneTypeMap[args.life_metadata.milestone_type] ?? LifeMilestoneType.LIFE_MILESTONE_TYPE_UNSPECIFIED, from: args.life_metadata.from ?? "", to: args.life_metadata.to ?? "" } };
   }
   if (args.employment_metadata) {
-    return { employmentMetadata: { role: args.employment_metadata.role, companyName: args.employment_metadata.company_name, companyUrl: args.employment_metadata.company_url ?? "" } };
+    return { employmentMetadata: { role: args.employment_metadata.role, companyName: args.employment_metadata.company_name, companyUrl: args.employment_metadata.company_url ?? "", roleDetailsUrl: args.employment_metadata.role_details_url ?? "" } };
   }
   if (args.education_metadata) {
     return { educationMetadata: { institution: args.education_metadata.institution, degree: args.education_metadata.degree ?? "" } };
