@@ -81,27 +81,31 @@ function employmentCard(event) {
 
   const { role, company_name, company_url, role_details_url } = event.metadata ?? {};
   if (role) wrap.appendChild(el('p', 'card-role', role));
-  if (company_name) {
-    if (company_url) {
+  if (company_name || role_details_url) {
+    const row = el('div', 'card-company-row');
+    if (company_name) {
+      if (company_url) {
+        const link = document.createElement('a');
+        link.className = 'card-company';
+        link.href = company_url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = company_name;
+        row.appendChild(link);
+      } else {
+        row.appendChild(el('span', 'card-company', company_name));
+      }
+    }
+    if (role_details_url) {
       const link = document.createElement('a');
-      link.className = 'card-company';
-      link.href = company_url;
+      link.className = 'card-role-details';
+      link.href = role_details_url;
       link.target = '_blank';
       link.rel = 'noopener noreferrer';
-      link.textContent = company_name;
-      wrap.appendChild(link);
-    } else {
-      wrap.appendChild(el('p', 'card-company', company_name));
+      link.textContent = 'Role details';
+      row.appendChild(link);
     }
-  }
-  if (role_details_url) {
-    const link = document.createElement('a');
-    link.className = 'card-role-details';
-    link.href = role_details_url;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    link.textContent = 'Role details';
-    wrap.appendChild(link);
+    wrap.appendChild(row);
   }
   return wrap;
 }
