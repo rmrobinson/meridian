@@ -245,6 +245,22 @@ describe('employment card', () => {
     const frag = buildCardContent(base({ metadata_type: 'employment', metadata: {} }));
     expect(getRoot(frag).querySelector('.card-role')).toBeNull();
   });
+
+  it('renders role details link when role_details_url is set', () => {
+    const frag = buildCardContent(base({
+      metadata_type: 'employment',
+      metadata: { role_details_url: 'https://details.example.com' },
+    }));
+    const link = getRoot(frag).querySelector('a.card-role-details');
+    expect(link).not.toBeNull();
+    expect(link.getAttribute('href')).toBe('https://details.example.com');
+    expect(link.textContent).toBe('Role details');
+  });
+
+  it('omits role details link when role_details_url is absent', () => {
+    const frag = buildCardContent(base({ metadata_type: 'employment', metadata: {} }));
+    expect(getRoot(frag).querySelector('.card-role-details')).toBeNull();
+  });
 });
 
 // ── Education card ────────────────────────────────────────────────────────────

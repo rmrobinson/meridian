@@ -79,7 +79,7 @@ function employmentCard(event) {
   const wrap = el('div', 'card--employment');
   appendShared(wrap, event);
 
-  const { role, company_name, company_url } = event.metadata ?? {};
+  const { role, company_name, company_url, role_details_url } = event.metadata ?? {};
   if (role) wrap.appendChild(el('p', 'card-role', role));
   if (company_name) {
     if (company_url) {
@@ -93,6 +93,15 @@ function employmentCard(event) {
     } else {
       wrap.appendChild(el('p', 'card-company', company_name));
     }
+  }
+  if (role_details_url) {
+    const link = document.createElement('a');
+    link.className = 'card-role-details';
+    link.href = role_details_url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = 'Role details';
+    wrap.appendChild(link);
   }
   return wrap;
 }

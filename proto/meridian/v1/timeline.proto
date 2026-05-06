@@ -35,6 +35,7 @@ message EmploymentMetadata {
   string role = 1;
   string company_name = 2;
   string company_url = 3;
+  string role_details_url = 4;
 }
 
 message EducationMetadata {
