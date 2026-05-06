@@ -176,9 +176,10 @@ func extractCreateMetadata(req *pb.CreateEventRequest) (*string, string) {
 		}), "life"
 	case *pb.CreateEventRequest_EmploymentMetadata:
 		return marshalMetadata(&domain.EmploymentMetadata{
-			Role:        v.EmploymentMetadata.GetRole(),
-			CompanyName: v.EmploymentMetadata.GetCompanyName(),
-			CompanyURL:  v.EmploymentMetadata.GetCompanyUrl(),
+			Role:           v.EmploymentMetadata.GetRole(),
+			CompanyName:    v.EmploymentMetadata.GetCompanyName(),
+			CompanyURL:     v.EmploymentMetadata.GetCompanyUrl(),
+			RoleDetailsURL: v.EmploymentMetadata.GetRoleDetailsUrl(),
 		}), "employment"
 	case *pb.CreateEventRequest_EducationMetadata:
 		return marshalMetadata(&domain.EducationMetadata{
@@ -216,9 +217,10 @@ func extractUpdateMetadata(req *pb.UpdateEventRequest) (*string, string) {
 		}), "life"
 	case *pb.UpdateEventRequest_EmploymentMetadata:
 		return marshalMetadata(&domain.EmploymentMetadata{
-			Role:        v.EmploymentMetadata.GetRole(),
-			CompanyName: v.EmploymentMetadata.GetCompanyName(),
-			CompanyURL:  v.EmploymentMetadata.GetCompanyUrl(),
+			Role:           v.EmploymentMetadata.GetRole(),
+			CompanyName:    v.EmploymentMetadata.GetCompanyName(),
+			CompanyURL:     v.EmploymentMetadata.GetCompanyUrl(),
+			RoleDetailsURL: v.EmploymentMetadata.GetRoleDetailsUrl(),
 		}), "employment"
 	case *pb.UpdateEventRequest_EducationMetadata:
 		return marshalMetadata(&domain.EducationMetadata{
@@ -268,9 +270,10 @@ func jsonToEventMetadata(e *domain.Event, out *pb.Event) {
 			return
 		}
 		out.Metadata = &pb.Event_EmploymentMetadata{EmploymentMetadata: &pb.EmploymentMetadata{
-			Role:        m.Role,
-			CompanyName: m.CompanyName,
-			CompanyUrl:  m.CompanyURL,
+			Role:           m.Role,
+			CompanyName:    m.CompanyName,
+			CompanyUrl:     m.CompanyURL,
+			RoleDetailsUrl: m.RoleDetailsURL,
 		}}
 	case "education":
 		m, err := domain.ParseMetadata[domain.EducationMetadata](e)
