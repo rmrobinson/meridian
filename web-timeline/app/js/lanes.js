@@ -128,11 +128,20 @@ export function assignLanes(events, line_families) {
       continue;
     }
 
-    // Resolve parent offset from the family's parent_family_id (0 = main spine
-    // when unset). Works for single_line and secondary_spine parents, which are
-    // stored in the result map under their family.id.
+    // Resolve parent offset. Event-level parent_line_key takes precedence over
+    // the family's parent_family_id (0 = main spine when neither is set).
     let parentOffset = 0;
-    if (family.parent_family_id) {
+    if (evt.parent_line_key) {
+      const parentInfo = result.get(evt.parent_line_key);
+      if (parentInfo) {
+        parentOffset = parentInfo.laneOffset;
+      } else {
+        console.warn(
+          `assignLanes: parent_line_key "${evt.parent_line_key}" not yet assigned ` +
+          `when processing "${lineKey}" — check event ordering.`,
+        );
+      }
+    } else if (family.parent_family_id) {
       const parentInfo = result.get(family.parent_family_id);
       if (parentInfo) {
         parentOffset = parentInfo.laneOffset;

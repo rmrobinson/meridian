@@ -240,6 +240,7 @@ function normalizeEvent(evt) {
     family_id: evt.family_id,
     metadata_type: evt.metadata_type ?? null,
     line_key: evt.line_key,
+    parent_line_key: evt.parent_line_key ?? null,
     type: evt.type,
     title: evt.title,
     label: evt.label ?? null,   // short display string; falls back to truncated title if null
