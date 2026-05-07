@@ -80,7 +80,7 @@ const bookMetadataSchema = z
 
 const filmTvMetadataSchema = z
   .object({
-    tmdb_id: z.string().describe("TMDB ID (required)"),
+    tmdb_id: z.string().optional().describe("TMDB ID (enriched automatically if omitted)"),
     type: z
       .enum(["movie", "tv"])
       .describe("Whether this is a movie or TV show (required)"),
@@ -225,7 +225,7 @@ type CreateEventArgs = {
     actual_departure?: string; actual_arrival?: string;
   };
   book_metadata?: { isbn: string; title?: string; author?: string; cover_image_url?: string; preview_url?: string; rating?: number; review?: string };
-  film_tv_metadata?: { tmdb_id: string; type: "movie" | "tv"; poster_url?: string; director?: string; network?: string; year?: number; seasons_watched?: number; rating?: number; review?: string };
+  film_tv_metadata?: { tmdb_id?: string; type: "movie" | "tv"; poster_url?: string; director?: string; network?: string; year?: number; seasons_watched?: number; rating?: number; review?: string };
   concert_metadata?: { main_act: string; opening_acts?: string[]; venue_label?: string; venue_lat?: number; venue_lng?: number; playlist_url?: string };
   fitness_metadata?: {
     activity: string; duration?: string; distance_km?: number; elevation_gain_m?: number;
@@ -287,7 +287,7 @@ function buildMetadata(args: CreateEventArgs) {
   }
   if (args.film_tv_metadata) {
     const f = args.film_tv_metadata;
-    return { filmTvMetadata: { tmdbId: f.tmdb_id, type: f.type === "movie" ? FilmTVType.FILM_TV_TYPE_MOVIE : FilmTVType.FILM_TV_TYPE_TV, posterUrl: f.poster_url ?? "", director: f.director ?? "", network: f.network ?? "", year: f.year ?? 0, seasonsWatched: f.seasons_watched, rating: f.rating ?? 0, review: f.review ?? "" } };
+    return { filmTvMetadata: { tmdbId: f.tmdb_id ?? "", type: f.type === "movie" ? FilmTVType.FILM_TV_TYPE_MOVIE : FilmTVType.FILM_TV_TYPE_TV, posterUrl: f.poster_url ?? "", director: f.director ?? "", network: f.network ?? "", year: f.year ?? 0, seasonsWatched: f.seasons_watched, rating: f.rating ?? 0, review: f.review ?? "" } };
   }
   if (args.concert_metadata) {
     const c = args.concert_metadata;
