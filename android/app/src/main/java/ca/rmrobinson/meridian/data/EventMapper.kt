@@ -559,11 +559,14 @@ fun healthExerciseTypeToFitnessActivity(exerciseType: Int): FitnessActivity = wh
     else                                                   -> FitnessActivity.FITNESS_ACTIVITY_UNSPECIFIED
 }
 
+/** Converts meters to km rounded to 2 decimal places. */
+private fun Double.metersToKmRounded(): Double = kotlin.math.round(this / 10.0) / 100.0
+
 /** Builds the metadataJson for a Health Connect activity, including hc_id + source. */
 private fun HealthActivity.buildHcMetadataJson(fitnessActivity: FitnessActivity): String {
     val meta = FitnessMetadata.newBuilder()
         .setActivity(fitnessActivity)
-        .apply { distanceMeters?.let { setDistanceKm(it / 1000.0) } }
+        .apply { distanceMeters?.let { setDistanceKm(it.metersToKmRounded()) } }
         .apply { elevationGainedMeters?.let { setElevationGainM(it.toInt()) } }
         .build()
     val obj = JSONObject(SerializableMetadata.Fitness(meta).toJson())
@@ -605,7 +608,7 @@ fun HealthActivity.toCreateRequest(fitnessActivity: FitnessActivity): CreateEven
 
     val meta = FitnessMetadata.newBuilder()
         .setActivity(fitnessActivity)
-        .apply { distanceMeters?.let { setDistanceKm(it / 1000.0) } }
+        .apply { distanceMeters?.let { setDistanceKm(it.metersToKmRounded()) } }
         .apply { elevationGainedMeters?.let { setElevationGainM(it.toInt()) } }
         .build()
 

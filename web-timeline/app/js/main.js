@@ -379,8 +379,8 @@ function buildRenderObjects(data, pxPerDay) {
   // ── Pass 2 — point / aggregate event stations ─────────────────────────────
   //
   // Spine point events go on the spine (laneOffset: 0).
-  // Non-spine point events inherit their line's lane if one is assigned
-  // (relevant for single_line families like fitness).
+  // Non-spine point events resolve their lane via: own line_key → family's
+  // pre-assigned slot (secondary_spine) → parent family → main spine (0).
   // Aggregate events from ZOOM_MONTH are also rendered here as spine stations.
 
   for (const evt of events) {
@@ -393,10 +393,12 @@ function buildRenderObjects(data, pxPerDay) {
 
     const family   = familyById.get(evt.family_id);
     // Look up this event's own lane first; if absent (e.g. a point event in a
-    // per_event family that has no span of its own), fall back to the parent
-    // family's lane so it renders beside its parent spine rather than on the
-    // main spine.
+    // per_event or secondary_spine family), fall back to the family's own
+    // pre-assigned lane (covers secondary_spine families keyed by family.id),
+    // then to the parent family's lane, so events render beside their spine
+    // rather than on the main spine.
     const laneInfo = laneMap.get(evt.line_key)
+      ?? (family ? laneMap.get(family.id) : null)
       ?? (family?.parent_family_id ? laneMap.get(family.parent_family_id) : null);
     const laneOffset = laneInfo?.laneOffset ?? 0;
     const color      = (family && laneInfo)
