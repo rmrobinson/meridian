@@ -211,6 +211,8 @@ sudo chown root:meridiand /etc/meridiand/config.yaml
 sudo chmod 0640 /etc/meridiand/config.yaml
 ```
 
+Configure the meridiand AWS environment for access to the S3 bucket using `sudo -u meridiand aws configure`
+
 Update `database.path` in `/etc/meridiand/config.yaml` to a path under `/var/lib/meridiand/`, e.g. `/var/lib/meridiand/meridian.db`.
 
 ### 4. Install the systemd unit

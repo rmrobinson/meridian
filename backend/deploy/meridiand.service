@@ -7,6 +7,9 @@ After=network.target
 Type=simple
 User=meridiand
 Group=meridiand
+Environment="AWS_CONFIG_FILE=/home/meridiand/.aws/config"
+Environment="AWS_SHARED_CREDENTIALS_FILE=/home/meridiand/.aws/credentials"
+Environment="AWS_PROFILE=meridian"
 
 WorkingDirectory=/opt/meridiand
 ExecStart=/opt/meridiand/meridiand --config /etc/meridiand/config.yaml
@@ -20,7 +23,7 @@ StandardError=append:/var/log/meridiand/meridiand.log
 # Hardening
 NoNewPrivileges=true
 ProtectSystem=strict
-ProtectHome=true
+ProtectHome=read-only
 ReadWritePaths=/var/lib/meridiand /var/log/meridiand
 PrivateTmp=true
 
