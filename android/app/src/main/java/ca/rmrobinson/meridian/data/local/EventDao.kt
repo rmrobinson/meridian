@@ -33,4 +33,7 @@ interface EventDao {
 
     @Query("DELETE FROM events WHERE id = :id")
     suspend fun deleteById(id: String)
+
+    @Query("DELETE FROM events WHERE sync_state = 'SYNCED' AND id NOT IN (:serverIds)")
+    suspend fun deleteSyncedNotIn(serverIds: List<String>)
 }

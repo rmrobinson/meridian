@@ -7,6 +7,8 @@ import ca.rmrobinson.meridian.data.local.LineFamilyDao
 import ca.rmrobinson.meridian.data.local.LineFamilyEntity
 import ca.rmrobinson.meridian.data.local.SyncState
 import ca.rmrobinson.meridian.data.remote.EventRemoteSource
+import io.grpc.Status
+import io.grpc.StatusException
 import kotlinx.coroutines.flow.Flow
 import meridian.v1.CreateEventRequest
 import meridian.v1.UpdateEventRequest
@@ -61,6 +63,7 @@ class EventRepository @Inject constructor(
         val now = System.currentTimeMillis()
         val events = remote.listEvents().map { it.toEntity(now) }
         eventDao.upsertAll(events)
+        eventDao.deleteSyncedNotIn(events.map { it.id })
     }
 
     // --- Remote write operations ---
@@ -101,6 +104,14 @@ class EventRepository @Inject constructor(
                 eventDao.upsert(serverEntity)
                 eventDao.deleteById(entity.id)
                 Log.d(TAG, "retryLocalOnly: promoted localId=${entity.id} to serverId=${serverEntity.id}")
+            } catch (e: StatusException) {
+                val code = e.status.code
+                if (code == Status.Code.INVALID_ARGUMENT || code == Status.Code.NOT_FOUND) {
+                    Log.w(TAG, "retryLocalOnly: permanent error for localId=${entity.id}, discarding", e)
+                    eventDao.deleteById(entity.id)
+                } else {
+                    Log.w(TAG, "retryLocalOnly: transient error for localId=${entity.id}, will retry on next sync", e)
+                }
             } catch (e: Exception) {
                 Log.w(TAG, "retryLocalOnly: failed for localId=${entity.id}, will retry on next sync", e)
             }

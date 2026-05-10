@@ -19,8 +19,8 @@ class HobbyEntryViewModel @Inject constructor() : ViewModel() {
     companion object {
         fun familyIdFor(type: HobbyType): String = when (type) {
             HobbyType.BOOK    -> "books"
-            HobbyType.FILM    -> "tv"
-            HobbyType.TV      -> "tv"
+            HobbyType.FILM    -> "film_tv"
+            HobbyType.TV      -> "film_tv"
             HobbyType.CONCERT -> "concerts"
             HobbyType.OTHER   -> ""
         }
