@@ -46,9 +46,9 @@ class HealthConnectSyncUseCase @Inject constructor(
         try {
             val lookbackWindow = prefs.getLookbackWindowDays()
             val lookbackStart = Instant.now().minus(lookbackWindow, ChronoUnit.DAYS)
-            // Cap `from` to the lookback window: if lastSync is older than 7 days, fetching
-            // from that earlier timestamp would include activities whose SKIPPED dedup entries
-            // are about to be pruned, causing them to re-appear as pending.
+            // Cap `from` to the lookback window: if lastSync is older than the configured
+            // lookback window, fetching from that earlier timestamp would include activities
+            // whose SKIPPED dedup entries are about to be pruned, causing them to re-appear as pending.
             val savedSync = prefs.getLastSync()
             val from = if (savedSync != null && savedSync.isAfter(lookbackStart)) savedSync else lookbackStart
             val raw = repo.fetchActivitiesSince(from)

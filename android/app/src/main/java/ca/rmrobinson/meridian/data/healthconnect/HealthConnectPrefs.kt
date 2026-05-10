@@ -19,6 +19,11 @@ import javax.inject.Singleton
 class HealthConnectPrefs @Inject constructor(
     private val dataStore: DataStore<Preferences>,
 ) {
+    companion object {
+        const val DEFAULT_LOOKBACK_DAYS = 7L
+        const val MAX_LOOKBACK_DAYS = 365L
+    }
+
     private val lastSyncKey = longPreferencesKey("hc_last_sync_epoch_ms")
     private val lookbackWindowDaysKey = longPreferencesKey("hc_lookback_window_days")
 
@@ -30,7 +35,7 @@ class HealthConnectPrefs @Inject constructor(
     }
 
     suspend fun getLookbackWindowDays(): Long =
-        dataStore.data.map { it[lookbackWindowDaysKey] }.firstOrNull() ?: 7L
+        dataStore.data.map { it[lookbackWindowDaysKey] }.firstOrNull() ?: DEFAULT_LOOKBACK_DAYS
 
     suspend fun setLookbackWindowDays(days: Long) {
         dataStore.edit { it[lookbackWindowDaysKey] = days }

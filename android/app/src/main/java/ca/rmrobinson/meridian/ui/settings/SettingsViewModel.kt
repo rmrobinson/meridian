@@ -30,7 +30,8 @@ data class SettingsUiState(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val isHealthConnectAvailable: Boolean = false,
     val hasHealthConnectPermissions: Boolean = false,
-    val hcLookbackDays: String = "7",
+    val hcLookbackDays: String = HealthConnectPrefs.DEFAULT_LOOKBACK_DAYS.toString(),
+    val hcLookbackDaysError: Boolean = false,
 )
 
 @HiltViewModel
@@ -57,8 +58,8 @@ class SettingsViewModel @Inject constructor(
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     init {
+        viewModelScope.launch { refreshHealthConnectStatus() }
         viewModelScope.launch {
-            refreshHealthConnectStatus()
             val days = healthConnectPrefs.getLookbackWindowDays()
             _uiState.update { it.copy(hcLookbackDays = days.toString()) }
         }
@@ -98,7 +99,11 @@ class SettingsViewModel @Inject constructor(
     fun updateToken(value: String) = _uiState.update { it.copy(bearerToken = value) }
     fun updateUsePlaintext(value: Boolean) = _uiState.update { it.copy(usePlaintext = value) }
     fun updateThemeMode(value: ThemeMode) = _uiState.update { it.copy(themeMode = value) }
-    fun updateHcLookbackDays(value: String) = _uiState.update { it.copy(hcLookbackDays = value) }
+    fun updateHcLookbackDays(value: String) {
+        val days = value.toLongOrNull()
+        val error = days == null || days < 1L || days > HealthConnectPrefs.MAX_LOOKBACK_DAYS
+        _uiState.update { it.copy(hcLookbackDays = value, hcLookbackDaysError = error) }
+    }
 
     fun save() {
         val state = _uiState.value
@@ -112,7 +117,9 @@ class SettingsViewModel @Inject constructor(
         config.saveToPrefs(prefs)
         store.update(config)
         grpcClient.reconfigure(config)
-        val lookbackDays = state.hcLookbackDays.toLongOrNull()?.coerceAtLeast(1L) ?: 7L
+        val lookbackDays = state.hcLookbackDays.toLongOrNull()
+            ?.coerceIn(1L, HealthConnectPrefs.MAX_LOOKBACK_DAYS)
+            ?: HealthConnectPrefs.DEFAULT_LOOKBACK_DAYS
         viewModelScope.launch { healthConnectPrefs.setLookbackWindowDays(lookbackDays) }
     }
 }
