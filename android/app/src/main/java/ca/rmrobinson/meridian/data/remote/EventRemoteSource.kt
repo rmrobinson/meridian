@@ -2,6 +2,7 @@ package ca.rmrobinson.meridian.data.remote
 
 import android.util.Log
 import meridian.v1.CreateEventRequest
+import meridian.v1.DeleteEventRequest
 import meridian.v1.Event
 import meridian.v1.ListEventsRequest
 import meridian.v1.ListLineFamiliesRequest
@@ -54,6 +55,18 @@ class EventRemoteSource @Inject constructor(
             event
         } catch (e: Exception) {
             Log.e(TAG, "createEvent: RPC failed", e)
+            throw e
+        }
+    }
+
+    /** Sends a DeleteEvent RPC. Throws on gRPC error. */
+    suspend fun deleteEvent(id: String) {
+        Log.d(TAG, "deleteEvent: sending RPC id=$id")
+        try {
+            stub.deleteEvent(DeleteEventRequest.newBuilder().setId(id).build())
+            Log.d(TAG, "deleteEvent: success id=$id")
+        } catch (e: Exception) {
+            Log.e(TAG, "deleteEvent: RPC failed", e)
             throw e
         }
     }

@@ -8,6 +8,7 @@ import ca.rmrobinson.meridian.data.local.EventEntity
 import ca.rmrobinson.meridian.data.local.LineFamilyEntity
 import ca.rmrobinson.meridian.data.local.SyncState
 import ca.rmrobinson.meridian.data.toUpdateRequest
+import ca.rmrobinson.meridian.domain.usecase.DeleteEventUseCase
 import ca.rmrobinson.meridian.domain.usecase.SyncEventsUseCase
 import ca.rmrobinson.meridian.domain.usecase.UpdateEventUseCase
 import ca.rmrobinson.meridian.network.NetworkMonitor
@@ -46,6 +47,7 @@ class TimelineViewModel @Inject constructor(
     private val repository: EventRepository,
     private val syncEvents: SyncEventsUseCase,
     private val updateEvent: UpdateEventUseCase,
+    private val deleteEvent: DeleteEventUseCase,
     private val networkMonitor: NetworkMonitor,
 ) : ViewModel() {
 
@@ -146,6 +148,20 @@ class TimelineViewModel @Inject constructor(
                 // Roll back to the pre-update state on failure
                 repository.saveLocal(event)
                 _error.update { e.message ?: "Update failed" }
+            }
+        }
+    }
+
+    fun deleteEvent(event: EventEntity) {
+        viewModelScope.launch {
+            Log.d(TAG, "deleteEvent: id=${event.id}")
+            try {
+                deleteEvent(event)
+            } catch (e: Exception) {
+                Log.e(TAG, "deleteEvent: failed id=${event.id}", e)
+                // Restore the event locally so the user doesn't lose it
+                repository.saveLocal(event)
+                _error.update { e.message ?: "Delete failed" }
             }
         }
     }

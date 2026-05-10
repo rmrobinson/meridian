@@ -93,6 +93,11 @@ class EventRepository @Inject constructor(
         return event.toEntity()
     }
 
+    /** Sends a DeleteEvent RPC. Throws on gRPC error. */
+    suspend fun deleteEventRemote(id: String) {
+        remote.deleteEvent(id)
+    }
+
     // --- Retry queue ---
 
     /**

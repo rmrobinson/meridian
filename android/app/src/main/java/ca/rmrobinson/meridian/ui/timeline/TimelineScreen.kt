@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -40,12 +41,15 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -167,13 +171,14 @@ fun TimelineScreen(
                         }) { item ->
                             when (item) {
                                 is TimelineItem.YearHeader -> YearHeaderRow(item.year)
-                                is TimelineItem.EventRow -> EventCard(
+                                is TimelineItem.EventRow -> SwipeableEventCard(
                                     event = item.event,
                                     family = uiState.lineFamilies[item.event.familyId],
                                     darkTheme = darkTheme,
                                     showMarkComplete = uiState.showOpenSpansOnly,
                                     onClick = { onNavigateToEdit(item.event.id) },
                                     onMarkComplete = { viewModel.requestMarkComplete(item.event) },
+                                    onDelete = { viewModel.deleteEvent(item.event) },
                                 )
                             }
                         }
@@ -472,6 +477,61 @@ private fun EventCard(
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SwipeableEventCard(
+    event: EventEntity,
+    family: LineFamilyEntity?,
+    darkTheme: Boolean,
+    showMarkComplete: Boolean,
+    onClick: () -> Unit,
+    onMarkComplete: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            if (value == SwipeToDismissBoxValue.EndToStart) {
+                onDelete()
+                true
+            } else {
+                false
+            }
+        },
+    )
+    SwipeToDismissBox(
+        state = dismissState,
+        enableDismissFromStartToEnd = false,
+        backgroundContent = {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                    .background(
+                        MaterialTheme.colorScheme.errorContainer,
+                        RoundedCornerShape(12.dp),
+                    ),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Delete",
+                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.padding(end = 24.dp),
+                )
+            }
+        },
+    ) {
+        EventCard(
+            event = event,
+            family = family,
+            darkTheme = darkTheme,
+            showMarkComplete = showMarkComplete,
+            onClick = onClick,
+            onMarkComplete = onMarkComplete,
+        )
     }
 }
 
