@@ -45,6 +45,9 @@ android/
           /remote
             GrpcClient.kt        — channel setup, bearer token interceptor
             EventRemoteSource.kt — wraps generated proto stubs
+          /healthconnect
+            HealthConnectRepository.kt
+            HealthActivity.kt
           /repository
             EventRepository.kt   — single source of truth; local-first reads, gRPC writes
         /domain
@@ -57,6 +60,8 @@ android/
             SyncEventsUseCase.kt
             CreateEventUseCase.kt
             UpdateEventUseCase.kt
+            HealthConnectSyncUseCase.kt
+            HealthConnectImportUseCase.kt
         /ui
           /timeline
             TimelineScreen.kt
@@ -71,6 +76,8 @@ android/
               FitnessLandingScreen.kt  — Garmin import | Strava import | manual (future)
               FitnessManualScreen.kt   — manual activity form (future)
               FitnessImportScreen.kt   — OAuth + activity selection (future)
+              HealthConnectReviewScreen.kt   — pending Health Connect imports review
+              HealthConnectReviewViewModel.kt
               FitnessEntryViewModel.kt
             /hobbies
               HobbyLandingScreen.kt    — type picker: Book | Film | TV Series | Concert | Festival | Other
@@ -201,6 +208,7 @@ entry/flight/scan              — camera → BCBP → per-leg confirmation card
 entry/flight/manual            — manual origin/destination/date/carrier form
 
 entry/fitness/                 — fitness family landing: Garmin import | Strava import | manual (future)
+entry/fitness/healthconnect    — Health Connect pending import review
 entry/fitness/import           — OAuth + activity selection (future)
 entry/fitness/manual           — activity type, distance, duration, date form (future)
 
@@ -598,6 +606,141 @@ Trips are span events with a heavier data model: multiple locations, a hero imag
 - Error states (gRPC failures, scan failures, parse failures)
 - Retry queue for `LOCAL_ONLY` events
 - Offline indicator
+
+### Phase 9 — Health Connect Import
+
+Adds automatic ingestion of fitness activities from Health Connect (the Android system health data broker). Garmin Connect, AllTrails, and other fitness apps write activities here; Meridian reads them on foreground and presents a review screen before committing anything to the backend.
+
+**New dependency:** `androidx.health.connect:connect-client` (alongside existing dependencies in `libs.versions.toml`). Min SDK for Health Connect is 26, which matches the existing project minimum.
+
+**Permissions declared in `AndroidManifest.xml`:**
+```xml
+<uses-permission android:name="android.permission.health.READ_EXERCISE" />
+<uses-permission android:name="android.permission.health.READ_DISTANCE" />
+<uses-permission android:name="android.permission.health.READ_ELEVATION_GAINED" />
+```
+
+Note: diving depth is not available via Health Connect — Garmin dive data does not flow through this API. Dives continue to be entered manually via the FAB.
+
+#### New files
+
+```
+/data
+  /healthconnect
+    HealthConnectRepository.kt     — reads ExerciseSessionRecord + associated records
+    HealthActivity.kt              — local model for a raw Health Connect activity
+    HealthConnectImportUseCase.kt  — maps HealthActivity → EventEntity, deduplicates
+/ui
+  /fitness
+    HealthConnectReviewScreen.kt   — pending import list with IMPORT / MERGE / SKIP actions
+    HealthConnectReviewViewModel.kt
+```
+
+#### `HealthActivity` model
+
+```kotlin
+data class HealthActivity(
+    val healthConnectId: String,       // ExerciseSessionRecord.metadata.id
+    val exerciseType: Int,             // ExerciseSessionRecord type constant
+    val title: String?,                // set by some apps, often null
+    val startTime: Instant,
+    val endTime: Instant,
+    val distanceMeters: Double?,       // from DistanceRecord
+    val elevationGainedMeters: Double? // from ElevationGainedRecord; skiing, hiking
+)
+```
+
+Calories, heart rate, SpO2, and VO2 max are not fetched — only `READ_EXERCISE`, `READ_DISTANCE`, and `READ_ELEVATION_GAINED` permissions are requested.
+
+#### `HealthConnectRepository`
+
+```kotlin
+interface HealthConnectRepository {
+    suspend fun isAvailable(): Boolean
+    suspend fun hasPermissions(): Boolean
+    suspend fun requestPermissions(): Set<String>  // returns granted set
+    suspend fun fetchActivitiesSince(from: Instant): List<HealthActivity>
+}
+```
+
+`fetchActivitiesSince` reads `ExerciseSessionRecord` for the time window, then for each session fetches associated `DistanceRecord` and `ElevationGainedRecord` using the session's time range as the correlation window. All Health Connect I/O runs on `Dispatchers.IO`.
+
+#### Lookback and sync trigger
+
+`HealthConnectSyncUseCase` is called from `MainActivity.onResume()`. It reads a `lastHealthConnectSync` timestamp from `DataStore` (a separate key from the gRPC sync timestamp):
+
+```kotlin
+val from = prefs.lastHealthConnectSync ?: Instant.now().minus(7, DAYS)
+val activities = repo.fetchActivitiesSince(from)
+prefs.lastHealthConnectSync = Instant.now()
+```
+
+Seven days is the default lookback on first use. After each foreground call the timestamp advances to now, so subsequent calls only cover the gap since the app was last open.
+
+If `isAvailable()` returns false (Health Connect not installed) or `hasPermissions()` returns false, the sync is skipped silently. Permissions are requested lazily the first time the user navigates to `entry/fitness/` — not on app launch.
+
+#### Deduplication
+
+Before presenting the review screen, `HealthConnectImportUseCase` filters out any `HealthActivity` whose `healthConnectId` already appears in a `metadataJson` field in Room. The `hc_id` key is written into `metadataJson` on every import:
+
+```json
+{ "activity": "run", "distance_km": 5.2, "source": "health_connect", "hc_id": "abc123" }
+```
+
+This means a previously imported (or skipped-then-imported) activity will never reappear in the review screen.
+
+SKIP decisions are persisted separately in a `skipped_hc_ids` `DataStore` set so skipped activities also never resurface.
+
+#### `HealthConnectReviewScreen`
+
+Shown only when `activities.isNotEmpty()` after deduplication. Navigation is triggered from `HealthConnectSyncUseCase` via a `SharedFlow` that `MainActivity` observes — same pattern as other imperative navigation in the app.
+
+Each list item shows: activity type icon, auto-derived title, date, distance/elevation if present, and source app name (derived from `dataOrigins`). Three actions per item:
+
+| Action | Behaviour |
+|---|---|
+| **Import** | Maps to a new `EventEntity`; submitted via `CreateEventUseCase` on confirm |
+| **Merge** | Opens a bottom sheet listing existing Meridian fitness events within ±3 days; user selects one; metadata from the `HealthActivity` is merged into that event via `UpdateEventUseCase` |
+| **Skip** | `healthConnectId` written to `skipped_hc_ids`; item removed from list; never shown again |
+
+A "Confirm imports" button at the bottom of the screen fires all pending IMPORT and MERGE actions in sequence. Individual SKIPs take effect immediately (item disappears from the list). If the user backs out without confirming, no writes occur and the activities will reappear on next foreground (since the `lastHealthConnectSync` timestamp is written before the review screen opens — so they won't reappear, but IMPORT/MERGE selections are lost; this is acceptable given the low friction of re-selecting).
+
+#### Event mapping
+
+```kotlin
+val startDate = activity.startTime.atZone(ZoneId.systemDefault()).toLocalDate()
+val endDate   = activity.endTime.atZone(ZoneId.systemDefault()).toLocalDate()
+
+val (type, date, spanStart, spanEnd) = if (startDate == endDate) {
+    Quad("point", startDate, null, null)
+} else {
+    Quad("span", null, startDate, endDate)
+}
+```
+
+Device local timezone is used for the conversion. A multi-day activity (rare — e.g. an overnight bike tour logged as a single session) correctly becomes a span.
+
+Activity type is mapped from `ExerciseSessionRecord` constants to Meridian `metadata.activity` strings:
+
+| Health Connect type | `metadata.activity` |
+|---|---|
+| `RUNNING` | `"run"` |
+| `RUNNING_TREADMILL` | `"run"` |
+| `BIKING` | `"cycling"` |
+| `BIKING_STATIONARY` | `"cycling"` |
+| `HIKING` | `"hiking"` |
+| `SKIING` | `"skiing"` |
+| `SNOWBOARDING` | `"snowboarding"` |
+| `SWIMMING_OPEN_WATER` | `"swimming"` |
+| `SWIMMING_POOL` | `"swimming"` |
+| `WALKING` | `"walking"` |
+| Any other type | `"other"` |
+
+Title defaults to `"$activityLabel on $date"` (e.g. `"Run on Apr 18"`) when the source app has not set a title on the record.
+
+#### Settings integration
+
+A "Health Connect" row is added to `SettingsScreen` showing the current permission status and a button to open the Health Connect permission screen (`HealthConnectClient.getPermissionActivityResultContract()`). This is the only place permissions can be explicitly granted or revoked by the user within Meridian.
 
 ---
 

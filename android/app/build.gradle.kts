@@ -138,6 +138,12 @@ dependencies {
     implementation(libs.hilt.work)
     ksp(libs.androidx.hilt.compiler)
 
+    // Health Connect
+    implementation(libs.health.connect)
+
+    // DataStore
+    implementation(libs.datastore.preferences)
+
     // Testing
     testImplementation(libs.junit)
 }
