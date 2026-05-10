@@ -44,7 +44,7 @@ class HealthConnectSyncUseCase @Inject constructor(
         // Discard concurrent calls — a sync is already in flight.
         if (!syncMutex.tryLock()) return
         try {
-            val lookbackWindow = 7L // days
+            val lookbackWindow = prefs.getLookbackWindowDays()
             val lookbackStart = Instant.now().minus(lookbackWindow, ChronoUnit.DAYS)
             // Cap `from` to the lookback window: if lastSync is older than 7 days, fetching
             // from that earlier timestamp would include activities whose SKIPPED dedup entries

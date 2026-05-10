@@ -18,7 +18,6 @@ import meridian.v1.CreateEventRequest
 import meridian.v1.UpdateEventRequest
 import ca.rmrobinson.meridian.data.toUpdateRequest
 import java.time.LocalDate
-import java.time.ZoneId
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -169,11 +168,9 @@ class EventRepository @Inject constructor(
         val fitnessActivity = healthExerciseTypeToFitnessActivity(activity.exerciseType)
         val localId = UUID.randomUUID().toString()
         val now = System.currentTimeMillis()
-        val dateStr = activity.startTime.atZone(ZoneId.systemDefault()).toLocalDate().toString()
-        val lineKey = nextLineKeyForDate("fitness", dateStr)
 
         // Write LOCAL_ONLY placeholder immediately so dedup in hc_event_links is consistent.
-        eventDao.upsert(activity.toLocalEntity(localId, now).copy(lineKey = lineKey))
+        eventDao.upsert(activity.toLocalEntity(localId, now))
         // Record the link as IMPORTED immediately so a second sync during the RPC won't
         // re-present this activity to the user.
         hcEventLinkDao.upsert(
@@ -187,7 +184,7 @@ class EventRepository @Inject constructor(
 
         try {
             val serverEvent = remote.createEvent(
-                activity.toCreateRequest(fitnessActivity).toBuilder().setLineKey(lineKey).build(),
+                activity.toCreateRequest(fitnessActivity),
             ) ?: return
             // Patch hc_id + source into the server entity before saving to Room so the
             // metadata survives subsequent server syncs that would otherwise strip it.

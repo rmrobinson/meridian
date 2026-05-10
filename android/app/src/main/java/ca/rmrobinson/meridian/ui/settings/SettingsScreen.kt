@@ -163,6 +163,14 @@ fun SettingsScreen(
                         Text(if (uiState.hasHealthConnectPermissions) "Manage" else "Grant")
                     }
                 }
+                OutlinedTextField(
+                    value = uiState.hcLookbackDays,
+                    onValueChange = viewModel::updateHcLookbackDays,
+                    label = { Text("Lookback window (days)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
 
             Spacer(modifier = Modifier.height(12.dp))

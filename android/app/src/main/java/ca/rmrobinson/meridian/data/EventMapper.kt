@@ -563,7 +563,7 @@ fun healthExerciseTypeToFitnessActivity(exerciseType: Int): FitnessActivity = wh
 private fun HealthActivity.buildHcMetadataJson(fitnessActivity: FitnessActivity): String {
     val meta = FitnessMetadata.newBuilder()
         .setActivity(fitnessActivity)
-        .apply { distanceMeters?.let { setDistanceKm(it / 1000.0) } }
+        .apply { distanceMeters?.let { setDistanceKm(Math.round(it / 10.0) / 100.0) } }
         .apply { elevationGainedMeters?.let { setElevationGainM(it.toInt()) } }
         .build()
     val obj = JSONObject(SerializableMetadata.Fitness(meta).toJson())
@@ -605,7 +605,7 @@ fun HealthActivity.toCreateRequest(fitnessActivity: FitnessActivity): CreateEven
 
     val meta = FitnessMetadata.newBuilder()
         .setActivity(fitnessActivity)
-        .apply { distanceMeters?.let { setDistanceKm(it / 1000.0) } }
+        .apply { distanceMeters?.let { setDistanceKm(Math.round(it / 10.0) / 100.0) } }
         .apply { elevationGainedMeters?.let { setElevationGainM(it.toInt()) } }
         .build()
 
