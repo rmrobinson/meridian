@@ -6,9 +6,10 @@ import {
   Visibility,
   ConflictStrategy,
 } from "../../proto-gen/meridian/v1/timeline.js";
+import { metadataSchemaFields, buildMetadata, MetadataArgs } from "./metadata.js";
 
 const eventInputSchema = z.object({
-  title: z.string().describe("Title of the event"),
+  title: z.string().optional().describe("Title of the event (optional for books, which use ISBN for enrichment)"),
   family_id: z
     .enum(["spine", "employment", "education", "hobbies", "travel", "flights", "books", "film_tv", "fitness"])
     .describe("Timeline family this event belongs to"),
@@ -30,6 +31,8 @@ const eventInputSchema = z.object({
   label: z.string().optional().describe("Short display label"),
   icon: z.string().optional().describe("Icon identifier"),
   source_event_id: z.string().optional().describe("ID from the originating external source"),
+  // Per-family typed metadata — provide the one matching family_id
+  ...metadataSchemaFields,
 });
 
 export const importEventsSchema = {
@@ -50,14 +53,14 @@ const visibilityMap: Record<string, Visibility> = {
 
 type EventInput = z.infer<typeof eventInputSchema>;
 
-function toCreateEventRequest(e: EventInput) {
+function toCreateEventRequest(e: EventInput & MetadataArgs) {
   const hasLocation =
     e.location_label !== undefined ||
     e.location_lat !== undefined ||
     e.location_lng !== undefined;
 
   return {
-    title: e.title,
+    title: e.title ?? "",
     familyId: e.family_id,
     type: e.type === "span" ? EventType.EVENT_TYPE_SPAN : EventType.EVENT_TYPE_POINT,
     date: e.date ?? "",
@@ -79,6 +82,7 @@ function toCreateEventRequest(e: EventInput) {
     id: "",
     heroImageUrl: "",
     endIcon: "",
+    ...buildMetadata(e),
   };
 }
 

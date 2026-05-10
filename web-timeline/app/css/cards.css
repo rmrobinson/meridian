@@ -383,3 +383,35 @@
   color: var(--color-label-tertiary);
   margin-bottom: 4px;
 }
+
+/* ── Employment card ─────────────────────────────────────────────────────── */
+
+.card-company-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.card-company {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-label-secondary);
+  text-decoration: none;
+}
+
+a.card-company:hover {
+  text-decoration: underline;
+}
+
+.card-role-details {
+  font-size: 0.75rem;
+  color: var(--color-label-tertiary);
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.card-role-details:hover {
+  text-decoration: underline;
+}

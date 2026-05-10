@@ -39,7 +39,7 @@ export const updateEventSchema = {
     .optional()
     .describe("Metadata for spine family events"),
   employment_metadata: z
-    .object({ role: z.string(), company_name: z.string(), company_url: z.string().optional() })
+    .object({ role: z.string(), company_name: z.string(), company_url: z.string().optional(), role_details_url: z.string().optional().describe("URL linking to details about the role") })
     .optional()
     .describe("Metadata for employment family events"),
   education_metadata: z
@@ -61,11 +61,11 @@ export const updateEventSchema = {
     .optional()
     .describe("Metadata for flights family events"),
   book_metadata: z
-    .object({ isbn: z.string(), title: z.string().optional(), author: z.string().optional(), cover_image_url: z.string().optional(), preview_url: z.string().optional(), rating: z.number().int().min(0).max(10).optional(), review: z.string().optional() })
+    .object({ isbn: z.string().optional().describe("ISBN-13 (optional if title is provided; used for enrichment)"), title: z.string().optional(), author: z.string().optional(), cover_image_url: z.string().optional(), preview_url: z.string().optional(), rating: z.number().int().min(0).max(10).optional(), review: z.string().optional() })
     .optional()
     .describe("Metadata for books family events"),
   film_tv_metadata: z
-    .object({ tmdb_id: z.string(), type: z.enum(["movie", "tv"]), poster_url: z.string().optional(), director: z.string().optional(), network: z.string().optional(), year: z.number().int().optional(), seasons_watched: z.number().int().optional(), rating: z.number().int().min(0).max(10).optional(), review: z.string().optional() })
+    .object({ tmdb_id: z.string().optional(), type: z.enum(["movie", "tv"]), poster_url: z.string().optional(), director: z.string().optional(), network: z.string().optional(), year: z.number().int().optional(), seasons_watched: z.number().int().optional(), rating: z.number().int().min(0).max(10).optional(), review: z.string().optional() })
     .optional()
     .describe("Metadata for film_tv family events"),
   concert_metadata: z
@@ -124,12 +124,12 @@ type UpdateEventArgs = {
   label?: string;
   icon?: string;
   life_metadata?: { milestone_type: string; from?: string; to?: string };
-  employment_metadata?: { role: string; company_name: string; company_url?: string };
+  employment_metadata?: { role: string; company_name: string; company_url?: string; role_details_url?: string };
   education_metadata?: { institution: string; degree?: string };
   travel_metadata?: { countries?: string[]; cities?: string[] };
   flight_metadata?: { airline: string; flight_number: string; aircraft_type?: string; tail_number?: string; origin_iata?: string; destination_iata?: string; scheduled_departure?: string; scheduled_arrival?: string; actual_departure?: string; actual_arrival?: string };
-  book_metadata?: { isbn: string; title?: string; author?: string; cover_image_url?: string; preview_url?: string; rating?: number; review?: string };
-  film_tv_metadata?: { tmdb_id: string; type: "movie" | "tv"; poster_url?: string; director?: string; network?: string; year?: number; seasons_watched?: number; rating?: number; review?: string };
+  book_metadata?: { isbn?: string; title?: string; author?: string; cover_image_url?: string; preview_url?: string; rating?: number; review?: string };
+  film_tv_metadata?: { tmdb_id?: string; type: "movie" | "tv"; poster_url?: string; director?: string; network?: string; year?: number; seasons_watched?: number; rating?: number; review?: string };
   concert_metadata?: { main_act: string; opening_acts?: string[]; venue_label?: string; venue_lat?: number; venue_lng?: number; playlist_url?: string };
   fitness_metadata?: { activity: string; duration?: string; distance_km?: number; elevation_gain_m?: number; avg_heart_rate?: number; garmin_activity_url?: string; avg_pace_min_km?: number; bike?: string; avg_speed_kmh?: number; trail_name?: string; alltrails_url?: string; resort?: string; vertical_drop_m?: number; runs?: number; dive_site?: string; max_depth_m?: number; avg_depth_m?: number; climbing_type?: string; route_name?: string; problem_name?: string; grade?: string; course_name?: string; holes?: number; score?: number; opponent?: string; result?: string };
 };
@@ -165,7 +165,7 @@ function buildMetadata(args: UpdateEventArgs) {
     return { lifeMetadata: { milestoneType: lifeMilestoneTypeMap[args.life_metadata.milestone_type] ?? LifeMilestoneType.LIFE_MILESTONE_TYPE_UNSPECIFIED, from: args.life_metadata.from ?? "", to: args.life_metadata.to ?? "" } };
   }
   if (args.employment_metadata) {
-    return { employmentMetadata: { role: args.employment_metadata.role, companyName: args.employment_metadata.company_name, companyUrl: args.employment_metadata.company_url ?? "" } };
+    return { employmentMetadata: { role: args.employment_metadata.role, companyName: args.employment_metadata.company_name, companyUrl: args.employment_metadata.company_url ?? "", roleDetailsUrl: args.employment_metadata.role_details_url ?? "" } };
   }
   if (args.education_metadata) {
     return { educationMetadata: { institution: args.education_metadata.institution, degree: args.education_metadata.degree ?? "" } };
@@ -179,11 +179,11 @@ function buildMetadata(args: UpdateEventArgs) {
   }
   if (args.book_metadata) {
     const b = args.book_metadata;
-    return { bookMetadata: { isbn: b.isbn, title: b.title ?? "", author: b.author ?? "", coverImageUrl: b.cover_image_url ?? "", previewUrl: b.preview_url ?? "", rating: b.rating ?? 0, review: b.review ?? "" } };
+    return { bookMetadata: { isbn: b.isbn ?? "", title: b.title ?? "", author: b.author ?? "", coverImageUrl: b.cover_image_url ?? "", previewUrl: b.preview_url ?? "", rating: b.rating ?? 0, review: b.review ?? "" } };
   }
   if (args.film_tv_metadata) {
     const f = args.film_tv_metadata;
-    return { filmTvMetadata: { tmdbId: f.tmdb_id, type: f.type === "movie" ? FilmTVType.FILM_TV_TYPE_MOVIE : FilmTVType.FILM_TV_TYPE_TV, posterUrl: f.poster_url ?? "", director: f.director ?? "", network: f.network ?? "", year: f.year ?? 0, seasonsWatched: f.seasons_watched, rating: f.rating ?? 0, review: f.review ?? "" } };
+    return { filmTvMetadata: { tmdbId: f.tmdb_id ?? "", type: f.type === "movie" ? FilmTVType.FILM_TV_TYPE_MOVIE : FilmTVType.FILM_TV_TYPE_TV, posterUrl: f.poster_url ?? "", director: f.director ?? "", network: f.network ?? "", year: f.year ?? 0, seasonsWatched: f.seasons_watched, rating: f.rating ?? 0, review: f.review ?? "" } };
   }
   if (args.concert_metadata) {
     const c = args.concert_metadata;
@@ -200,35 +200,53 @@ function buildMetadata(args: UpdateEventArgs) {
 }
 
 export async function updateEvent(args: UpdateEventArgs) {
-  const hasLocation =
-    args.location_label !== undefined ||
-    args.location_lat !== undefined ||
-    args.location_lng !== undefined;
-
   try {
+    // Fetch the current event so we can send a complete replacement (PUT semantics).
+    const getResponse = await client.getEvent({ id: args.id });
+    const current = getResponse.event;
+    if (!current) {
+      return `Event ${args.id} not found.`;
+    }
+
+    // Determine location: caller-supplied fields win; fall back to existing per-field.
+    const location = {
+      label: args.location_label ?? current.location?.label ?? "",
+      lat: args.location_lat ?? current.location?.lat ?? 0,
+      lng: args.location_lng ?? current.location?.lng ?? 0,
+    };
+    const hasLocation =
+      location.label !== "" || location.lat !== 0 || location.lng !== 0;
+
+    // Determine visibility: use caller value if supplied, otherwise preserve existing.
+    const visibility = args.visibility
+      ? (visibilityMap[args.visibility] ?? current.visibility)
+      : current.visibility;
+
+    // Determine metadata: use caller-supplied if provided, otherwise re-use existing.
+    const callerMetadata = buildMetadata(args);
+    const hasCallerMetadata = Object.keys(callerMetadata).length > 0;
+    const metadata = hasCallerMetadata
+      ? callerMetadata
+      : extractExistingMetadata(current);
+
     const response = await client.updateEvent({
       id: args.id,
-      title: args.title ?? "",
-      date: args.date ?? "",
-      startDate: args.start_date ?? "",
-      endDate: args.end_date ?? "",
-      description: args.description ?? "",
-      visibility: args.visibility
-        ? (visibilityMap[args.visibility] ?? Visibility.VISIBILITY_UNSPECIFIED)
-        : Visibility.VISIBILITY_UNSPECIFIED,
-      lineKey: args.line_key ?? "",
-      parentLineKey: args.parent_line_key ?? "",
-      location: hasLocation
-        ? { label: args.location_label ?? "", lat: args.location_lat ?? 0, lng: args.location_lng ?? 0 }
-        : undefined,
-      externalUrl: args.external_url ?? "",
-      label: args.label ?? "",
-      icon: args.icon ?? "",
-      // type and familyId intentionally omitted — backend treats zero-value as "no change"
-      type: EventType.EVENT_TYPE_UNSPECIFIED,
-      familyId: "",
-      endIcon: "",
-      ...buildMetadata(args),
+      familyId: current.familyId,
+      lineKey: args.line_key ?? current.lineKey,
+      parentLineKey: args.parent_line_key ?? current.parentLineKey,
+      type: current.type,
+      title: args.title ?? current.title,
+      label: args.label ?? current.label,
+      icon: args.icon ?? current.icon,
+      endIcon: current.endIcon,
+      date: args.date ?? current.date,
+      startDate: args.start_date ?? current.startDate,
+      endDate: args.end_date ?? current.endDate,
+      description: args.description ?? current.description,
+      location: hasLocation ? location : undefined,
+      externalUrl: args.external_url ?? current.externalUrl,
+      visibility,
+      ...metadata,
     });
 
     const event = response.event;
@@ -239,4 +257,37 @@ export async function updateEvent(args: UpdateEventArgs) {
   } catch (err) {
     return mapGrpcError(err);
   }
+}
+
+// extractExistingMetadata converts the oneof metadata from a fetched Event back into the
+// shape expected by UpdateEventRequest, so we can round-trip it unchanged.
+function extractExistingMetadata(event: import("../../proto-gen/meridian/v1/timeline.js").Event): object {
+  if (event.lifeMetadata !== undefined) {
+    return { lifeMetadata: event.lifeMetadata };
+  }
+  if (event.employmentMetadata !== undefined) {
+    return { employmentMetadata: event.employmentMetadata };
+  }
+  if (event.educationMetadata !== undefined) {
+    return { educationMetadata: event.educationMetadata };
+  }
+  if (event.travelMetadata !== undefined) {
+    return { travelMetadata: event.travelMetadata };
+  }
+  if (event.flightMetadata !== undefined) {
+    return { flightMetadata: event.flightMetadata };
+  }
+  if (event.bookMetadata !== undefined) {
+    return { bookMetadata: event.bookMetadata };
+  }
+  if (event.filmTvMetadata !== undefined) {
+    return { filmTvMetadata: event.filmTvMetadata };
+  }
+  if (event.concertMetadata !== undefined) {
+    return { concertMetadata: event.concertMetadata };
+  }
+  if (event.fitnessMetadata !== undefined) {
+    return { fitnessMetadata: event.fitnessMetadata };
+  }
+  return {};
 }

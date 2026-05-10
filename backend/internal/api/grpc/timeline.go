@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jaevor/go-nanoid"
@@ -49,11 +50,16 @@ func (s *Server) CreateEvent(ctx context.Context, req *pb.CreateEventRequest) (*
 		vis = domain.VisibilityPersonal
 	}
 
+	lineKey := req.LineKey
+	if lineKey == "" {
+		lineKey = req.FamilyId
+	}
+
 	now := time.Now().UTC()
 	e := &domain.Event{
 		ID:            id,
 		FamilyID:      req.FamilyId,
-		LineKey:       req.LineKey,
+		LineKey:       lineKey,
 		ParentLineKey: strPtr(req.ParentLineKey),
 		Type:          protoToEventType(req.Type),
 		Title:         req.Title,
@@ -103,6 +109,23 @@ func (s *Server) CreateEvent(ctx context.Context, req *pb.CreateEventRequest) (*
 	return &pb.CreateEventResponse{Event: eventToProto(e, nil)}, nil
 }
 
+func (s *Server) GetEvent(ctx context.Context, req *pb.GetEventRequest) (*pb.GetEventResponse, error) {
+	e, err := s.db.GetEventByID(ctx, req.Id)
+	if err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			return nil, status.Errorf(codes.NotFound, "event %q not found", req.Id)
+		}
+		s.logger.Error("fetching event", zap.String("id", req.Id), zap.Error(err))
+		return nil, status.Error(codes.Internal, "internal error")
+	}
+	photos, err := s.db.ListPhotosForEvent(ctx, req.Id)
+	if err != nil {
+		s.logger.Error("listing photos for event", zap.String("id", req.Id), zap.Error(err))
+		return nil, status.Error(codes.Internal, "internal error")
+	}
+	return &pb.GetEventResponse{Event: eventToProto(e, photos)}, nil
+}
+
 func (s *Server) UpdateEvent(ctx context.Context, req *pb.UpdateEventRequest) (*pb.UpdateEventResponse, error) {
 	if req.Title == "" && req.GetBookMetadata().GetIsbn() == "" {
 		return nil, status.Error(codes.InvalidArgument, "title or ISBN is required")
@@ -113,10 +136,15 @@ func (s *Server) UpdateEvent(ctx context.Context, req *pb.UpdateEventRequest) (*
 		vis = domain.VisibilityPersonal
 	}
 
+	updateLineKey := req.LineKey
+	if updateLineKey == "" {
+		updateLineKey = req.FamilyId
+	}
+
 	e := &domain.Event{
 		ID:            req.Id,
 		FamilyID:      req.FamilyId,
-		LineKey:       req.LineKey,
+		LineKey:       updateLineKey,
 		ParentLineKey: strPtr(req.ParentLineKey),
 		Type:          protoToEventType(req.Type),
 		Title:         req.Title,
@@ -127,9 +155,9 @@ func (s *Server) UpdateEvent(ctx context.Context, req *pb.UpdateEventRequest) (*
 		Date:          strPtr(req.Date),
 		StartDate:     strPtr(req.StartDate),
 		EndDate:       strPtr(req.EndDate),
-		ExternalURL:  strPtr(req.ExternalUrl),
-		HeroImageURL: strPtr(req.HeroImageUrl),
-		Visibility:   vis,
+		ExternalURL:   strPtr(req.ExternalUrl),
+		HeroImageURL:  strPtr(req.HeroImageUrl),
+		Visibility:    vis,
 	}
 	updateMeta, updateMetaType := extractUpdateMetadata(req)
 	e.Metadata = updateMeta
@@ -253,6 +281,18 @@ func (s *Server) ImportEvents(ctx context.Context, req *pb.ImportEventsRequest) 
 						updated.LocationLat = float64Ptr(evtReq.Location.Lat)
 						updated.LocationLng = float64Ptr(evtReq.Location.Lng)
 					}
+					if err := domain.ValidateMetadata(derefStr(updated.MetadataType), updated); err != nil {
+						resp.Failed++
+						resp.Errors = append(resp.Errors, "invalid metadata for event: "+evtReq.SourceEventId)
+						continue
+					}
+					if enrichErr := s.enrich(ctx, updated); enrichErr != nil {
+						s.logger.Error("enrichment failed during import upsert",
+							zap.String("id", existing.ID), zap.Error(enrichErr))
+						resp.Failed++
+						resp.Errors = append(resp.Errors, "enrichment failed for event: "+evtReq.SourceEventId)
+						continue
+					}
 					if dbErr := s.db.UpdateEvent(ctx, updated); dbErr != nil {
 						resp.Failed++
 						resp.Errors = append(resp.Errors, "failed to update event: "+evtReq.SourceEventId)
@@ -270,6 +310,12 @@ func (s *Server) ImportEvents(ctx context.Context, req *pb.ImportEventsRequest) 
 		}
 
 		// New event — generate ID if absent.
+		if !validFamilyIDs[evtReq.FamilyId] {
+			resp.Failed++
+			resp.Errors = append(resp.Errors, fmt.Sprintf("unknown family_id %q", evtReq.FamilyId))
+			continue
+		}
+
 		id := evtReq.Id
 		if id == "" {
 			id = newID()
@@ -280,11 +326,16 @@ func (s *Server) ImportEvents(ctx context.Context, req *pb.ImportEventsRequest) 
 			vis = domain.VisibilityPersonal
 		}
 
+		importLineKey := evtReq.LineKey
+		if importLineKey == "" {
+			importLineKey = evtReq.FamilyId
+		}
+
 		now := time.Now().UTC()
 		e := &domain.Event{
 			ID:            id,
 			FamilyID:      evtReq.FamilyId,
-			LineKey:       evtReq.LineKey,
+			LineKey:       importLineKey,
 			ParentLineKey: strPtr(evtReq.ParentLineKey),
 			Type:          protoToEventType(evtReq.Type),
 			Title:         evtReq.Title,
@@ -314,6 +365,20 @@ func (s *Server) ImportEvents(ctx context.Context, req *pb.ImportEventsRequest) 
 			e.LocationLabel = strPtr(evtReq.Location.Label)
 			e.LocationLat = float64Ptr(evtReq.Location.Lat)
 			e.LocationLng = float64Ptr(evtReq.Location.Lng)
+		}
+
+		if err := domain.ValidateMetadata(derefStr(e.MetadataType), e); err != nil {
+			resp.Failed++
+			resp.Errors = append(resp.Errors, fmt.Sprintf("invalid metadata for event %q: %v", id, err))
+			continue
+		}
+
+		// Enrich before insert (e.g. TMDB poster/description for film_tv events).
+		if enrichErr := s.enrich(ctx, e); enrichErr != nil {
+			s.logger.Error("enrichment failed during import", zap.String("id", id), zap.Error(enrichErr))
+			resp.Failed++
+			resp.Errors = append(resp.Errors, fmt.Sprintf("enrichment failed for event %q: %v", id, enrichErr))
+			continue
 		}
 
 		// Auto-merge: find a canonical event matching date + fitness activity.

@@ -164,13 +164,14 @@ export function buildWeekMap(data, colorFn) {
   // ── Collect spine relocation events, sorted ascending by date ──────────
   //
   // Only primary spine (line_key === 'spine') events are used, per spec.
+  // Birth events with a location are treated as the initial implicit relocation.
 
   const relocations = (data.events ?? [])
     .filter(
       (e) =>
         e.family_id === 'spine' &&
         e.line_key  === 'spine' &&
-        e.metadata?.milestone_type === 'relocation' &&
+        (e.metadata?.milestone_type === 'relocation' || e.metadata?.milestone_type === 'birth') &&
         e.location?.label,
     )
     .map((e) => ({ date: new Date(e.date), label: e.location.label }))

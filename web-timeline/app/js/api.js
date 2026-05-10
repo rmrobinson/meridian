@@ -240,6 +240,7 @@ function normalizeEvent(evt) {
     family_id: evt.family_id,
     metadata_type: evt.metadata_type ?? null,
     line_key: evt.line_key,
+    parent_line_key: evt.parent_line_key ?? null,
     type: evt.type,
     title: evt.title,
     label: evt.label ?? null,   // short display string; falls back to truncated title if null
@@ -307,6 +308,11 @@ export function generateBirthdays(birthDateStr, existingEvents = [], visibility 
       .map((e) => e.date),
   );
 
+  // Suppress age-0 birthday when an explicit birth event exists on the birth date.
+  const hasBirthEvent = existingEvents.some(
+    (e) => e.metadata_type === 'life' && e.metadata?.milestone_type === 'birth',
+  );
+
   const birthdays = [];
   for (let age = 0; ; age++) {
     const bday = new Date(birth);
@@ -315,6 +321,7 @@ export function generateBirthdays(birthDateStr, existingEvents = [], visibility 
 
     const isoDate = bday.toISOString().slice(0, 10);
     if (explicitDates.has(isoDate)) continue; // explicit event replaces auto
+    if (age === 0 && hasBirthEvent) continue; // birth event is more descriptive
 
     birthdays.push({
       id: `auto_birthday_${age}`,

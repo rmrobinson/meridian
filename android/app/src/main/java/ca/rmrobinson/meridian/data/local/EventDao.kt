@@ -42,4 +42,7 @@ interface EventDao {
         ORDER BY COALESCE(date, start_date) DESC
     """)
     suspend fun getFitnessEventsNear(fromDate: String, toDate: String): List<EventEntity>
+  
+    @Query("DELETE FROM events WHERE sync_state = 'SYNCED' AND id NOT IN (:serverIds)")
+    suspend fun deleteSyncedNotIn(serverIds: List<String>)
 }

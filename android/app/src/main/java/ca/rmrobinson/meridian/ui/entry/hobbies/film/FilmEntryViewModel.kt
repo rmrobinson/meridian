@@ -71,7 +71,6 @@ class FilmEntryViewModel @Inject constructor(
         _uiState.update { it.copy(isSubmitting = true, error = null) }
         viewModelScope.launch {
             try {
-                val lineKey = repository.nextLineKeyForDate(familyId, state.watchedDate.toString())
                 val metadata = FilmTVMetadata.newBuilder()
                     .setType(FilmTVType.FILM_TV_TYPE_MOVIE)
                     .setRating(state.rating)
@@ -83,8 +82,8 @@ class FilmEntryViewModel @Inject constructor(
                     .setFamilyId(familyId)
                     .setType(EventType.EVENT_TYPE_POINT)
                     .setTitle(state.title.trim())
-                    .setStartDate(state.watchedDate.toString())
-                    .setLineKey(lineKey)
+                    .setDate(state.watchedDate.toString())
+                    .setLineKey(familyId)
                     .setVisibility(Visibility.VISIBILITY_PUBLIC)
                     .setFilmTvMetadata(metadata)
                     .build()

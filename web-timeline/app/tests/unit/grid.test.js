@@ -56,6 +56,22 @@ function relocation(id, date, locationLabel) {
   };
 }
 
+/** Build a spine birth point event. */
+function birthEvent(id, date, locationLabel) {
+  return {
+    id,
+    family_id: 'spine',
+    line_key: 'spine',
+    type: 'point',
+    title: id,
+    date,
+    start_date: null,
+    end_date: null,
+    metadata: { milestone_type: 'birth' },
+    location: locationLabel ? { label: locationLabel } : null,
+  };
+}
+
 /** Line family stub. */
 function family(id, h = 200, s = 70, l = 50) {
   return { id, label: id, base_color_hsl: [h, s, l], side: 'right', on_end: 'merge', spawn_behavior: 'per_event' };
@@ -277,6 +293,42 @@ describe('buildWeekMap — residence carries forward', () => {
     const map = buildWeekMap(data, colorFn);
     expect(map['2019-W35']?.label).toBe('Edinburgh, UK');
     expect(map['2019-W36']?.label).toBe('London, UK');
+  });
+});
+
+// ── buildWeekMap — birth event as initial residence ───────────────────────────
+
+describe('buildWeekMap — birth event as initial residence', () => {
+  it('uses birth event location as the starting residence color', () => {
+    const data = makeData({
+      timeline_start: '1990-01-01',
+      events: [birthEvent('b1', '1990-01-01', 'Toronto, ON')],
+    });
+    const map = buildWeekMap(data, colorFn);
+    expect(map['2000-W01']?.family).toBe('residence');
+    expect(map['2000-W01']?.label).toBe('Toronto, ON');
+  });
+
+  it('birth location is superseded by a later relocation', () => {
+    const data = makeData({
+      timeline_start: '1990-01-01',
+      events: [
+        birthEvent('b1',  '1990-01-01', 'Toronto, ON'),
+        relocation('r1', '2010-06-01', 'Vancouver, BC'),
+      ],
+    });
+    const map = buildWeekMap(data, colorFn);
+    expect(map['2000-W01']?.label).toBe('Toronto, ON');
+    expect(map['2020-W01']?.label).toBe('Vancouver, BC');
+  });
+
+  it('birth event without a location does not produce a residence color', () => {
+    const data = makeData({
+      timeline_start: '1990-01-01',
+      events: [birthEvent('b1', '1990-01-01', null)],
+    });
+    const map = buildWeekMap(data, colorFn);
+    expect(map['2000-W01']).toBeNull();
   });
 });
 

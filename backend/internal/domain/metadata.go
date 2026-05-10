@@ -35,9 +35,10 @@ type LifeMetadata struct {
 }
 
 type EmploymentMetadata struct {
-	Role        string `json:"role,omitempty"`
-	CompanyName string `json:"company_name,omitempty"`
-	CompanyURL  string `json:"company_url,omitempty"`
+	Role           string `json:"role,omitempty"`
+	CompanyName    string `json:"company_name,omitempty"`
+	CompanyURL     string `json:"company_url,omitempty"`
+	RoleDetailsURL string `json:"role_details_url,omitempty"`
 }
 
 type EducationMetadata struct {
