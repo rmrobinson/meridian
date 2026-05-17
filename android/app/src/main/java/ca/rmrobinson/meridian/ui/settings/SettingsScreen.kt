@@ -48,6 +48,7 @@ import ca.rmrobinson.meridian.ThemeMode
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    onNavigateToIgnoredActivities: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -181,6 +182,12 @@ fun SettingsScreen(
                     ),
                     modifier = Modifier.fillMaxWidth(),
                 )
+                OutlinedButton(
+                    onClick = onNavigateToIgnoredActivities,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("View Ignored Activities")
+                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))

@@ -13,6 +13,12 @@ interface HcEventLinkDao {
     @Upsert
     suspend fun upsert(link: HcEventLinkEntity)
 
+    @Query("SELECT * FROM hc_event_links WHERE status = 'SKIPPED' ORDER BY created_at DESC")
+    suspend fun getSkipped(): List<HcEventLinkEntity>
+
+    @Query("DELETE FROM hc_event_links WHERE hc_id = :hcId AND status = 'SKIPPED'")
+    suspend fun deleteSkippedByHcId(hcId: String)
+
     /**
      * Removes SKIPPED entries older than [beforeMs] to prevent unbounded growth.
      * IMPORTED and MERGED entries are kept permanently so dedup remains correct.

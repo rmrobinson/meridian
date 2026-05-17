@@ -15,6 +15,7 @@ import ca.rmrobinson.meridian.ui.edit.EditEventScreen
 import ca.rmrobinson.meridian.ui.entry.fitness.FitnessLandingScreen
 import ca.rmrobinson.meridian.ui.entry.fitness.FitnessScreen
 import ca.rmrobinson.meridian.ui.entry.fitness.HealthConnectReviewScreen
+import ca.rmrobinson.meridian.ui.entry.fitness.IgnoredActivitiesScreen
 import ca.rmrobinson.meridian.ui.entry.flight.FlightLandingScreen
 import ca.rmrobinson.meridian.ui.entry.flight.FlightManualScreen
 import ca.rmrobinson.meridian.ui.entry.flight.FlightScanScreen
@@ -66,7 +67,14 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable("settings") {
-                        SettingsScreen(onBack = { navController.popBackStack() })
+                        SettingsScreen(
+                            onBack = { navController.popBackStack() },
+                            onNavigateToIgnoredActivities = { navController.navigate("hc/ignored") },
+                        )
+                    }
+
+                    composable("hc/ignored") {
+                        IgnoredActivitiesScreen(onBack = { navController.popBackStack() })
                     }
 
                     composable("scanner/{mode}") { backStackEntry ->
