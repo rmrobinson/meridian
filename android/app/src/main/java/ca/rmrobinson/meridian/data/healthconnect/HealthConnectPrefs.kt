@@ -6,7 +6,6 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
-import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -24,15 +23,7 @@ class HealthConnectPrefs @Inject constructor(
         const val MAX_LOOKBACK_DAYS = 365L
     }
 
-    private val lastSyncKey = longPreferencesKey("hc_last_sync_epoch_ms")
     private val lookbackWindowDaysKey = longPreferencesKey("hc_lookback_window_days")
-
-    suspend fun getLastSync(): Instant? =
-        dataStore.data.map { it[lastSyncKey] }.firstOrNull()?.let { Instant.ofEpochMilli(it) }
-
-    suspend fun setLastSync(t: Instant) {
-        dataStore.edit { it[lastSyncKey] = t.toEpochMilli() }
-    }
 
     suspend fun getLookbackWindowDays(): Long =
         dataStore.data.map { it[lookbackWindowDaysKey] }.firstOrNull() ?: DEFAULT_LOOKBACK_DAYS

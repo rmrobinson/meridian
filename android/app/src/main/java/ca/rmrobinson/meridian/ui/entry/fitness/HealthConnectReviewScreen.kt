@@ -368,20 +368,13 @@ private fun MergeCandidatesSheet(
 // Private helpers
 // ---------------------------------------------------------------------------
 
-/** Formats a [Duration] as "1h 23m" or "45m". */
-private fun formatDuration(duration: Duration): String {
+internal fun formatDuration(duration: Duration): String {
     val hours = duration.toHours()
     val minutes = duration.toMinutes() % 60
     return if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
 }
 
-/**
- * Derives the display title for a [HealthActivity].
- * Uses the source-provided title if present; falls back to "{ActivityLabel} on {date}".
- * Single source of truth — [ca.rmrobinson.meridian.data.EventMapper] has the identical logic
- * for the stored title; keep these in sync if activity labels change.
- */
-private fun HealthActivity.derivedTitle(fitnessActivity: FitnessActivity): String {
+internal fun HealthActivity.derivedTitle(fitnessActivity: FitnessActivity): String {
     if (!title.isNullOrBlank()) return title
     val dateLabel = startTime.atZone(ZoneId.systemDefault()).toLocalDate().toString()
     val label = when (fitnessActivity) {
@@ -398,7 +391,7 @@ private fun HealthActivity.derivedTitle(fitnessActivity: FitnessActivity): Strin
     return "$label on $dateLabel"
 }
 
-private fun fitnessActivityIcon(activity: FitnessActivity): ImageVector = when (activity) {
+internal fun fitnessActivityIcon(activity: FitnessActivity): ImageVector = when (activity) {
     FitnessActivity.FITNESS_ACTIVITY_RUN    -> Icons.AutoMirrored.Filled.DirectionsRun
     FitnessActivity.FITNESS_ACTIVITY_CYCLE  -> Icons.AutoMirrored.Filled.DirectionsBike
     FitnessActivity.FITNESS_ACTIVITY_HIKE   -> Icons.Default.Hiking
