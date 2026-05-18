@@ -6,6 +6,26 @@
   gap: 12px;
 }
 
+/* ── Back button ─────────────────────────────────────────────────────────── */
+
+.card-back-btn {
+  align-self: flex-start;
+  width: 80px;
+  padding: 4px 8px;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-label-secondary);
+  font-size: 0.875rem;
+  cursor: pointer;
+  text-align: center;
+}
+
+.card-back-btn:hover {
+  background: var(--color-btn-active-bg);
+  border-color: var(--color-label-secondary);
+}
+
 /* ── Shared card elements ─────────────────────────────────────────────────── */
 
 .card-title {

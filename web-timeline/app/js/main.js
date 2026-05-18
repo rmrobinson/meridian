@@ -714,6 +714,7 @@ function renderCardStack(anchorEl, mouseEvent, overlay, sheet, content) {
   const event = _cardStack[_cardStack.length - 1];
 
   // Populate content with the appropriate card type.
+  // content.innerHTML = '' also clears any back button from the previous navigation.
   content.innerHTML = '';
   content.appendChild(buildCardContent(event));
 
@@ -727,20 +728,18 @@ function renderCardStack(anchorEl, mouseEvent, overlay, sheet, content) {
     });
   });
 
-  // Inject back button in the card header if this is not the first card in the stack.
+  // Inject back button as the first child of content so it sits above the card body
+  // in the normal flow — no overlaying of posters or title text.
   if (_cardStack.length > 1) {
-    const cardTitle = content.querySelector('.card-title');
-    if (cardTitle) {
-      const backBtn = document.createElement('button');
-      backBtn.className = 'card-back-btn';
-      backBtn.setAttribute('aria-label', 'Back');
-      backBtn.textContent = '←';
-      backBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        goBack(overlay, sheet, content);
-      });
-      cardTitle.parentElement.insertBefore(backBtn, cardTitle);
-    }
+    const backBtn = document.createElement('button');
+    backBtn.className = 'card-back-btn';
+    backBtn.setAttribute('aria-label', 'Back');
+    backBtn.textContent = '←';
+    backBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      goBack(overlay, sheet, content);
+    });
+    content.insertBefore(backBtn, content.firstChild);
   }
 
   // Position (desktop only — mobile is handled entirely by CSS bottom-sheet).
