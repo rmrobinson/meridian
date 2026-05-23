@@ -85,9 +85,11 @@ message FilmTVMetadata {
   string director = 4;
   string network = 5;
   int32 year = 6;
-  optional int32 seasons_watched = 7;
+  optional int32 seasons_watched = 7; // user-provided: number of seasons this entry covers
   int32 rating = 8;
   string review = 9;
+  optional int32 season = 10;        // user-provided: specific season number (1-based)
+  optional int32 total_seasons = 11; // TMDB-sourced: total seasons in the show
 }
 
 enum FitnessActivity {

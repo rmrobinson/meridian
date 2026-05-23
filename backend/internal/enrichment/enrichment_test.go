@@ -449,11 +449,17 @@ func TestTMDB_TV_PopulatesNetworkAndSeasons(t *testing.T) {
 	if m.Network != "AMC" {
 		t.Errorf("network: got %q, want AMC", m.Network)
 	}
-	if m.SeasonsWatched == nil || *m.SeasonsWatched != 5 {
-		t.Errorf("seasons_watched: got %v, want 5", m.SeasonsWatched)
+	if m.TotalSeasons == nil || *m.TotalSeasons != 5 {
+		t.Errorf("total_seasons: got %v, want 5", m.TotalSeasons)
+	}
+	if m.SeasonsWatched != nil {
+		t.Errorf("seasons_watched: expected nil (TMDB must not overwrite user value), got %v", m.SeasonsWatched)
 	}
 	if event.Description == nil || *event.Description != "A chemistry teacher turned drug manufacturer." {
 		t.Errorf("description: got %v, want \"A chemistry teacher turned drug manufacturer.\"", event.Description)
+	}
+	if event.LineKey != "film_tv-1396" {
+		t.Errorf("line_key: got %q, want film_tv-1396", event.LineKey)
 	}
 }
 

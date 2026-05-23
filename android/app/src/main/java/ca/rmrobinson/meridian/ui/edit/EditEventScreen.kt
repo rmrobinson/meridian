@@ -483,9 +483,19 @@ private fun FilmTvMetadataSection(
     }
     if (uiState.filmTvSubtype == "FILM_TV_TYPE_TV") {
         OutlinedTextField(
+            value = uiState.season,
+            onValueChange = viewModel::setSeason,
+            label = { Text("Season (optional)") },
+            placeholder = { Text("e.g. 3") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        OutlinedTextField(
             value = uiState.seasonsWatched,
             onValueChange = viewModel::setSeasonsWatched,
             label = { Text("Seasons watched (optional)") },
+            placeholder = { Text("e.g. 4") },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth(),

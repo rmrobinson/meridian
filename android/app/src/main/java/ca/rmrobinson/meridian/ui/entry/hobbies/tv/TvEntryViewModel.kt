@@ -32,6 +32,7 @@ class TvEntryViewModel @Inject constructor(
 
     data class UiState(
         val title: String = "",
+        val season: String = "",
         val year: String = "",
         val network: String = "",
         val startDate: LocalDate = LocalDate.now(),
@@ -48,6 +49,7 @@ class TvEntryViewModel @Inject constructor(
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
     fun setTitle(value: String) = _uiState.update { it.copy(title = value) }
+    fun setSeason(value: String) = _uiState.update { it.copy(season = value) }
     fun setYear(value: String) = _uiState.update { it.copy(year = value) }
     fun setNetwork(value: String) = _uiState.update { it.copy(network = value) }
     fun setStartDate(value: LocalDate) = _uiState.update { it.copy(startDate = value) }
@@ -75,6 +77,14 @@ class TvEntryViewModel @Inject constructor(
             _uiState.update { it.copy(error = "Finish date cannot be before start date") }
             return
         }
+        val seasonInt: Int? = if (state.season.isNotBlank()) {
+            val parsed = state.season.toIntOrNull()
+            if (parsed == null || parsed < 1) {
+                _uiState.update { it.copy(error = "Season must be a positive number") }
+                return
+            }
+            parsed
+        } else null
         val seasonsInt: Int? = if (state.seasonsWatched.isNotBlank()) {
             val parsed = state.seasonsWatched.toIntOrNull()
             if (parsed == null || parsed < 1) {
@@ -94,6 +104,7 @@ class TvEntryViewModel @Inject constructor(
                     .setReview(state.review.trim())
                     .apply { if (yearInt != null) setYear(yearInt) }
                     .apply { if (state.network.isNotBlank()) setNetwork(state.network.trim()) }
+                    .apply { if (seasonInt != null) setSeason(seasonInt) }
                     .apply { if (seasonsInt != null) setSeasonsWatched(seasonsInt) }
                     .build()
                 val request = CreateEventRequest.newBuilder()

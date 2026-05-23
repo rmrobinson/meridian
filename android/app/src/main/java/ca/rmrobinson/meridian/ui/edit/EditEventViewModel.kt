@@ -61,6 +61,7 @@ class EditEventViewModel @Inject constructor(
         val year: String = "",
         val director: String = "",
         val network: String = "",
+        val season: String = "",
         val seasonsWatched: String = "",
         val rating: Int = 0,
         val review: String = "",
@@ -167,6 +168,8 @@ class EditEventViewModel @Inject constructor(
                 } else "",
                 director = if (metadataType == "film_tv") json.optString("director") else "",
                 network = if (metadataType == "film_tv") json.optString("network") else "",
+                season = if (metadataType == "film_tv" && json.has("season"))
+                    json.getInt("season").toString() else "",
                 seasonsWatched = if (metadataType == "film_tv" && json.has("seasons_watched"))
                     json.getInt("seasons_watched").toString() else "",
                 rating = if (metadataType == "book" || metadataType == "film_tv")
@@ -236,6 +239,7 @@ class EditEventViewModel @Inject constructor(
     fun setYear(value: String) = _uiState.update { it.copy(year = value) }
     fun setDirector(value: String) = _uiState.update { it.copy(director = value) }
     fun setNetwork(value: String) = _uiState.update { it.copy(network = value) }
+    fun setSeason(value: String) = _uiState.update { it.copy(season = value) }
     fun setSeasonsWatched(value: String) = _uiState.update { it.copy(seasonsWatched = value) }
     fun setRating(value: Int) = _uiState.update { it.copy(rating = value) }
     fun setReview(value: String) = _uiState.update { it.copy(review = value) }
@@ -397,6 +401,14 @@ private class FitnessParseContext {
         } else null
 
         if (state.metadataType == "film_tv" && state.filmTvSubtype == "FILM_TV_TYPE_TV"
+            && state.season.isNotBlank()) {
+            val s = state.season.toIntOrNull()
+            if (s == null || s < 1) {
+                _uiState.update { it.copy(error = "Season must be a positive number") }
+                return
+            }
+        }
+        if (state.metadataType == "film_tv" && state.filmTvSubtype == "FILM_TV_TYPE_TV"
             && state.seasonsWatched.isNotBlank()) {
             val seasons = state.seasonsWatched.toIntOrNull()
             if (seasons == null || seasons < 1) {
@@ -458,6 +470,9 @@ private class FitnessParseContext {
                             FilmTVType.FILM_TV_TYPE_TV -> {
                                 if (state.network.isNotBlank()) metaBuilder.setNetwork(state.network.trim())
                                 else metaBuilder.clearNetwork()
+                                val season = state.season.toIntOrNull()
+                                if (season != null && season > 0) metaBuilder.setSeason(season)
+                                else metaBuilder.clearSeason()
                                 val seasons = state.seasonsWatched.toIntOrNull()
                                 if (seasons != null && seasons > 0) metaBuilder.setSeasonsWatched(seasons)
                                 else metaBuilder.clearSeasonsWatched()

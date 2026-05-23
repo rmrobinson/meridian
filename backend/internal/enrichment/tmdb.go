@@ -212,11 +212,14 @@ func (e *TMDBEnricher) enrichTV(ctx context.Context, event *domain.Event, m *dom
 		m.Network = result.Networks[0].Name
 	}
 	if result.NumberOfSeasons > 0 {
-		m.SeasonsWatched = &result.NumberOfSeasons
+		m.TotalSeasons = &result.NumberOfSeasons
 	}
 	if result.Overview != "" {
 		event.Description = &result.Overview
 	}
+
+	// Group all seasons of the same show on the same timeline lane.
+	event.LineKey = "film_tv-" + m.TMDBID
 
 	if err := e.uploadPoster(ctx, m, result.PosterPath); err != nil {
 		return err

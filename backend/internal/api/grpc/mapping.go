@@ -344,6 +344,14 @@ func jsonToEventMetadata(e *domain.Event, out *pb.Event) {
 			v := int32(*m.SeasonsWatched)
 			pbMeta.SeasonsWatched = &v
 		}
+		if m.Season != nil {
+			v := int32(*m.Season)
+			pbMeta.Season = &v
+		}
+		if m.TotalSeasons != nil {
+			v := int32(*m.TotalSeasons)
+			pbMeta.TotalSeasons = &v
+		}
 		out.Metadata = &pb.Event_FilmTvMetadata{FilmTvMetadata: pbMeta}
 	case "concert":
 		m, err := domain.ParseMetadata[domain.ConcertMetadata](e)
@@ -442,6 +450,14 @@ func protoToFilmTVMetadata(p *pb.FilmTVMetadata) *domain.FilmTVMetadata {
 	if p.SeasonsWatched != nil {
 		v := int(p.GetSeasonsWatched())
 		m.SeasonsWatched = &v
+	}
+	if p.Season != nil {
+		v := int(p.GetSeason())
+		m.Season = &v
+	}
+	if p.TotalSeasons != nil {
+		v := int(p.GetTotalSeasons())
+		m.TotalSeasons = &v
 	}
 	return m
 }

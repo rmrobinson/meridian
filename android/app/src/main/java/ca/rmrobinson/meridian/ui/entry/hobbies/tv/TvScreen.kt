@@ -92,7 +92,7 @@ fun TvScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Add TV Series") },
+                title = { Text("Record TV Watching") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -113,8 +113,19 @@ fun TvScreen(
             OutlinedTextField(
                 value = uiState.title,
                 onValueChange = viewModel::setTitle,
-                label = { Text("Title *") },
+                label = { Text("Show name *") },
+                placeholder = { Text("e.g. The Wire") },
                 singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            OutlinedTextField(
+                value = uiState.season,
+                onValueChange = viewModel::setSeason,
+                label = { Text("Season (optional)") },
+                placeholder = { Text("e.g. 3") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
             )
 
@@ -172,6 +183,7 @@ fun TvScreen(
                 value = uiState.seasonsWatched,
                 onValueChange = viewModel::setSeasonsWatched,
                 label = { Text("Seasons watched (optional)") },
+                placeholder = { Text("e.g. 4") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
@@ -233,7 +245,7 @@ fun TvScreen(
                         color = MaterialTheme.colorScheme.onPrimary,
                     )
                 } else {
-                    Text("Save TV Series")
+                    Text("Save")
                 }
             }
         }

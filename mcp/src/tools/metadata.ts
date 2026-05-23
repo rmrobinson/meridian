@@ -84,7 +84,9 @@ export const filmTvMetadataSchema = z
     director: z.string().optional().describe("Director name (movies)"),
     network: z.string().optional().describe("Broadcast network (TV shows)"),
     year: z.number().int().optional().describe("Release year"),
-    seasons_watched: z.number().int().optional().describe("Number of seasons watched (TV)"),
+    seasons_watched: z.number().int().optional().describe("Number of seasons this entry covers (TV, user-provided)"),
+    season: z.number().int().optional().describe("Specific season number, 1-based (TV, user-provided)"),
+    total_seasons: z.number().int().optional().describe("Total seasons in the show (TV, TMDB-sourced, not user-editable)"),
     rating: z.number().int().min(0).max(10).optional().describe("Rating out of 10"),
     review: z.string().optional().describe("Personal review or notes"),
   })
@@ -176,7 +178,7 @@ export type MetadataArgs = {
     actual_departure?: string; actual_arrival?: string;
   };
   book_metadata?: { isbn?: string; title?: string; author?: string; cover_image_url?: string; preview_url?: string; rating?: number; review?: string };
-  film_tv_metadata?: { tmdb_id?: string; type: "movie" | "tv"; poster_url?: string; director?: string; network?: string; year?: number; seasons_watched?: number; rating?: number; review?: string };
+  film_tv_metadata?: { tmdb_id?: string; type: "movie" | "tv"; poster_url?: string; director?: string; network?: string; year?: number; seasons_watched?: number; season?: number; total_seasons?: number; rating?: number; review?: string };
   concert_metadata?: { main_act: string; opening_acts?: string[]; venue_label?: string; venue_lat?: number; venue_lng?: number; playlist_url?: string };
   fitness_metadata?: {
     activity: string; duration?: string; distance_km?: number; elevation_gain_m?: number;
@@ -242,7 +244,7 @@ export function buildMetadata(args: MetadataArgs): object {
   }
   if (args.film_tv_metadata) {
     const f = args.film_tv_metadata;
-    return { filmTvMetadata: { tmdbId: f.tmdb_id ?? "", type: f.type === "movie" ? FilmTVType.FILM_TV_TYPE_MOVIE : FilmTVType.FILM_TV_TYPE_TV, posterUrl: f.poster_url ?? "", director: f.director ?? "", network: f.network ?? "", year: f.year ?? 0, seasonsWatched: f.seasons_watched, rating: f.rating ?? 0, review: f.review ?? "" } };
+    return { filmTvMetadata: { tmdbId: f.tmdb_id ?? "", type: f.type === "movie" ? FilmTVType.FILM_TV_TYPE_MOVIE : FilmTVType.FILM_TV_TYPE_TV, posterUrl: f.poster_url ?? "", director: f.director ?? "", network: f.network ?? "", year: f.year ?? 0, seasonsWatched: f.seasons_watched, season: f.season, totalSeasons: f.total_seasons, rating: f.rating ?? 0, review: f.review ?? "" } };
   }
   if (args.concert_metadata) {
     const c = args.concert_metadata;
