@@ -45,8 +45,8 @@ private const val TAG = "TimelineViewModel"
 @HiltViewModel
 class TimelineViewModel @Inject constructor(
     private val repository: EventRepository,
-    private val syncEvents: SyncEventsUseCase,
-    private val updateEvent: UpdateEventUseCase,
+    private val syncEventsUseCase: SyncEventsUseCase,
+    private val updateEventUseCase: UpdateEventUseCase,
     private val deleteEventUseCase: DeleteEventUseCase,
     private val networkMonitor: NetworkMonitor,
 ) : ViewModel() {
@@ -109,7 +109,7 @@ class TimelineViewModel @Inject constructor(
             _syncState.update { true }
             _error.update { null }
             try {
-                syncEvents()
+                syncEventsUseCase()
                 Log.d(TAG, "sync: complete")
             } catch (e: Exception) {
                 Log.e(TAG, "sync: failed", e)
@@ -143,7 +143,7 @@ class TimelineViewModel @Inject constructor(
             )
             repository.saveLocal(optimistic)
             try {
-                updateEvent(event.toUpdateRequest(newEndDate = endDate))
+                updateEventUseCase(event.toUpdateRequest(newEndDate = endDate))
             } catch (e: Exception) {
                 // Roll back to the pre-update state on failure
                 repository.saveLocal(event)

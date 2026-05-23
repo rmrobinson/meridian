@@ -43,8 +43,6 @@ func newTestUploader(s3mock *mockS3, httpClient *http.Client) *S3Uploader {
 	return newS3UploaderWithHTTP(s3mock, "test-bucket", "us-east-1", httpClient)
 }
 
-func strPtr(s string) *string { return &s }
-
 // --- S3 tests ---
 
 func TestS3UploadFromURL_Success(t *testing.T) {
@@ -460,6 +458,29 @@ func TestTMDB_TV_PopulatesNetworkAndSeasons(t *testing.T) {
 	}
 	if event.LineKey != "film_tv-1396" {
 		t.Errorf("line_key: got %q, want film_tv-1396", event.LineKey)
+	}
+}
+
+func TestTMDB_TV_PreservesExistingLineKey(t *testing.T) {
+	imgSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("img"))
+	}))
+	defer imgSrv.Close()
+
+	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"name":"Breaking Bad","first_air_date":"2008-01-20","overview":"","poster_path":"","networks":[],"number_of_seasons":5}`))
+	}))
+	defer apiSrv.Close()
+
+	enricher := newTestTMDBEnricher(apiSrv, newTestUploader(&mockS3{}, imgSrv.Client()))
+	event := filmEvent("1396", "tv")
+	event.LineKey = "film_tv-custom-key"
+	if err := enricher.Enrich(context.Background(), event); err != nil {
+		t.Fatalf("Enrich: %v", err)
+	}
+
+	if event.LineKey != "film_tv-custom-key" {
+		t.Errorf("line_key: got %q, want film_tv-custom-key (must not be overwritten)", event.LineKey)
 	}
 }
 

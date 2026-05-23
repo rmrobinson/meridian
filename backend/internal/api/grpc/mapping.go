@@ -455,10 +455,7 @@ func protoToFilmTVMetadata(p *pb.FilmTVMetadata) *domain.FilmTVMetadata {
 		v := int(p.GetSeason())
 		m.Season = &v
 	}
-	if p.TotalSeasons != nil {
-		v := int(p.GetTotalSeasons())
-		m.TotalSeasons = &v
-	}
+	// total_seasons is TMDB-sourced; ignore any client-supplied value on write.
 	return m
 }
 

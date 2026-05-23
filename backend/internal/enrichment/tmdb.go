@@ -219,7 +219,10 @@ func (e *TMDBEnricher) enrichTV(ctx context.Context, event *domain.Event, m *dom
 	}
 
 	// Group all seasons of the same show on the same timeline lane.
-	event.LineKey = "film_tv-" + m.TMDBID
+	// Only set if not already assigned so a caller-provided key is preserved.
+	if event.LineKey == "" {
+		event.LineKey = "film_tv-" + m.TMDBID
+	}
 
 	if err := e.uploadPoster(ctx, m, result.PosterPath); err != nil {
 		return err
