@@ -47,7 +47,7 @@ class TimelineViewModel @Inject constructor(
     private val repository: EventRepository,
     private val syncEvents: SyncEventsUseCase,
     private val updateEvent: UpdateEventUseCase,
-    private val deleteEvent: DeleteEventUseCase,
+    private val deleteEventUseCase: DeleteEventUseCase,
     private val networkMonitor: NetworkMonitor,
 ) : ViewModel() {
 
@@ -156,7 +156,7 @@ class TimelineViewModel @Inject constructor(
         viewModelScope.launch {
             Log.d(TAG, "deleteEvent: id=${event.id}")
             try {
-                deleteEvent(event)
+                deleteEventUseCase(event)
             } catch (e: Exception) {
                 Log.e(TAG, "deleteEvent: failed id=${event.id}", e)
                 // Restore the event locally so the user doesn't lose it
