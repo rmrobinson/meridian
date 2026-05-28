@@ -61,6 +61,7 @@ class EditEventViewModel @Inject constructor(
         val year: String = "",
         val director: String = "",
         val network: String = "",
+        val season: String = "",
         val seasonsWatched: String = "",
         val rating: Int = 0,
         val review: String = "",
@@ -167,8 +168,14 @@ class EditEventViewModel @Inject constructor(
                 } else "",
                 director = if (metadataType == "film_tv") json.optString("director") else "",
                 network = if (metadataType == "film_tv") json.optString("network") else "",
-                seasonsWatched = if (metadataType == "film_tv" && json.has("seasons_watched"))
-                    json.getInt("seasons_watched").toString() else "",
+                season = if (metadataType == "film_tv") {
+                    val s = json.optInt("season")
+                    if (s > 0) s.toString() else ""
+                } else "",
+                seasonsWatched = if (metadataType == "film_tv") {
+                    val s = json.optInt("seasons_watched")
+                    if (s > 0) s.toString() else ""
+                } else "",
                 rating = if (metadataType == "book" || metadataType == "film_tv")
                     json.optInt("rating") else 0,
                 review = if (metadataType == "book" || metadataType == "film_tv")
@@ -236,6 +243,7 @@ class EditEventViewModel @Inject constructor(
     fun setYear(value: String) = _uiState.update { it.copy(year = value) }
     fun setDirector(value: String) = _uiState.update { it.copy(director = value) }
     fun setNetwork(value: String) = _uiState.update { it.copy(network = value) }
+    fun setSeason(value: String) = _uiState.update { it.copy(season = value) }
     fun setSeasonsWatched(value: String) = _uiState.update { it.copy(seasonsWatched = value) }
     fun setRating(value: Int) = _uiState.update { it.copy(rating = value) }
     fun setReview(value: String) = _uiState.update { it.copy(review = value) }
@@ -396,14 +404,27 @@ private class FitnessParseContext {
             parsed
         } else null
 
-        if (state.metadataType == "film_tv" && state.filmTvSubtype == "FILM_TV_TYPE_TV"
+        val seasonInt: Int? = if (state.metadataType == "film_tv"
+            && state.filmTvSubtype == "FILM_TV_TYPE_TV"
+            && state.season.isNotBlank()) {
+            val parsed = state.season.toIntOrNull()
+            if (parsed == null || parsed < 1) {
+                _uiState.update { it.copy(error = "Season must be a positive number") }
+                return
+            }
+            parsed
+        } else null
+
+        val seasonsWatchedInt: Int? = if (state.metadataType == "film_tv"
+            && state.filmTvSubtype == "FILM_TV_TYPE_TV"
             && state.seasonsWatched.isNotBlank()) {
-            val seasons = state.seasonsWatched.toIntOrNull()
-            if (seasons == null || seasons < 1) {
+            val parsed = state.seasonsWatched.toIntOrNull()
+            if (parsed == null || parsed < 1) {
                 _uiState.update { it.copy(error = "Seasons watched must be a positive number") }
                 return
             }
-        }
+            parsed
+        } else null
 
         _uiState.update { it.copy(isSubmitting = true, error = null) }
         viewModelScope.launch {
@@ -458,8 +479,9 @@ private class FitnessParseContext {
                             FilmTVType.FILM_TV_TYPE_TV -> {
                                 if (state.network.isNotBlank()) metaBuilder.setNetwork(state.network.trim())
                                 else metaBuilder.clearNetwork()
-                                val seasons = state.seasonsWatched.toIntOrNull()
-                                if (seasons != null && seasons > 0) metaBuilder.setSeasonsWatched(seasons)
+                                if (seasonInt != null) metaBuilder.setSeason(seasonInt)
+                                else metaBuilder.clearSeason()
+                                if (seasonsWatchedInt != null) metaBuilder.setSeasonsWatched(seasonsWatchedInt)
                                 else metaBuilder.clearSeasonsWatched()
                             }
                             else -> Unit

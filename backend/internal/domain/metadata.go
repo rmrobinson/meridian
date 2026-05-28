@@ -82,7 +82,9 @@ type FilmTVMetadata struct {
 	Director       string `json:"director,omitempty"`
 	Network        string `json:"network,omitempty"`
 	Year           int    `json:"year,omitempty"`
-	SeasonsWatched *int   `json:"seasons_watched,omitempty"`
+	SeasonsWatched *int   `json:"seasons_watched,omitempty"` // user-provided: number of seasons this entry covers
+	Season         *int   `json:"season,omitempty"`          // user-provided: specific season number (1-based)
+	TotalSeasons   *int   `json:"total_seasons,omitempty"`   // TMDB-sourced: total seasons in the show
 	Rating         int    `json:"rating,omitempty"`
 	Review         string `json:"review,omitempty"`
 }

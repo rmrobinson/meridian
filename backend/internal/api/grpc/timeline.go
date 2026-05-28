@@ -92,10 +92,10 @@ func (s *Server) CreateEvent(ctx context.Context, req *pb.CreateEventRequest) (*
 		return nil, status.Errorf(codes.InvalidArgument, "invalid metadata: %v", err)
 	}
 
-	// Enrich before insert — fail fast if enrichment errors.
+	// Enrich before insert — best-effort; a failure must not block saving the event.
 	if enrichErr := s.enrich(ctx, e); enrichErr != nil {
-		s.logger.Error("enriching event", zap.String("family_id", e.FamilyID), zap.Error(enrichErr))
-		return nil, status.Errorf(codes.Internal, "enrichment failed: %v", enrichErr)
+		s.logger.Warn("enrichment failed, saving event without enrichment",
+			zap.String("family_id", e.FamilyID), zap.Error(enrichErr))
 	}
 
 	if err := s.db.CreateEvent(ctx, e); err != nil {

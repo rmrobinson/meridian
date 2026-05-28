@@ -1012,22 +1012,25 @@ func TestCreateEvent_OtherFamily_DoesNotCallEnricher(t *testing.T) {
 	}
 }
 
-func TestCreateEvent_EnricherFailure_ReturnsInternal(t *testing.T) {
+func TestCreateEvent_EnricherFailure_SavesEventAnyway(t *testing.T) {
 	enricher := &mockEnricher{err: fmt.Errorf("isbndb unreachable")}
 	env := newTestEnvWithEnrichers(t, enricher, nil)
 
-	_, err := env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
+	// Enrichment is best-effort: a failure must not block the event from being saved.
+	resp, err := env.client.CreateEvent(authCtx(t), &pb.CreateEventRequest{
 		FamilyId: "books", LineKey: "l", Type: pb.EventType_EVENT_TYPE_POINT,
 		Title: "Dune",
 		Metadata: &pb.CreateEventRequest_BookMetadata{BookMetadata: &pb.BookMetadata{Isbn: "9780441013593"}},
 	})
-	if status.Code(err) != codes.Internal {
-		t.Errorf("expected codes.Internal, got %v", err)
+	if err != nil {
+		t.Fatalf("CreateEvent: expected success despite enricher failure, got %v", err)
+	}
+	if resp.Event == nil {
+		t.Fatal("expected event in response")
 	}
 
-	// Event must not have been stored.
 	list, _ := env.client.ListEvents(authCtx(t), &pb.ListEventsRequest{})
-	if len(list.GetEvents()) != 0 {
-		t.Errorf("expected no events stored after enrichment failure, got %d", len(list.GetEvents()))
+	if len(list.GetEvents()) != 1 {
+		t.Errorf("expected 1 event stored, got %d", len(list.GetEvents()))
 	}
 }
