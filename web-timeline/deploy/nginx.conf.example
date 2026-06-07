@@ -1,0 +1,49 @@
+# Example nginx server block for serving web-timeline as static files,
+# without Vite running. Copy to your nginx config directory (e.g.
+# /etc/nginx/sites-available/ on Debian/Ubuntu), replace the placeholders
+# below, then enable and reload. See README.md in this directory for the
+# full walkthrough.
+#
+# After running `certbot --nginx` to add HTTPS, double-check the resulting
+# config: Certbot has a known quirk where it copies its
+# `if ($host = ...) { return 301 https://$host$request_uri; }` redirect into
+# *both* the new `listen 443 ssl` block and the `listen 80` block, instead of
+# only the latter. Inside the HTTPS block this redirects every request to
+# itself (ERR_TOO_MANY_REDIRECTS / "page isn't redirecting properly"). If you
+# see that, delete the `if` block from the `listen 443 ssl` server block —
+# leave it in place in the `listen 80` block, where it belongs.
+
+server {
+    listen 80;
+    server_name timeline.example.com;
+
+    root /var/www/meridian-timeline;
+    index index.html;
+
+    # site.webmanifest isn't in nginx's stock mime.types. Set its type via
+    # default_type in a scoped location rather than a top-level `types {}`
+    # block — `types {}` replaces (rather than extends) the included MIME
+    # map for its context, which would break .js/.css/.svg handling here.
+    location ~* \.webmanifest$ {
+        default_type application/manifest+json;
+    }
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    # Proxy API calls to the backend's REST server so the browser only ever
+    # makes same-origin requests — avoids CORS, mirrors Vite's dev proxy
+    # (see web-timeline/vite.config.js).
+    location /api/ {
+        proxy_pass http://BACKEND_HOST:8080/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    # Long cache for static assets that change only when redeployed.
+    location ~* \.(?:png|svg|ico|webmanifest)$ {
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+}
