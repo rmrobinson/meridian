@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -397,6 +398,11 @@ func filmEventByTitle(title, mediaType string) *domain.Event {
 	return &domain.Event{FamilyID: "film_tv", Title: title, Metadata: &meta}
 }
 
+func filmEventByTitleAndYear(title, mediaType string, year int) *domain.Event {
+	meta := fmt.Sprintf(`{"type":%q,"year":%d}`, mediaType, year)
+	return &domain.Event{FamilyID: "film_tv", Title: title, Metadata: &meta}
+}
+
 func TestTMDB_Movie_PopulatesDirectorAndYear(t *testing.T) {
 	imgSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("img"))
@@ -617,6 +623,99 @@ func TestTMDB_NoTMDBID_TV_SearchesByTitle(t *testing.T) {
 	}
 	if m.Network != "AMC" {
 		t.Errorf("network: got %q, want AMC", m.Network)
+	}
+}
+
+func TestTMDB_NoTMDBID_Movie_WithYear_IncludesPrimaryReleaseYear(t *testing.T) {
+	imgSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("img"))
+	}))
+	defer imgSrv.Close()
+
+	var capturedQuery string
+	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/search/movie" {
+			capturedQuery = r.URL.RawQuery
+			w.Write([]byte(`{"results":[{"id":238}]}`))
+			return
+		}
+		w.Write([]byte(`{"title":"The Godfather","release_date":"1972-03-24","poster_path":"","credits":{"crew":[]}}`))
+	}))
+	defer apiSrv.Close()
+
+	enricher := newTestTMDBEnricher(apiSrv, newTestUploader(&mockS3{}, imgSrv.Client()))
+	event := filmEventByTitleAndYear("The Godfather", "movie", 1972)
+	if err := enricher.Enrich(context.Background(), event); err != nil {
+		t.Fatalf("Enrich: %v", err)
+	}
+
+	q, _ := url.ParseQuery(capturedQuery)
+	if got := q.Get("primary_release_year"); got != "1972" {
+		t.Errorf("primary_release_year: got %q, want 1972", got)
+	}
+	if got := q.Get("query"); got != "The Godfather" {
+		t.Errorf("query: got %q, want The Godfather", got)
+	}
+}
+
+func TestTMDB_NoTMDBID_TV_WithYear_IncludesFirstAirDateYear(t *testing.T) {
+	imgSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("img"))
+	}))
+	defer imgSrv.Close()
+
+	var capturedQuery string
+	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/search/tv" {
+			capturedQuery = r.URL.RawQuery
+			w.Write([]byte(`{"results":[{"id":1396}]}`))
+			return
+		}
+		w.Write([]byte(`{"name":"Breaking Bad","first_air_date":"2008-01-20","poster_path":"","networks":[{"name":"AMC"}],"number_of_seasons":5}`))
+	}))
+	defer apiSrv.Close()
+
+	enricher := newTestTMDBEnricher(apiSrv, newTestUploader(&mockS3{}, imgSrv.Client()))
+	event := filmEventByTitleAndYear("Breaking Bad", "tv", 2008)
+	if err := enricher.Enrich(context.Background(), event); err != nil {
+		t.Fatalf("Enrich: %v", err)
+	}
+
+	q, _ := url.ParseQuery(capturedQuery)
+	if got := q.Get("first_air_date_year"); got != "2008" {
+		t.Errorf("first_air_date_year: got %q, want 2008", got)
+	}
+	if got := q.Get("query"); got != "Breaking Bad" {
+		t.Errorf("query: got %q, want Breaking Bad", got)
+	}
+}
+
+func TestTMDB_NoTMDBID_Movie_WithoutYear_OmitsYearParam(t *testing.T) {
+	imgSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("img"))
+	}))
+	defer imgSrv.Close()
+
+	var capturedQuery string
+	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/search/movie" {
+			capturedQuery = r.URL.RawQuery
+			w.Write([]byte(`{"results":[{"id":238}]}`))
+			return
+		}
+		w.Write([]byte(`{"title":"The Godfather","release_date":"1972-03-24","poster_path":"","credits":{"crew":[]}}`))
+	}))
+	defer apiSrv.Close()
+
+	enricher := newTestTMDBEnricher(apiSrv, newTestUploader(&mockS3{}, imgSrv.Client()))
+	event := filmEventByTitle("The Godfather", "movie")
+	if err := enricher.Enrich(context.Background(), event); err != nil {
+		t.Fatalf("Enrich: %v", err)
+	}
+
+	q, _ := url.ParseQuery(capturedQuery)
+	if got := q.Get("primary_release_year"); got != "" {
+		t.Errorf("primary_release_year should be absent when year is 0, got %q", got)
 	}
 }
 

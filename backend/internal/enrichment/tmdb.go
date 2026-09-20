@@ -90,13 +90,24 @@ func (e *TMDBEnricher) Enrich(ctx context.Context, event *domain.Event) error {
 }
 
 // resolveIDByTitle searches TMDB for the title and sets m.TMDBID from the
-// first result. Returns ErrNotFound when the search returns no results.
+// first result. If m.Year > 0 it is forwarded as primary_release_year (movie)
+// or first_air_date_year (TV) to disambiguate titles that match multiple results.
+// Returns ErrNotFound when the search returns no results.
 func (e *TMDBEnricher) resolveIDByTitle(ctx context.Context, title string, m *domain.FilmTVMetadata) error {
 	endpoint := "movie"
 	if m.Type == "tv" {
 		endpoint = "tv"
 	}
-	searchURL := fmt.Sprintf("%s/search/%s?query=%s", e.baseURL, endpoint, url.QueryEscape(title))
+	params := url.Values{}
+	params.Set("query", title)
+	if m.Year > 0 {
+		if m.Type == "tv" {
+			params.Set("first_air_date_year", fmt.Sprintf("%d", m.Year))
+		} else {
+			params.Set("primary_release_year", fmt.Sprintf("%d", m.Year))
+		}
+	}
+	searchURL := fmt.Sprintf("%s/search/%s?%s", e.baseURL, endpoint, params.Encode())
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, searchURL, nil)
 	if err != nil {
 		return fmt.Errorf("building TMDB search request: %w", err)
