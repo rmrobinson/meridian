@@ -22,6 +22,7 @@ import ca.rmrobinson.meridian.ui.entry.flight.FlightScanScreen
 import ca.rmrobinson.meridian.ui.entry.hobbies.HobbyLandingScreen
 import ca.rmrobinson.meridian.ui.entry.hobbies.book.BookManualScreen
 import ca.rmrobinson.meridian.ui.entry.hobbies.book.BookScanScreen
+import ca.rmrobinson.meridian.ui.entry.hobbies.concert.ConcertScreen
 import ca.rmrobinson.meridian.ui.entry.hobbies.film.FilmScreen
 import ca.rmrobinson.meridian.ui.entry.hobbies.tv.TvScreen
 import ca.rmrobinson.meridian.ui.scanner.SCAN_RESULT_KEY
@@ -95,6 +96,7 @@ class MainActivity : ComponentActivity() {
                             onNavigateToBook = { navController.navigate("entry/hobbies/book/scan") },
                             onNavigateToFilm = { navController.navigate("entry/hobbies/film") },
                             onNavigateToTv = { navController.navigate("entry/hobbies/tv") },
+                            onNavigateToConcert = { navController.navigate("entry/hobbies/concert") },
                             onBack = { navController.popBackStack() },
                         )
                     }
@@ -146,6 +148,15 @@ class MainActivity : ComponentActivity() {
 
                     composable("entry/hobbies/tv") {
                         TvScreen(
+                            onBack = { navController.popBackStack() },
+                            onSuccess = {
+                                navController.popBackStack("timeline", inclusive = false)
+                            },
+                        )
+                    }
+
+                    composable("entry/hobbies/concert") {
+                        ConcertScreen(
                             onBack = { navController.popBackStack() },
                             onSuccess = {
                                 navController.popBackStack("timeline", inclusive = false)

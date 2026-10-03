@@ -321,6 +321,7 @@ private fun EditEventForm(
                              uiState.filmTvSubtype == "FILM_TV_TYPE_TV") {
                 FilmTvMetadataSection(uiState, viewModel)
             }
+            "concert" -> ConcertMetadataSection(uiState, viewModel)
             "flight"  -> FlightMetadataSection(uiState, viewModel)
             "fitness" -> FitnessMetadataSection(uiState, viewModel)
         }
@@ -508,6 +509,36 @@ private fun FilmTvMetadataSection(
         label = { Text("Review (optional)") },
         minLines = 3,
         maxLines = 6,
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+@Composable
+private fun ConcertMetadataSection(
+    uiState: EditEventViewModel.UiState,
+    viewModel: EditEventViewModel,
+) {
+    OutlinedTextField(
+        value = uiState.openingActs,
+        onValueChange = viewModel::setOpeningActs,
+        label = { Text("Opening acts (optional)") },
+        placeholder = { Text("Comma-separated, e.g. Band A, Band B") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    OutlinedTextField(
+        value = uiState.venueLabel,
+        onValueChange = viewModel::setVenueLabel,
+        label = { Text("Venue *") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    OutlinedTextField(
+        value = uiState.playlistUrl,
+        onValueChange = viewModel::setPlaylistUrl,
+        label = { Text("Spotify setlist/playlist link (optional)") },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
         modifier = Modifier.fillMaxWidth(),
     )
 }

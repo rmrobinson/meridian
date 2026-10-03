@@ -148,6 +148,16 @@ private fun SerializableMetadata?.toJson(): String {
             obj.put("type", "concert")
             obj.put("main_act", mainAct)
             obj.put("opening_acts", JSONArray(openingActsList))
+            if (hasVenue()) {
+                obj.put(
+                    "venue",
+                    JSONObject().apply {
+                        put("label", venue.label)
+                        put("lat", venue.lat)
+                        put("lng", venue.lng)
+                    },
+                )
+            }
             obj.put("playlist_url", playlistUrl)
         }
         is SerializableMetadata.Fitness -> with(proto) {
@@ -260,6 +270,17 @@ private fun parseMetadataFromJson(json: String): SerializableMetadata? {
                 .setMainAct(obj.optString("main_act"))
                 .addAllOpeningActs(obj.optJSONArray("opening_acts").toStringList())
                 .setPlaylistUrl(obj.optString("playlist_url"))
+                .also { b ->
+                    obj.optJSONObject("venue")?.let { v ->
+                        b.setVenue(
+                            Location.newBuilder()
+                                .setLabel(v.optString("label"))
+                                .setLat(v.optDouble("lat", 0.0))
+                                .setLng(v.optDouble("lng", 0.0))
+                                .build(),
+                        )
+                    }
+                }
                 .build(),
         )
         "fitness" -> SerializableMetadata.Fitness(

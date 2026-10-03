@@ -21,7 +21,9 @@ class HobbyEntryViewModel @Inject constructor() : ViewModel() {
             HobbyType.BOOK    -> "books"
             HobbyType.FILM    -> "film_tv"
             HobbyType.TV      -> "film_tv"
-            HobbyType.CONCERT -> "concerts"
+            // Concerts are single-day point events; they live directly on the hobbies
+            // secondary spine rather than spawning their own per-event child line.
+            HobbyType.CONCERT -> "hobbies"
             HobbyType.OTHER   -> ""
         }
     }
