@@ -1,7 +1,8 @@
 [Unit]
 Description=Meridian backend server
 Documentation=https://github.com/rmrobinson/meridian
-After=network.target
+Wants=network-online.target
+After=network-online.target
 
 [Service]
 Type=simple
@@ -16,16 +17,15 @@ ExecStart=/opt/meridiand/meridiand --config /etc/meridiand/config.yaml
 Restart=on-failure
 RestartSec=5s
 
-# Write stdout/stderr to a dedicated log file so logrotate can manage it.
-StandardOutput=append:/var/log/meridiand/meridiand.log
-StandardError=append:/var/log/meridiand/meridiand.log
-
 # Hardening
 NoNewPrivileges=true
-ProtectSystem=strict
-ProtectHome=read-only
-ReadWritePaths=/var/lib/meridiand /var/log/meridiand
 PrivateTmp=true
+ProtectSystem=strict
+# read-only, not true: AWS_CONFIG_FILE/AWS_SHARED_CREDENTIALS_FILE live under
+# meridiand's own home dir (/home/meridiand/.aws) and must stay readable.
+ProtectHome=read-only
+ReadWritePaths=/var/lib/meridiand
+ReadOnlyPaths=/etc/meridiand /opt/meridiand
 
 [Install]
 WantedBy=multi-user.target

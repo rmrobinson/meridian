@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # test-events.sh — create 20 sample life events via grpcurl, then read them back via curl.
 # Run from the backend/ directory with the server already started:
-#   go run ./cmd/server -config test-config.yaml
+#   go run ./cmd/meridiand -config test-config.yaml
 set -euo pipefail
 
 GRPC_ADDR="localhost:9090"
