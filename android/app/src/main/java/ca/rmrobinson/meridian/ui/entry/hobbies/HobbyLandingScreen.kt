@@ -26,6 +26,7 @@ fun HobbyLandingScreen(
     onNavigateToBook: () -> Unit,
     onNavigateToFilm: () -> Unit,
     onNavigateToTv: () -> Unit,
+    onNavigateToConcert: () -> Unit,
     onBack: () -> Unit,
 ) {
     Scaffold(
@@ -50,7 +51,7 @@ fun HobbyLandingScreen(
             item { HobbyTypeCard(label = "Book", onClick = onNavigateToBook, enabled = true) }
             item { HobbyTypeCard(label = "Film", onClick = onNavigateToFilm, enabled = true) }
             item { HobbyTypeCard(label = "TV Series", onClick = onNavigateToTv, enabled = true) }
-            item { HobbyTypeCard(label = "Concert", onClick = {}, enabled = false) }
+            item { HobbyTypeCard(label = "Concert", onClick = onNavigateToConcert, enabled = true) }
             item { HobbyTypeCard(label = "Other", onClick = {}, enabled = false) }
         }
     }

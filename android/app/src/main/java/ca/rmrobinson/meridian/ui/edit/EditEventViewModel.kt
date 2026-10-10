@@ -65,6 +65,10 @@ class EditEventViewModel @Inject constructor(
         val seasonsWatched: String = "",
         val rating: Int = 0,
         val review: String = "",
+        // Concert metadata (main act is edited via the shared title field)
+        val openingActs: String = "",
+        val venueLabel: String = "",
+        val playlistUrl: String = "",
         // Flight metadata
         val airline: String = "",
         val flightNumber: String = "",
@@ -155,7 +159,11 @@ class EditEventViewModel @Inject constructor(
                 title = entity.title.ifBlank {
                     // Enricher may have filled in the title inside metadata (e.g. book ISBN lookup)
                     // while leaving the top-level event title empty if none was provided at creation.
-                    if (metadataType == "book") json.optString("title", "") else ""
+                    when (metadataType) {
+                        "book" -> json.optString("title", "")
+                        "concert" -> json.optString("main_act", "")
+                        else -> ""
+                    }
                 },
                 description = entity.description ?: "",
                 date = date,
@@ -180,6 +188,14 @@ class EditEventViewModel @Inject constructor(
                     json.optInt("rating") else 0,
                 review = if (metadataType == "book" || metadataType == "film_tv")
                     json.optString("review") else "",
+                openingActs = if (metadataType == "concert") {
+                    json.optJSONArray("opening_acts")?.let { arr ->
+                        (0 until arr.length()).joinToString(", ") { arr.optString(it) }
+                    } ?: ""
+                } else "",
+                venueLabel = if (metadataType == "concert")
+                    json.optJSONObject("venue")?.optString("label") ?: "" else "",
+                playlistUrl = if (metadataType == "concert") json.optString("playlist_url") else "",
                 airline = if (metadataType == "flight") json.optString("airline") else "",
                 flightNumber = if (metadataType == "flight") json.optString("flight_number") else "",
                 originIata = if (metadataType == "flight") json.optString("origin_iata") else "",
@@ -247,6 +263,9 @@ class EditEventViewModel @Inject constructor(
     fun setSeasonsWatched(value: String) = _uiState.update { it.copy(seasonsWatched = value) }
     fun setRating(value: Int) = _uiState.update { it.copy(rating = value) }
     fun setReview(value: String) = _uiState.update { it.copy(review = value) }
+    fun setOpeningActs(value: String) = _uiState.update { it.copy(openingActs = value) }
+    fun setVenueLabel(value: String) = _uiState.update { it.copy(venueLabel = value) }
+    fun setPlaylistUrl(value: String) = _uiState.update { it.copy(playlistUrl = value) }
     fun setAirline(value: String) = _uiState.update { it.copy(airline = value) }
     fun setFlightNumber(value: String) = _uiState.update { it.copy(flightNumber = value) }
     fun setOriginIata(value: String) = _uiState.update { it.copy(originIata = value.uppercase()) }
@@ -426,6 +445,11 @@ private class FitnessParseContext {
             parsed
         } else null
 
+        if (state.metadataType == "concert" && state.venueLabel.isBlank()) {
+            _uiState.update { it.copy(error = "Venue is required") }
+            return
+        }
+
         _uiState.update { it.copy(isSubmitting = true, error = null) }
         viewModelScope.launch {
             try {
@@ -487,6 +511,24 @@ private class FitnessParseContext {
                             else -> Unit
                         }
                         builder.setFilmTvMetadata(metaBuilder.build())
+                    }
+                    "concert" -> {
+                        val openingActsList = state.openingActs.split(",")
+                            .map { it.trim() }
+                            .filter { it.isNotEmpty() }
+                        // Preserve any existing lat/lng on the venue (e.g. from a future
+                        // geocoding enrichment) — the edit screen only exposes the label.
+                        val updatedVenue = builder.concertMetadata.venue.toBuilder()
+                            .setLabel(state.venueLabel.trim())
+                            .build()
+                        val updated = builder.concertMetadata.toBuilder()
+                            .setMainAct(state.title.trim())
+                            .clearOpeningActs()
+                            .addAllOpeningActs(openingActsList)
+                            .setVenue(updatedVenue)
+                            .setPlaylistUrl(state.playlistUrl.trim())
+                            .build()
+                        builder.setConcertMetadata(updated)
                     }
                     "flight" -> {
                         val metaBuilder = builder.flightMetadata.toBuilder()
