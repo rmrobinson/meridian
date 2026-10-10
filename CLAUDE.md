@@ -35,7 +35,7 @@ make generate          # runs buf generate (same as ./generate.sh)
 GOWORK=off go test ./internal/api/grpc/ -run TestEventCRUD -v
 
 # Run the server (requires config.yaml)
-go run ./cmd/server/main.go --config config.yaml
+go run ./cmd/meridiand/main.go --config config.yaml
 ```
 
 ### Frontend (web-timeline)
